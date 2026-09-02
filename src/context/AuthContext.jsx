@@ -22,7 +22,6 @@ export function AuthProvider({ children }) {
 
       try {
         const perfilUsuario = await obtenerPerfilUsuario(user.uid)
-        console.log('[AuthContext] uid:', user.uid, 'perfil:', perfilUsuario)
         setPerfil(perfilUsuario)
       } catch (err) {
         // Si el usuario existe en Auth pero no tiene documento en
