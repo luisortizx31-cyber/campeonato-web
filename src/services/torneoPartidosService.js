@@ -1,0 +1,227 @@
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  writeBatch,
+  getDocs,
+  query,
+  where,
+  serverTimestamp,
+} from 'firebase/firestore'
+import { db } from '../config/firebase'
+import { generarRondas } from '../utils/fixtureTorneo'
+
+export async function listarPartidosPorCategoria(torneoId, categoria) {
+  const q = query(
+    collection(db, 'torneo_partidos'),
+    where('torneoId', '==', torneoId),
+    where('categoria', '==', categoria)
+  )
+  const snap = await getDocs(q)
+  const partidos = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  // Los partidos del fixture generado no tienen `fecha` real (no hay
+  // calendario en la app), asi que se ordenan por fechaNumero cuando
+  // `fecha` no alcanza para desempatar.
+  partidos.sort((a, b) => {
+    const fechaA = a.fecha?.toMillis?.() || 0
+    const fechaB = b.fecha?.toMillis?.() || 0
+    if (fechaA !== fechaB) return fechaB - fechaA
+    return (b.fechaNumero || 0) - (a.fechaNumero || 0)
+  })
+  return partidos
+}
+
+// Genera el fixture completo "todos contra todos" de una categoria
+// (ver utils/fixtureTorneo.generarRondas) y crea un partido SIN
+// resultado (golesLocal/golesVisitante null) por cada enfrentamiento.
+// Se bloquea si ya hay partidos en la categoria, para no mezclar dos
+// fixtures o duplicar partidos - hay que reiniciar (eliminarFixture)
+// primero.
+export async function generarFixture({ torneoId, categoria, equipoIds, idaYVuelta }) {
+  if (equipoIds.length < 2) {
+    throw new Error('Se necesitan al menos 2 equipos para generar el fixture.')
+  }
+
+  const existentes = await getDocs(
+    query(
+      collection(db, 'torneo_partidos'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria)
+    )
+  )
+  if (!existentes.empty) {
+    throw new Error('Ya hay partidos en esta categoria. Elimina el fixture actual antes de generar uno nuevo.')
+  }
+
+  const rondas = generarRondas(equipoIds, idaYVuelta)
+
+  const batch = writeBatch(db)
+  rondas.forEach((partidosRonda, indice) => {
+    const fechaNumero = indice + 1
+    partidosRonda.forEach(([equipoLocalId, equipoVisitanteId]) => {
+      const ref = doc(collection(db, 'torneo_partidos'))
+      batch.set(ref, {
+        torneoId,
+        categoria,
+        equipoLocalId,
+        equipoVisitanteId,
+        golesLocal: null,
+        golesVisitante: null,
+        fecha: null,
+        jornada: `Fecha ${fechaNumero}`,
+        fechaNumero,
+        creadoEn: serverTimestamp(),
+      })
+    })
+  })
+  await batch.commit()
+
+  return rondas.length
+}
+
+// Agrega un solo partido a una fecha (existente o nueva) a mano, sin
+// pasar por generarFixture - para cuando el campeonato ya arranco con
+// un sorteo hecho por fuera y el Maestro quiere cargar los cruces
+// reales fecha a fecha en vez de usar el "todos contra todos"
+// automatico. El resultado es opcional: si no se pasa, el partido
+// queda pendiente igual que uno generado automaticamente.
+export async function agregarPartidoManual({ torneoId, categoria, fechaNumero, equipoLocalId, equipoVisitanteId, golesLocal, golesVisitante }) {
+  if (equipoLocalId === equipoVisitanteId) {
+    throw new Error('El equipo local y el visitante no pueden ser el mismo.')
+  }
+
+  // Un equipo no puede tener dos partidos en la misma fecha - se
+  // valida tambien aca (ademas de deshabilitarse en el selector del
+  // modal) por si la lista de partidos que tenia cargada el formulario
+  // quedo desactualizada.
+  const fechaNum = Number(fechaNumero)
+  const existentesSnap = await getDocs(
+    query(
+      collection(db, 'torneo_partidos'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria),
+      where('fechaNumero', '==', fechaNum)
+    )
+  )
+  const ocupados = new Set(existentesSnap.docs.flatMap((d) => [d.data().equipoLocalId, d.data().equipoVisitanteId]))
+  if (ocupados.has(equipoLocalId) || ocupados.has(equipoVisitanteId)) {
+    throw new Error('Uno de los dos equipos ya tiene un partido programado en esa fecha.')
+  }
+
+  const tieneResultado = golesLocal !== '' && golesLocal != null && golesVisitante !== '' && golesVisitante != null
+
+  const ref = await addDoc(collection(db, 'torneo_partidos'), {
+    torneoId,
+    categoria,
+    equipoLocalId,
+    equipoVisitanteId,
+    golesLocal: tieneResultado ? Number(golesLocal) : null,
+    golesVisitante: tieneResultado ? Number(golesVisitante) : null,
+    fecha: null,
+    jornada: `Fecha ${fechaNumero}`,
+    fechaNumero: Number(fechaNumero),
+    creadoEn: serverTimestamp(),
+  })
+
+  return ref.id
+}
+
+// Carga (o corrige) el resultado de un partido del fixture. No toca
+// fecha/jornada - esos ya vienen fijados por generarFixture o
+// agregarPartidoManual.
+export async function registrarResultadoPartido(partidoId, { golesLocal, golesVisitante }) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    golesLocal: Number(golesLocal),
+    golesVisitante: Number(golesVisitante),
+  })
+}
+
+// Borra el fixture completo de una categoria (todos los partidos con
+// fechaNumero). Se bloquea si algun partido ya tiene resultado
+// cargado o tiene tarjetas asociadas, para no perder datos ya
+// registrados - en ese caso hay que corregir/eliminar partidos
+// puntuales desde Posiciones/Amonestados primero.
+export async function eliminarFixture(torneoId, categoria) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'torneo_partidos'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria)
+    )
+  )
+  const partidosFixture = snap.docs.filter((d) => d.data().fechaNumero != null)
+  if (partidosFixture.length === 0) return
+
+  const conResultado = partidosFixture.some((d) => d.data().golesLocal != null)
+  if (conResultado) {
+    throw new Error('Ya hay resultados cargados en este fixture. Eliminalos individualmente desde Posiciones antes de reiniciar.')
+  }
+
+  const tarjetasSnap = await getDocs(
+    query(
+      collection(db, 'torneo_tarjetas'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria)
+    )
+  )
+  const idsFixture = new Set(partidosFixture.map((d) => d.id))
+  const tieneTarjetas = tarjetasSnap.docs.some((d) => idsFixture.has(d.data().partidoId))
+  if (tieneTarjetas) {
+    throw new Error('Hay tarjetas asociadas a partidos de este fixture. Eliminalas primero en Amonestados.')
+  }
+
+  const batch = writeBatch(db)
+  partidosFixture.forEach((d) => batch.delete(d.ref))
+  await batch.commit()
+}
+
+// Reinicio total de una categoria: borra TODOS sus partidos (con o
+// sin fechaNumero, tengan o no resultado) y TODAS sus tarjetas, y deja
+// a todos los jugadores de la categoria sin amarillas/rojas ni
+// suspension/eliminacion - como si el campeonato de esa categoria
+// nunca hubiera arrancado. Los equipos y jugadores registrados NO se
+// borran (evita tener que volver a inscribir a todos). A diferencia
+// de eliminarFixture, no se bloquea por tener resultados o tarjetas
+// cargadas: es la opcion para cuando el Maestro quiere empezar de
+// cero sin ir borrando partido por partido.
+export async function reiniciarTemporadaCompleta(torneoId, categoria) {
+  const [partidosSnap, tarjetasSnap, jugadoresSnap] = await Promise.all([
+    getDocs(query(collection(db, 'torneo_partidos'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
+    getDocs(query(collection(db, 'torneo_tarjetas'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
+    getDocs(query(collection(db, 'torneo_jugadores'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
+  ])
+
+  const batch = writeBatch(db)
+  partidosSnap.docs.forEach((d) => batch.delete(d.ref))
+  tarjetasSnap.docs.forEach((d) => batch.delete(d.ref))
+  jugadoresSnap.docs.forEach((d) => {
+    batch.update(d.ref, {
+      amarillasAcumuladas: 0,
+      rojasAcumuladas: 0,
+      suspendido: false,
+      motivoSuspension: null,
+      suspendidoDesde: null,
+      fechasSuspension: null,
+      eliminado: false,
+      motivoEliminacion: null,
+    })
+  })
+  await batch.commit()
+}
+
+// Si el partido tiene tarjetas asociadas, se bloquea el borrado: hay
+// que eliminarlas primero desde Amonestados para que el contador del
+// jugador se corrija por el mismo camino (eliminarTarjeta), en vez de
+// dejar un contador desactualizado.
+export async function eliminarPartido(partidoId) {
+  const tarjetasSnap = await getDocs(
+    query(collection(db, 'torneo_tarjetas'), where('partidoId', '==', partidoId))
+  )
+  if (!tarjetasSnap.empty) {
+    throw new Error('Este partido tiene tarjetas registradas. Eliminalas primero en Amonestados.')
+  }
+
+  await deleteDoc(doc(db, 'torneo_partidos', partidoId))
+}

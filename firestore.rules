@@ -1,0 +1,141 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function perfilDe(uid) {
+      return get(/databases/$(database)/documents/usuarios/$(uid)).data;
+    }
+
+    function rolDe(uid) {
+      return perfilDe(uid).role;
+    }
+
+    function esMaestro() {
+      return estaAutenticado() && rolDe(request.auth.uid) == 'master';
+    }
+
+    // A que torneo (tenant) pertenece el usuario logueado - todo dato
+    // de un colegio queda marcado con este mismo torneoId, y esta
+    // funcion es la que impide que un colegio toque los datos de otro.
+    function miTorneoId() {
+      return perfilDe(request.auth.uid).torneoId;
+    }
+
+    function esMaestroDe(torneoId) {
+      return esMaestro() && miTorneoId() == torneoId;
+    }
+
+    // ---------------------------------------------------------------
+    // /usuarios - un colegio = un usuario con role:'master' y su
+    // torneoId asignado. El alta (Authentication + este doc) se hace a
+    // mano por consola de Firebase por ahora, no hay autoregistro
+    // todavia - por eso create/update/delete quedan en false: ni el
+    // propio usuario ni ningun otro cliente puede tocarlos, solo se
+    // editan desde la consola (que no pasa por estas reglas).
+    // ---------------------------------------------------------------
+    match /usuarios/{uid} {
+      allow get: if estaAutenticado() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    // /torneos/{torneoId}: metadata del tenant (nombre para mostrar en
+    // la pagina publica). Lectura publica porque la pagina /campeonato
+    // no tiene login. Igual que /usuarios, el alta es manual por
+    // consola por ahora.
+    match /torneos/{torneoId} {
+      allow get: if true;
+      allow list, create, delete: if false;
+      allow update: if esMaestroDe(torneoId);
+    }
+
+    // ---------------------------------------------------------------
+    // Modulo "Campeonato" (multi-tenant). Lectura PUBLICA sin login en
+    // todas estas colecciones - hay un link compartible por torneo
+    // (ruta /campeonato/{torneoId}) para que jugadores/delegados/
+    // publico vean posiciones, jugadores y amonestados desde el
+    // celular sin cuenta. Solo el Maestro DEL MISMO torneoId puede
+    // escribir, desde el panel admin (ruta /).
+    // ---------------------------------------------------------------
+    match /torneo_equipos/{equipoId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow update, delete: if esMaestroDe(resource.data.torneoId);
+    }
+
+    // /torneo_jugadores guarda SOLO datos publicos (nombre, equipo,
+    // camiseta, contadores de tarjetas, bandera de suspension). El DNI
+    // y el telefono del jugador NUNCA viven aca - ver la subcoleccion
+    // /privado, para que el link publico de arriba jamas exponga un
+    // dato personal.
+    match /torneo_jugadores/{jugadorId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow update, delete: if esMaestroDe(resource.data.torneoId);
+
+      match /privado/{docId} {
+        allow get: if esMaestro() && resource.data.torneoId == miTorneoId();
+        allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+        allow update, delete: if esMaestro() && resource.data.torneoId == miTorneoId();
+      }
+    }
+
+    // Habilita la collection group query sobre /privado (usada por
+    // torneoJugadoresService.buscarJugadorPorDni para detectar un DNI
+    // ya inscrito EN EL MISMO TORNEO sin tener que leer el DNI de cada
+    // jugador uno por uno). El match anidado de arriba NO alcanza para
+    // una query de collection group - Firestore exige este patron
+    // {path=**} aparte. En "list", esta condicion se evalua por cada
+    // documento que devuelve la query, asi que automaticamente excluye
+    // los /privado de otros tenants aunque el codigo cliente no ponga
+    // un where(torneoId) (la query de buscarJugadorPorDni solo filtra
+    // por dni, esta regla es la que de verdad aisla por tenant).
+    match /{path=**}/privado/{docId} {
+      allow get, list: if esMaestro() && resource.data.torneoId == miTorneoId();
+    }
+
+    match /torneo_partidos/{partidoId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow update, delete: if esMaestroDe(resource.data.torneoId);
+    }
+
+    // Las tarjetas tambien actualizan los contadores del jugador
+    // (amarillasAcumuladas, suspendido) en la MISMA request del
+    // Maestro via runTransaction (torneoTarjetasService.js) - no hay
+    // Cloud Functions en este proyecto, asi que la logica de
+    // suspension vive enteramente en el cliente, protegida solo por
+    // esta regla.
+    match /torneo_tarjetas/{tarjetaId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow update, delete: if esMaestroDe(resource.data.torneoId);
+    }
+
+    // Documentos de config (bases del torneo, umbrales de disciplina).
+    // El id de cada doc ya incluye el torneoId (ver
+    // torneoConfigService: "{torneoId}_general", "{torneoId}_master",
+    // etc.) para que dos tenants nunca puedan pisarse el mismo doc.
+    match /torneo_config/{docId} {
+      allow get, list: if true;
+      allow create, update: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow delete: if esMaestroDe(resource.data.torneoId);
+    }
+
+    // Ajustes manuales de puntos (bonificaciones/sanciones) que el
+    // Maestro aplica a un equipo desde Posiciones - independientes de
+    // los resultados de partidos.
+    match /torneo_ajustes/{ajusteId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow delete: if esMaestroDe(resource.data.torneoId);
+    }
+  }
+}

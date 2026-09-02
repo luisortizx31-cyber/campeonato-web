@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function perfilDe(uid) {
+      return firestore.get(/databases/(default)/documents/usuarios/$(uid)).data;
+    }
+
+    function esMaestroDe(torneoId) {
+      return estaAutenticado() &&
+        perfilDe(request.auth.uid).role == 'master' &&
+        perfilDe(request.auth.uid).torneoId == torneoId;
+    }
+
+    // Documento de "bases" de cada torneo (PDF, un unico archivo activo
+    // por tenant, se sobreescribe en cada subida - ver
+    // torneoConfigService.subirBases). Lectura publica: el link
+    // /campeonato/{torneoId} es publico.
+    match /torneo/{torneoId}/{archivo} {
+      allow read: if true;
+      allow write: if esMaestroDe(torneoId) &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType == 'application/pdf';
+    }
+  }
+}
