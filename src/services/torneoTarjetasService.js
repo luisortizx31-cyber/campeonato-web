@@ -217,13 +217,33 @@ export async function limpiarSuspension(jugadorId) {
   })
 }
 
+// Si el EQUIPO de un jugador ya jugo (con resultado cargado) todos los
+// partidos que tenia programados entre `desdeFecha` y `hastaFecha`
+// (su ventana de suspension). Una fecha en la que ese equipo no tenia
+// partido (descanso, por numero impar de equipos) no cuenta ni suma
+// ni resta - simplemente se salta. No hace falta que el RESTO de la
+// categoria haya jugado esas fechas: alcanza con que el partido de
+// ESE equipo ya se haya jugado.
+function equipoCumplioSuspension(partidos, equipoId, desdeFecha, hastaFecha) {
+  for (let f = desdeFecha; f <= hastaFecha; f++) {
+    const partidosDelEquipo = partidos.filter(
+      (p) => p.fechaNumero === f && (p.equipoLocalId === equipoId || p.equipoVisitanteId === equipoId)
+    )
+    if (partidosDelEquipo.some((p) => p.golesLocal == null)) return false
+  }
+  return true
+}
+
 // Levanta automaticamente las suspensiones (NO las eliminaciones, esas
-// son permanentes/manuales) de los jugadores de una categoria cuya
-// ventana de fechas ya se cumplio, segun `fechaActual` (ver
-// utils/fixtureTorneo.calcularFechaActual). Se llama cada vez que se
-// cargan Fechas o Amonestados, para que el Maestro nunca tenga que
-// acordarse de tocar "Levantar suspensión" a mano.
-export async function reconciliarSuspensionesPorFecha(torneoId, categoria, fechaActual) {
+// son permanentes/manuales) de los jugadores cuyo equipo ya cumplio su
+// ventana de fechas de suspension (ver equipoCumplioSuspension) - se
+// evalua por equipo, no por si la categoria entera termino esa fecha,
+// porque el equipo del suspendido puede haber jugado ya aunque otro
+// partido de la misma fecha este pendiente (reprogramado, etc).
+// Se llama cada vez que se cargan Fechas o Amonestados, para que el
+// Maestro nunca tenga que acordarse de tocar "Levantar suspensión" a
+// mano.
+export async function reconciliarSuspensionesPorFecha(torneoId, categoria, partidos) {
   const snap = await getDocs(
     query(
       collection(db, 'torneo_jugadores'),
@@ -239,8 +259,8 @@ export async function reconciliarSuspensionesPorFecha(torneoId, categoria, fecha
   snap.docs.forEach((d) => {
     const jugador = d.data()
     if (jugador.eliminado) return
-    if (jugador.suspendidoHastaFecha == null) return
-    if (fechaActual < jugador.suspendidoHastaFecha) return
+    if (jugador.suspendidoDesdeFecha == null || jugador.suspendidoHastaFecha == null) return
+    if (!equipoCumplioSuspension(partidos, jugador.equipoId, jugador.suspendidoDesdeFecha, jugador.suspendidoHastaFecha)) return
 
     batch.update(d.ref, {
       suspendido: false,

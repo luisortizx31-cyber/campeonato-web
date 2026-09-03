@@ -51,10 +51,11 @@ export default function TabAmonestados({ torneoId }) {
       ])
       const fechaActualCalculada = calcularFechaActual(ps)
 
-      // Levanta solas las suspensiones cuya ventana de fechas ya se
-      // cumplio, antes de traer a los jugadores - asi la lista de
-      // suspendidos que se ve abajo ya sale al dia.
-      await reconciliarSuspensionesPorFecha(torneoId, categoria, fechaActualCalculada)
+      // Levanta solas las suspensiones de los jugadores cuyo equipo ya
+      // jugo su partido dentro de la ventana de suspension, antes de
+      // traer a los jugadores - asi la lista de suspendidos que se ve
+      // abajo ya sale al dia.
+      await reconciliarSuspensionesPorFecha(torneoId, categoria, ps)
       const js = await listarJugadoresPorCategoria(torneoId, categoria)
 
       setEquipos(eq)

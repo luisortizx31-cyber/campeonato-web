@@ -9,7 +9,7 @@ import {
   eliminarPartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
-import { calcularNumeroFechas, calcularFechaActual, calcularLegPartido } from '../../../utils/fixtureTorneo'
+import { calcularNumeroFechas, calcularLegPartido } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
 
@@ -68,12 +68,12 @@ export default function TabFechas({ torneoId }) {
       setPartidos(ps)
       setFormResultados({})
 
-      // Apenas se completa una fecha (por ej. al guardar el ultimo
-      // resultado pendiente), esto levanta solas las suspensiones que
-      // ya cumplieron su ventana - no afecta lo que se ve en esta
-      // pestaña, es para que Amonestados y la pagina publica salgan al
-      // dia sin que el Maestro tenga que acordarse de nada.
-      reconciliarSuspensionesPorFecha(torneoId, categoria, calcularFechaActual(ps)).catch((err) =>
+      // Apenas el equipo de un suspendido termina de jugar su partido de
+      // la fecha (aunque otro partido de la misma fecha quede pendiente),
+      // esto lo levanta solo - no afecta lo que se ve en esta pestaña, es
+      // para que Amonestados y la pagina publica salgan al dia sin que el
+      // Maestro tenga que acordarse de nada.
+      reconciliarSuspensionesPorFecha(torneoId, categoria, ps).catch((err) =>
         console.error('[TabFechas] reconciliarSuspensionesPorFecha', err)
       )
 
