@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../services/torneoEquiposService'
 import { listarPartidosPorCategoria } from '../../services/torneoPartidosService'
 import { listarAjustesPorCategoria } from '../../services/torneoAjustesService'
+import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { calcularTablaPosiciones } from '../../utils/tablaPosiciones'
 
 const ESTILO_PODIO = {
@@ -25,6 +26,7 @@ const ESTILO_PODIO = {
  */
 export default function TablaPosicionesCategoria({ torneoId, categoria, refreshKey, onFilas }) {
   const [filas, setFilas] = useState([])
+  const [equiposEliminados, setEquiposEliminados] = useState(0)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   // Ref para no re-disparar el efecto de carga cada vez que el padre
@@ -42,7 +44,7 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
       setCargando(true)
       setError(null)
       try {
-        const [equipos, partidos, ajustes] = await Promise.all([
+        const [equipos, partidos, ajustes, config] = await Promise.all([
           listarEquiposPorCategoria(torneoId, categoria),
           listarPartidosPorCategoria(torneoId, categoria),
           // Coleccion nueva (ver ModalAjustarPuntos) - si su regla de
@@ -52,10 +54,15 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
             console.error('[TablaPosicionesCategoria] listarAjustesPorCategoria', err)
             return []
           }),
+          obtenerConfigCategoria(torneoId, categoria).catch((err) => {
+            console.error('[TablaPosicionesCategoria] obtenerConfigCategoria', err)
+            return { equiposEliminados: 0 }
+          }),
         ])
         if (!cancelado) {
           const nuevasFilas = calcularTablaPosiciones({ equipos, partidos, ajustes })
           setFilas(nuevasFilas)
+          setEquiposEliminados(config.equiposEliminados || 0)
           onFilasRef.current?.(nuevasFilas)
         }
       } catch (err) {
@@ -81,6 +88,12 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
     )
   }
 
+  // Puesto a partir del cual un equipo queda eliminado (los ultimos
+  // `equiposEliminados` de la tabla) - null si no hay corte configurado
+  // (ver TabPosiciones.jsx / torneoConfigService.actualizarEquiposEliminados).
+  const corte =
+    equiposEliminados > 0 ? Math.max(0, filas.length - equiposEliminados) : null
+
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
       <div className="overflow-x-auto">
@@ -103,17 +116,31 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
             {filas.map((f, i) => {
               const puesto = i + 1
               const podio = ESTILO_PODIO[puesto]
+              const eliminado = corte != null && puesto > corte
+              const esPrimerEliminado = corte != null && puesto === corte + 1
               return (
                 <tr
                   key={f.equipoId}
                   className={`border-b border-line last:border-0 transition-colors hover:bg-brand-soft/40 ${
-                    podio ? podio.fila : i % 2 === 0 ? 'bg-surface' : 'bg-paper/60'
+                    esPrimerEliminado ? 'border-t-2 border-t-danger' : ''
+                  } ${
+                    podio
+                      ? podio.fila
+                      : eliminado
+                        ? 'bg-danger-soft/40'
+                        : i % 2 === 0
+                          ? 'bg-surface'
+                          : 'bg-paper/60'
                   }`}
                 >
                   <td className="px-3 py-2.5">
                     <span
                       className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                        podio ? podio.badge : 'bg-brand-soft text-brand'
+                        podio
+                          ? podio.badge
+                          : eliminado
+                            ? 'bg-danger-soft text-danger'
+                            : 'bg-brand-soft text-brand'
                       }`}
                     >
                       {puesto}
@@ -149,6 +176,13 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
           </tbody>
         </table>
       </div>
+
+      {corte != null && corte < filas.length && (
+        <div className="flex items-center gap-2 border-t border-line bg-danger-soft/40 px-3 py-2 text-xs font-medium text-danger">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
+          Zona de eliminación: últimos {equiposEliminados} equipo{equiposEliminados === 1 ? '' : 's'}
+        </div>
+      )}
     </div>
   )
 }

@@ -57,12 +57,18 @@ export async function obtenerConfigTorneo(torneoId) {
 //  - umbralRojas: veces que un jugador puede ser suspendido por roja
 //    directa antes de quedar eliminado del campeonato. null/undefined
 //    significa "sin eliminacion automatica" (comportamiento por defecto).
+//  - equiposEliminados: cuantos equipos, contados desde el ultimo
+//    lugar de la tabla de posiciones, quedan afuera del campeonato -
+//    el resto son los que "pasan". 0 significa que no hay corte
+//    (comportamiento por defecto). Es solo visual (linea de corte en
+//    TablaPosicionesCategoria), no bloquea nada del fixture.
 export async function obtenerConfigCategoria(torneoId, categoria) {
   const snap = await getDoc(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
   const data = snap.exists() ? snap.data() : {}
   return {
     umbralAmarillas: data.umbralAmarillas || UMBRAL_SUSPENSION_AMARILLAS_DEFAULT,
     umbralRojas: data.umbralRojas || null,
+    equiposEliminados: data.equiposEliminados || 0,
   }
 }
 
@@ -78,6 +84,14 @@ export async function actualizarUmbralRojas(torneoId, categoria, umbral) {
   await setDoc(
     doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
     { torneoId, umbralRojas: umbral ? Number(umbral) : null },
+    { merge: true }
+  )
+}
+
+export async function actualizarEquiposEliminados(torneoId, categoria, cantidad) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, equiposEliminados: Number(cantidad) || 0 },
     { merge: true }
   )
 }
