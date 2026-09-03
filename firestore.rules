@@ -33,26 +33,34 @@ service cloud.firestore {
       return esMaestro() && miTorneoId() == torneoId;
     }
 
+    // Cuenta habilitada para dar de alta colegios/torneos nuevos desde
+    // /admin (ver superadminService.js). No es un rol aparte: sigue
+    // siendo 'master' de su propio torneo, y ademas tiene este flag.
+    function esSuperAdmin() {
+      return estaAutenticado() && perfilDe(request.auth.uid).superAdmin == true;
+    }
+
     // ---------------------------------------------------------------
     // /usuarios - un colegio = un usuario con role:'master' y su
-    // torneoId asignado. El alta (Authentication + este doc) se hace a
-    // mano por consola de Firebase por ahora, no hay autoregistro
-    // todavia - por eso create/update/delete quedan en false: ni el
-    // propio usuario ni ningun otro cliente puede tocarlos, solo se
-    // editan desde la consola (que no pasa por estas reglas).
+    // torneoId asignado. El alta (Authentication + este doc) la hace
+    // un superAdmin desde /admin, o a mano por consola de Firebase.
+    // list/update/delete quedan en false: ni el propio usuario ni
+    // ningun otro cliente puede tocarlos por la app.
     // ---------------------------------------------------------------
     match /usuarios/{uid} {
       allow get: if estaAutenticado() && request.auth.uid == uid;
-      allow list, create, update, delete: if false;
+      allow create: if esSuperAdmin();
+      allow list, update, delete: if false;
     }
 
     // /torneos/{torneoId}: metadata del tenant (nombre para mostrar en
     // la pagina publica). Lectura publica porque la pagina /campeonato
-    // no tiene login. Igual que /usuarios, el alta es manual por
-    // consola por ahora.
+    // no tiene login. El alta la hace un superAdmin junto con el doc
+    // de /usuarios de arriba.
     match /torneos/{torneoId} {
       allow get: if true;
-      allow list, create, delete: if false;
+      allow create: if esSuperAdmin();
+      allow list, delete: if false;
       allow update: if esMaestroDe(torneoId);
     }
 

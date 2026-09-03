@@ -4,6 +4,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 import LoginPage from '../features/auth/LoginPage'
 import PanelTorneo from '../features/torneo/PanelTorneo'
 import PaginaPublicaTorneo from '../features/torneo/PaginaPublicaTorneo'
+import PanelSuperAdmin from '../features/superadmin/PanelSuperAdmin'
 
 export function AppRouter() {
   return (
@@ -23,6 +24,18 @@ export function AppRouter() {
           element={
             <ProtectedRoute>
               <PanelTorneo />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Alta de colegios/torneos nuevos - solo visible para cuentas
+            con el flag superAdmin (ver AuthContext / roles.js). La
+            propia pagina redirige si no corresponde. */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <PanelSuperAdmin />
             </ProtectedRoute>
           }
         />

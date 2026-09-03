@@ -25,6 +25,12 @@ if (!firebaseConfig.projectId) {
   )
 }
 
+// Se exporta tambien la config (no el app) para que
+// superadminService.js pueda levantar una segunda instancia de
+// Firebase Auth al dar de alta un colegio nuevo, sin pisar la sesion
+// del superadmin logueado.
+export { firebaseConfig }
+
 export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const db = getFirestore(app)

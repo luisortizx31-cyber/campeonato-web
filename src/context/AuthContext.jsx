@@ -46,6 +46,9 @@ export function AuthProvider({ children }) {
     // vez de manejarlo por su cuenta, para que sea imposible operar
     // sobre el torneo equivocado.
     torneoId: perfil?.torneoId ?? null,
+    // Puede dar de alta colegios/torneos nuevos desde /admin - ver
+    // models/roles.js.
+    esSuperAdmin: perfil?.superAdmin === true,
     cargando,
     error,
     estaAutenticado: Boolean(usuarioAuth && perfil),
