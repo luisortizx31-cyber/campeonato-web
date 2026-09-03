@@ -152,7 +152,7 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
                     {puesto}
                   </span>
                 </td>
-                <td className="truncate px-1.5 py-1.5 text-sm font-semibold text-ink">{f.nombre}</td>
+                <td className="break-words px-1.5 py-1.5 text-sm leading-tight font-semibold text-ink">{f.nombre}</td>
                 <td className="px-1 py-1.5 text-center">
                   <span className="money inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-brand px-1 py-0.5 text-xs font-bold text-white">
                     {f.pts}
