@@ -3,7 +3,6 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import {
   listarPartidosPorCategoria,
   generarFixture,
-  eliminarFixture,
   reiniciarResultadosFecha,
   reiniciarResultadosTodasLasFechas,
   reiniciarTemporadaCompleta,
@@ -46,9 +45,6 @@ export default function TabFechas({ torneoId }) {
   const [formResultados, setFormResultados] = useState({})
   const [guardandoPartido, setGuardandoPartido] = useState(null)
   const [errorGuardar, setErrorGuardar] = useState(null)
-
-  const [reiniciando, setReiniciando] = useState(false)
-  const [errorReiniciar, setErrorReiniciar] = useState(null)
 
   const [reiniciandoResultadosFecha, setReiniciandoResultadosFecha] = useState(false)
   const [errorReiniciarResultadosFecha, setErrorReiniciarResultadosFecha] = useState(null)
@@ -128,25 +124,9 @@ export default function TabFechas({ torneoId }) {
     }
   }
 
-  async function handleReiniciar() {
-    if (!confirm('¿Eliminar el fixture generado de esta categoría? Vas a tener que generar uno nuevo.')) return
-    setReiniciando(true)
-    setErrorReiniciar(null)
-    try {
-      await eliminarFixture(torneoId, categoria)
-      await cargar()
-    } catch (err) {
-      console.error('[TabFechas]', err)
-      setErrorReiniciar(err.message || 'No se pudo reiniciar el fixture.')
-    } finally {
-      setReiniciando(false)
-    }
-  }
-
-  // Vuelve a "Pendiente" los partidos de la fecha que se esta viendo -
-  // a diferencia de handleReiniciar, no borra el fixture ni se bloquea
-  // por tener resultados (es justo lo contrario: sirve para corregir
-  // una fecha entera cargada mal).
+  // Vuelve a "Pendiente" los partidos de la fecha que se esta viendo,
+  // sin borrar el fixture - sirve para corregir una fecha entera
+  // cargada mal.
   async function handleReiniciarResultadosFecha() {
     if (fechaSeleccionada == null) return
     if (!confirm(`¿Reiniciar los resultados de la Fecha ${fechaSeleccionada}? Los partidos quedan pendientes de nuevo (no se borra el fixture ni las tarjetas).`)) return
@@ -184,12 +164,11 @@ export default function TabFechas({ torneoId }) {
     }
   }
 
-  // A diferencia de handleReiniciar (que solo borra el fixture y se
-  // bloquea si ya hay resultados/tarjetas), esto borra TODO lo del
-  // campeonato de esta categoria - partidos, tarjetas y sanciones -
-  // sin bloquearse, para volver al punto de partida cuando el Maestro
-  // quiere empezar de cero. Los equipos y jugadores registrados se
-  // mantienen.
+  // Borra TODO lo del campeonato de esta categoria - partidos,
+  // tarjetas y sanciones - sin bloquearse por nada, para volver al
+  // punto de partida cuando el Maestro quiere empezar de cero (incluye
+  // rehacer el fixture desde "Generar fechas"). Los equipos y
+  // jugadores registrados se mantienen.
   async function handleReiniciarTodo() {
     const confirmacion = confirm(
       `¿Reiniciar TODO el campeonato de ${CATEGORIA_TORNEO_LABELS[categoria]}?\n\n` +
@@ -466,13 +445,6 @@ export default function TabFechas({ torneoId }) {
                 >
                   {reiniciandoResultadosFecha ? '…' : `Reiniciar resultados (Fecha ${fechaSeleccionada})`}
                 </button>
-                <button
-                  onClick={handleReiniciar}
-                  disabled={reiniciando}
-                  className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-danger/30 hover:text-danger disabled:opacity-50"
-                >
-                  {reiniciando ? '…' : 'Reiniciar fechas'}
-                </button>
               </div>
             </>
           )}
@@ -481,9 +453,6 @@ export default function TabFechas({ torneoId }) {
             <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorReiniciarResultadosFecha}</p>
           )}
 
-          {errorReiniciar && (
-            <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorReiniciar}</p>
-          )}
           {errorGuardar && (
             <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorGuardar}</p>
           )}

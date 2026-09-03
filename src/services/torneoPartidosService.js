@@ -138,45 +138,6 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
   })
 }
 
-// Borra el fixture completo de una categoria (todos los partidos con
-// fechaNumero). Se bloquea si algun partido ya tiene resultado
-// cargado o tiene tarjetas asociadas, para no perder datos ya
-// registrados - en ese caso hay que corregir/eliminar partidos
-// puntuales desde Posiciones/Amonestados primero.
-export async function eliminarFixture(torneoId, categoria) {
-  const snap = await getDocs(
-    query(
-      collection(db, 'torneo_partidos'),
-      where('torneoId', '==', torneoId),
-      where('categoria', '==', categoria)
-    )
-  )
-  const partidosFixture = snap.docs.filter((d) => d.data().fechaNumero != null)
-  if (partidosFixture.length === 0) return
-
-  const conResultado = partidosFixture.some((d) => d.data().golesLocal != null)
-  if (conResultado) {
-    throw new Error('Ya hay resultados cargados en este fixture. Eliminalos individualmente desde Posiciones antes de reiniciar.')
-  }
-
-  const tarjetasSnap = await getDocs(
-    query(
-      collection(db, 'torneo_tarjetas'),
-      where('torneoId', '==', torneoId),
-      where('categoria', '==', categoria)
-    )
-  )
-  const idsFixture = new Set(partidosFixture.map((d) => d.id))
-  const tieneTarjetas = tarjetasSnap.docs.some((d) => idsFixture.has(d.data().partidoId))
-  if (tieneTarjetas) {
-    throw new Error('Hay tarjetas asociadas a partidos de este fixture. Eliminalas primero en Amonestados.')
-  }
-
-  const batch = writeBatch(db)
-  partidosFixture.forEach((d) => batch.delete(d.ref))
-  await batch.commit()
-}
-
 // Vuelve a "Pendiente" (golesLocal/golesVisitante = null) los
 // partidos de UNA fecha puntual - a diferencia de eliminarFixture, no
 // borra los partidos ni el fixture, solo el marcador ya cargado, para
