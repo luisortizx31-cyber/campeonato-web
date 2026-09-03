@@ -435,7 +435,7 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
                 {onIrAPosiciones && (
                   <button
                     onClick={onIrAPosiciones}
-                    className="flex items-center gap-1.5 text-sm font-medium text-brand transition-colors hover:text-brand-dark"
+                    className="flex animate-pulse items-center gap-1.5 text-sm font-medium text-brand transition-colors hover:text-brand-dark"
                   >
                     📊 Ver tabla de posiciones
                   </button>
