@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaGoleadoresCategoria from '../TablaGoleadoresCategoria'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 // Solo lectura: ranking de goleadores por categoria, sin ningun
 // control para cargar/editar - los goles se cargan desde el panel
@@ -9,6 +10,7 @@ import TablaGoleadoresCategoria from '../TablaGoleadoresCategoria'
 export default function TabGoleadoresPublica({ torneoId }) {
   const tablaRef = useRef(null)
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
 
   return (
     <div>
@@ -26,11 +28,13 @@ export default function TabGoleadoresPublica({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       <div className="mb-2 flex justify-end">
         <BotonDescargarTabla targetRef={tablaRef} nombreArchivo={`goleadores-${categoria}`} />
       </div>
 
       <TablaGoleadoresCategoria ref={tablaRef} torneoId={torneoId} categoria={categoria} />
+      </div>
     </div>
   )
 }

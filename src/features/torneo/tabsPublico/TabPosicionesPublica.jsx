@@ -3,10 +3,12 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaPosicionesCategoria from '../TablaPosicionesCategoria'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 export default function TabPosicionesPublica({ torneoId }) {
   const tablaRef = useRef(null)
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [mostrarDelegados, setMostrarDelegados] = useState(false)
 
@@ -34,6 +36,7 @@ export default function TabPosicionesPublica({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       <div className="mb-2 flex justify-end">
         <BotonDescargarTabla targetRef={tablaRef} nombreArchivo={`posiciones-${categoria}`} />
       </div>
@@ -80,6 +83,7 @@ export default function TabPosicionesPublica({ torneoId }) {
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

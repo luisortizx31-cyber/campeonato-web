@@ -4,9 +4,11 @@ import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresSe
 import { listarTarjetasPorCategoria } from '../../../services/torneoTarjetasService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS, TIPO_TARJETA_LABELS, TIPO_TARJETA_STYLES } from '../../../models/torneo'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 export default function TabAmonestadosPublica({ torneoId }) {
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [jugadores, setJugadores] = useState([])
   const [tarjetas, setTarjetas] = useState([])
@@ -68,6 +70,7 @@ export default function TabAmonestadosPublica({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}
 
       {!cargando && (
@@ -201,6 +204,7 @@ export default function TabAmonestadosPublica({ torneoId }) {
           ) : null}
         </>
       )}
+      </div>
     </div>
   )
 }

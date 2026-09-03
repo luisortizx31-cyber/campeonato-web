@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 // Solo lectura: nunca consulta la subcoleccion privada de DNI, ni la
 // ofrece de ninguna forma - esta vista es publica.
 export default function TabJugadoresPublica({ torneoId }) {
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [equipoFiltro, setEquipoFiltro] = useState('')
   const [jugadores, setJugadores] = useState([])
@@ -55,6 +57,7 @@ export default function TabJugadoresPublica({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       <select
         value={equipoFiltro}
         onChange={(e) => setEquipoFiltro(e.target.value)}
@@ -95,6 +98,7 @@ export default function TabJugadoresPublica({ torneoId }) {
           </li>
         ))}
       </ul>
+      </div>
     </div>
   )
 }

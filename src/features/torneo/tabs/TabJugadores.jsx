@@ -9,9 +9,11 @@ import { construirLinkWhatsapp } from '../../../utils/whatsapp'
 import { WhatsappIcon } from '../../shared/WhatsappIcon'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import ModalRegistrarJugador from '../ModalRegistrarJugador'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 export default function TabJugadores({ torneoId }) {
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [equipoFiltro, setEquipoFiltro] = useState('')
   const [jugadores, setJugadores] = useState([])
@@ -107,6 +109,7 @@ export default function TabJugadores({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setModal('nuevo')}
@@ -228,6 +231,7 @@ export default function TabJugadores({ torneoId }) {
           </li>
         ))}
       </ul>
+      </div>
 
       {modal && (
         <ModalRegistrarJugador

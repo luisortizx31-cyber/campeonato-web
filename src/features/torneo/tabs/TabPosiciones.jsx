@@ -7,10 +7,12 @@ import { BotonExportarExcel } from '../../shared/BotonExportarExcel'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaPosicionesCategoria from '../TablaPosicionesCategoria'
 import ModalAjustarPuntos from '../ModalAjustarPuntos'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 export default function TabPosiciones({ torneoId }) {
   const tablaRef = useRef(null)
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [ajustes, setAjustes] = useState([])
   const [config, setConfig] = useState(null) // { equiposEliminados }
@@ -116,6 +118,7 @@ export default function TabPosiciones({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       {equipos.length > 0 && (
         <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
           <label htmlFor="equipos-eliminados" className="text-sm text-ink-soft">
@@ -214,6 +217,7 @@ export default function TabPosiciones({ torneoId }) {
           </ul>
         </>
       )}
+      </div>
 
       {modal && (
         <ModalAjustarPuntos

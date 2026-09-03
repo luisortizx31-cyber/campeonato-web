@@ -8,10 +8,12 @@ import { BotonExportarExcel } from '../../shared/BotonExportarExcel'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaGoleadoresCategoria from '../TablaGoleadoresCategoria'
 import ModalAgregarGol from '../ModalAgregarGol'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 export default function TabGoleadores({ torneoId }) {
   const tablaRef = useRef(null)
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
   const [jugadores, setJugadores] = useState([])
@@ -104,6 +106,7 @@ export default function TabGoleadores({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       <div className="mb-4 flex justify-end gap-2">
         <BotonExportarExcel
           nombreArchivo={`goleadores-${categoria}`}
@@ -192,6 +195,7 @@ export default function TabGoleadores({ torneoId }) {
           )}
         </>
       )}
+      </div>
 
       {modal && (
         <ModalAgregarGol

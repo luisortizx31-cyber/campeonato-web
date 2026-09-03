@@ -23,9 +23,11 @@ import {
   OPCIONES_UMBRAL_ROJAS,
 } from '../../../models/torneo'
 import ModalAgregarTarjeta from '../ModalAgregarTarjeta'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 export default function TabAmonestados({ torneoId }) {
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [jugadores, setJugadores] = useState([])
   const [tarjetas, setTarjetas] = useState([])
@@ -171,6 +173,7 @@ export default function TabAmonestados({ torneoId }) {
         ))}
       </div>
 
+      <div {...swipeCategoria}>
       {!cargando && (
         <p className="mb-2.5 text-xs text-ink-soft">
           Fecha actual: {fechaActual > 0 ? fechaActual : '— (ninguna fecha completa todavía)'}
@@ -368,6 +371,7 @@ export default function TabAmonestados({ torneoId }) {
           ) : null}
         </>
       )}
+      </div>
 
       {modal && (
         <ModalAgregarTarjeta
