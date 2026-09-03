@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import {
   listarPartidosPorCategoria,
@@ -56,6 +56,13 @@ export default function TabFechas({ torneoId }) {
   const [modalAgregar, setModalAgregar] = useState(false)
 
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
+
+  const barraFechasRef = useRef(null)
+  useEffect(() => {
+    if (!barraFechasRef.current || fechaSeleccionada == null) return
+    const activo = barraFechasRef.current.querySelector(`[data-fecha="${fechaSeleccionada}"]`)
+    activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [fechaSeleccionada])
 
   async function cargar() {
     setCargando(true)
@@ -371,7 +378,7 @@ export default function TabFechas({ torneoId }) {
                   <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
                 </p>
               )}
-              <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              <div ref={barraFechasRef} className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
                 {fechasDisponibles.map((f) => {
                   const completa = fechaCompleta(f)
                   const activa = fechaSeleccionada === f
@@ -380,6 +387,7 @@ export default function TabFechas({ torneoId }) {
                     <div key={f} className="flex shrink-0 items-center gap-1.5">
                       {esPrimeraVuelta && <span className="h-6 w-px shrink-0 bg-line" />}
                       <button
+                        data-fecha={f}
                         onClick={() => setFechaSeleccionada(f)}
                         className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
                           activa
