@@ -11,6 +11,7 @@ import {
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { calcularNumeroFechas, calcularLegPartido } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
 
 /**
@@ -233,6 +234,7 @@ export default function TabFechas({ torneoId }) {
 
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const hayFixture = fechasDisponibles.length > 0
+  const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
   const partidosDeFecha = partidos.filter((p) => p.fechaNumero === fechaSeleccionada)
   const partidosPendientes = partidosDeFecha.filter((p) => {
     const valores = formResultados[p.id]
@@ -441,7 +443,7 @@ export default function TabFechas({ torneoId }) {
               </ul>
             )
           ) : (
-            <>
+            <div {...swipeFecha}>
               <ul className="space-y-2.5">
                 {partidosDeFecha.map((p) => (
                   <FilaPartido
@@ -469,7 +471,7 @@ export default function TabFechas({ torneoId }) {
                     : `Guardar resultados de esta fecha${partidosPendientes.length > 0 ? ` (${partidosPendientes.length})` : ''}`}
                 </button>
               )}
-            </>
+            </div>
           )}
         </>
       )}

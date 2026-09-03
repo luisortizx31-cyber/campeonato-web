@@ -3,6 +3,7 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { listarPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 // Solo lectura: muestra los cruces y resultados por fecha del
 // fixture. A diferencia de TabFechas (panel admin), no tiene ningun
@@ -45,6 +46,7 @@ export default function TabFechasPublica({ torneoId }) {
   }
 
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
+  const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
   const partidosDeFecha = partidos.filter((p) => p.fechaNumero === fechaSeleccionada)
 
   function fechaCompleta(f) {
@@ -114,7 +116,7 @@ export default function TabFechasPublica({ torneoId }) {
             })}
           </div>
 
-          <ul className="space-y-2">
+          <ul className="space-y-2" {...swipeFecha}>
             {partidosDeFecha.map((p) => {
               const jugado = p.golesLocal != null && p.golesVisitante != null
               const leg = calcularLegPartido(p, partidos)
