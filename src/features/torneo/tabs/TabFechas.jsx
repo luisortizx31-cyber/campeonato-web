@@ -282,6 +282,10 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
     return partidos.filter((p) => p.fechaNumero === f).every((p) => p.golesLocal != null)
   }
 
+  function fechaEmpezada(f) {
+    return partidos.filter((p) => p.fechaNumero === f).some((p) => p.golesLocal != null)
+  }
+
   // Si una fecha es toda "vuelta" (revancha de una fecha anterior),
   // toda "ida", o mixta/sin revancha - se deduce de los cruces (ver
   // calcularLegPartido), no de como se genero el fixture.
@@ -410,6 +414,7 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
               <div ref={barraFechasRef} className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
                 {fechasDisponibles.map((f) => {
                   const completa = fechaCompleta(f)
+                  const empezada = !completa && fechaEmpezada(f)
                   const activa = fechaSeleccionada === f
                   const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
                   return (
@@ -422,8 +427,10 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
                           activa
                             ? 'border-brand bg-brand text-white shadow-sm'
                             : completa
-                              ? 'border-success/30 bg-success-soft text-success'
-                              : 'border-line bg-surface text-ink-soft'
+                              ? 'border-danger/30 bg-danger-soft text-danger'
+                              : empezada
+                                ? 'border-warning/30 bg-warning-soft text-warning'
+                                : 'border-line bg-surface text-ink-soft'
                         }`}
                       >
                         Fecha {f}{completa ? ' ✓' : ''}

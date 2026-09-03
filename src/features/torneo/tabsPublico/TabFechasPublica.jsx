@@ -61,6 +61,10 @@ export default function TabFechasPublica({ torneoId }) {
     return partidos.filter((p) => p.fechaNumero === f).every((p) => p.golesLocal != null)
   }
 
+  function fechaEmpezada(f) {
+    return partidos.filter((p) => p.fechaNumero === f).some((p) => p.golesLocal != null)
+  }
+
   function fechaLeg(f) {
     const partidosF = partidos.filter((p) => p.fechaNumero === f)
     if (partidosF.length === 0) return null
@@ -105,6 +109,8 @@ export default function TabFechasPublica({ torneoId }) {
           )}
           <div ref={barraFechasRef} className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
             {fechasDisponibles.map((f) => {
+              const completa = fechaCompleta(f)
+              const empezada = !completa && fechaEmpezada(f)
               const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
               return (
                 <div key={f} className="flex shrink-0 items-center gap-1.5">
@@ -115,10 +121,14 @@ export default function TabFechasPublica({ torneoId }) {
                     className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                       fechaSeleccionada === f
                         ? 'border-brand bg-brand text-white'
-                        : 'border-line bg-surface text-ink-soft'
+                        : completa
+                          ? 'border-danger/30 bg-danger-soft text-danger'
+                          : empezada
+                            ? 'border-warning/30 bg-warning-soft text-warning'
+                            : 'border-line bg-surface text-ink-soft'
                     }`}
                   >
-                    Fecha {f}{fechaCompleta(f) ? ' ✓' : ''}
+                    Fecha {f}{completa ? ' ✓' : ''}
                   </button>
                 </div>
               )
