@@ -19,10 +19,17 @@ export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
   const [error, setError] = useState(null)
 
   async function capturar() {
-    if (!targetRef.current) {
+    const nodo = targetRef.current
+    if (!nodo) {
       throw new Error('Todavía no hay nada para descargar.')
     }
-    return toCanvas(targetRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 })
+    // En pantallas angostas la tabla scrollea horizontal (tiene mas
+    // columnas de las que entran) - sin forzar el ancho real de la
+    // tabla ahi adentro, la captura salia recortada a lo que se ve sin
+    // hacer scroll (le faltaban las ultimas columnas).
+    const tabla = nodo.querySelector('table')
+    const ancho = tabla ? tabla.scrollWidth : nodo.scrollWidth
+    return toCanvas(nodo, { backgroundColor: '#ffffff', pixelRatio: 2, width: ancho })
   }
 
   async function handleDescargarImagen() {
