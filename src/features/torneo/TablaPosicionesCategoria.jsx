@@ -4,6 +4,12 @@ import { listarPartidosPorCategoria } from '../../services/torneoPartidosService
 import { listarAjustesPorCategoria } from '../../services/torneoAjustesService'
 import { calcularTablaPosiciones } from '../../utils/tablaPosiciones'
 
+const ESTILO_PODIO = {
+  1: { badge: 'bg-gold text-white', fila: 'bg-gold-soft/50' },
+  2: { badge: 'bg-ink-soft text-white', fila: 'bg-paper' },
+  3: { badge: 'bg-warning text-white', fila: 'bg-warning-soft/40' },
+}
+
 /**
  * Tabla de posiciones de una categoria. La usan tanto el panel de
  * admin como la pagina publica, para que nunca puedan mostrar numeros
@@ -76,46 +82,73 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs text-ink-soft">
-            <th className="px-3 py-2 font-medium">#</th>
-            <th className="px-3 py-2 font-medium">Equipo</th>
-            <th className="px-2 py-2 text-center font-medium">PJ</th>
-            <th className="px-2 py-2 text-center font-medium">PG</th>
-            <th className="px-2 py-2 text-center font-medium">PE</th>
-            <th className="px-2 py-2 text-center font-medium">PP</th>
-            <th className="px-2 py-2 text-center font-medium">GF</th>
-            <th className="px-2 py-2 text-center font-medium">GC</th>
-            <th className="px-2 py-2 text-center font-medium">DG</th>
-            <th className="px-3 py-2 text-center font-medium">Pts</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filas.map((f, i) => (
-            <tr key={f.equipoId} className="border-b border-line last:border-0">
-              <td className="px-3 py-2 text-ink-soft">{i + 1}</td>
-              <td className="px-3 py-2 font-medium text-ink whitespace-nowrap">{f.nombre}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.pj}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.pg}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.pe}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.pp}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.gf}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.gc}</td>
-              <td className="money px-2 py-2 text-center text-ink">{f.dg}</td>
-              <td className="money px-3 py-2 text-center font-bold text-ink">
-                {f.pts}
-                {f.ajustePts !== 0 && (
-                  <span className={`ml-1 font-normal ${f.ajustePts > 0 ? 'text-success' : 'text-danger'}`}>
-                    ({f.ajustePts > 0 ? '+' : ''}{f.ajustePts})
-                  </span>
-                )}
-              </td>
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[540px] text-sm">
+          <thead>
+            <tr className="bg-brand-dark text-[11px] uppercase tracking-wider text-white/70">
+              <th className="px-3 py-3 text-left font-semibold text-white">#</th>
+              <th className="px-3 py-3 text-left font-semibold text-white">Equipo</th>
+              <th className="px-2 py-3 text-center font-medium">PJ</th>
+              <th className="px-2 py-3 text-center font-medium">PG</th>
+              <th className="px-2 py-3 text-center font-medium">PE</th>
+              <th className="px-2 py-3 text-center font-medium">PP</th>
+              <th className="px-2 py-3 text-center font-medium">GF</th>
+              <th className="px-2 py-3 text-center font-medium">GC</th>
+              <th className="px-2 py-3 text-center font-medium">DG</th>
+              <th className="px-3 py-3 text-center font-semibold text-white">Pts</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filas.map((f, i) => {
+              const puesto = i + 1
+              const podio = ESTILO_PODIO[puesto]
+              return (
+                <tr
+                  key={f.equipoId}
+                  className={`border-b border-line last:border-0 transition-colors hover:bg-brand-soft/40 ${
+                    podio ? podio.fila : i % 2 === 0 ? 'bg-surface' : 'bg-paper/60'
+                  }`}
+                >
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                        podio ? podio.badge : 'bg-brand-soft text-brand'
+                      }`}
+                    >
+                      {puesto}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 font-semibold text-ink whitespace-nowrap">{f.nombre}</td>
+                  <td className="money px-2 py-2.5 text-center text-ink-soft">{f.pj}</td>
+                  <td className="money px-2 py-2.5 text-center text-ink-soft">{f.pg}</td>
+                  <td className="money px-2 py-2.5 text-center text-ink-soft">{f.pe}</td>
+                  <td className="money px-2 py-2.5 text-center text-ink-soft">{f.pp}</td>
+                  <td className="money px-2 py-2.5 text-center text-ink-soft">{f.gf}</td>
+                  <td className="money px-2 py-2.5 text-center text-ink-soft">{f.gc}</td>
+                  <td
+                    className={`money px-2 py-2.5 text-center font-semibold ${
+                      f.dg > 0 ? 'text-success' : f.dg < 0 ? 'text-danger' : 'text-ink-soft'
+                    }`}
+                  >
+                    {f.dg > 0 ? `+${f.dg}` : f.dg}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className="money inline-flex min-w-[2.5rem] items-center justify-center rounded-lg bg-brand px-2 py-1 text-sm font-bold text-white">
+                      {f.pts}
+                    </span>
+                    {f.ajustePts !== 0 && (
+                      <span className={`ml-1 text-xs font-medium ${f.ajustePts > 0 ? 'text-success' : 'text-danger'}`}>
+                        ({f.ajustePts > 0 ? '+' : ''}{f.ajustePts})
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
