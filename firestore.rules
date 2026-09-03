@@ -145,5 +145,15 @@ service cloud.firestore {
       allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
       allow delete: if esMaestroDe(resource.data.torneoId);
     }
+
+    // Goles anotados por jugador, cargados "sueltos" desde la pestaña
+    // Goleadores - igual patron que torneo_ajustes: la tabla de
+    // goleadores se recalcula siempre sumando estos registros, nunca
+    // hay un contador guardado en el jugador.
+    match /torneo_goles/{golId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow delete: if esMaestroDe(resource.data.torneoId);
+    }
   }
 }

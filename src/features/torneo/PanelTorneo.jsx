@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import TabEquipos from './tabs/TabEquipos'
 import TabFechas from './tabs/TabFechas'
 import TabPosiciones from './tabs/TabPosiciones'
+import TabGoleadores from './tabs/TabGoleadores'
 import TabJugadores from './tabs/TabJugadores'
 import TabAmonestados from './tabs/TabAmonestados'
 import TabBases from './tabs/TabBases'
@@ -13,6 +14,7 @@ const TABS = [
   { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechas },
   { id: 'posiciones', label: 'Posiciones', icon: '📊', Componente: TabPosiciones },
+  { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadores },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestados },
   { id: 'bases', label: 'Bases', icon: '📄', Componente: TabBases },

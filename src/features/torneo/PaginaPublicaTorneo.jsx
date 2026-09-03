@@ -4,12 +4,14 @@ import { obtenerConfigTorneo } from '../../services/torneoConfigService'
 import { obtenerTorneo } from '../../services/torneosService'
 import TabPosicionesPublica from './tabsPublico/TabPosicionesPublica'
 import TabFechasPublica from './tabsPublico/TabFechasPublica'
+import TabGoleadoresPublica from './tabsPublico/TabGoleadoresPublica'
 import TabJugadoresPublica from './tabsPublico/TabJugadoresPublica'
 import TabAmonestadosPublica from './tabsPublico/TabAmonestadosPublica'
 
 const TABS = [
   { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
+  { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadoresPublica },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestadosPublica },
 ]
