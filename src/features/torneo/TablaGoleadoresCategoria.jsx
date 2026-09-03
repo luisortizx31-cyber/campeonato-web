@@ -82,49 +82,48 @@ const TablaGoleadoresCategoria = forwardRef(function TablaGoleadoresCategoria(
 
   return (
     <div ref={ref} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[380px] text-xs">
-          <thead>
-            <tr className="bg-brand-dark text-[10px] uppercase tracking-wider text-white/70">
-              <th className="px-2 py-2 text-left font-semibold text-white">#</th>
-              <th className="px-2 py-2 text-left font-semibold text-white">Jugador</th>
-              <th className="px-2 py-2 text-left font-medium">Equipo</th>
-              <th className="px-3 py-2 text-center font-semibold text-white">⚽</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((f, i) => {
-              const puesto = i + 1
-              const podio = ESTILO_PODIO[puesto]
-              return (
-                <tr
-                  key={f.jugadorId}
-                  className={`border-b border-line last:border-0 transition-colors hover:bg-brand-soft/40 ${
-                    podio ? podio.fila : i % 2 === 0 ? 'bg-surface' : 'bg-paper/60'
-                  }`}
-                >
-                  <td className="px-2 py-1.5">
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        podio ? podio.badge : 'bg-brand-soft text-brand'
-                      }`}
-                    >
-                      {puesto}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1.5 text-sm font-semibold text-ink whitespace-nowrap">{f.nombre}</td>
-                  <td className="px-2 py-1.5 text-ink-soft whitespace-nowrap">{f.equipoNombre}</td>
-                  <td className="px-3 py-1.5 text-center">
-                    <span className="money inline-flex min-w-[1.75rem] items-center justify-center rounded-md bg-brand px-1.5 py-0.5 text-xs font-bold text-white">
-                      {f.goles}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <table className="w-full table-fixed text-xs">
+        <thead>
+          <tr className="bg-brand-dark text-[10px] uppercase tracking-wider text-white/70">
+            <th className="w-10 px-2 py-2 text-left font-semibold text-white">#</th>
+            <th className="px-2 py-2 text-left font-semibold text-white">Jugador</th>
+            <th className="w-12 px-2 py-2 text-center font-semibold text-white">⚽</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f, i) => {
+            const puesto = i + 1
+            const podio = ESTILO_PODIO[puesto]
+            return (
+              <tr
+                key={f.jugadorId}
+                className={`border-b border-line last:border-0 transition-colors hover:bg-brand-soft/40 ${
+                  podio ? podio.fila : i % 2 === 0 ? 'bg-surface' : 'bg-paper/60'
+                }`}
+              >
+                <td className="px-2 py-1.5">
+                  <span
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                      podio ? podio.badge : 'bg-brand-soft text-brand'
+                    }`}
+                  >
+                    {puesto}
+                  </span>
+                </td>
+                <td className="min-w-0 px-2 py-1.5">
+                  <p className="truncate text-sm font-semibold text-ink">{f.nombre}</p>
+                  <p className="truncate text-[11px] text-ink-soft">{f.equipoNombre}</p>
+                </td>
+                <td className="px-2 py-1.5 text-center">
+                  <span className="money inline-flex min-w-[1.75rem] items-center justify-center rounded-md bg-brand px-1.5 py-0.5 text-xs font-bold text-white">
+                    {f.goles}
+                  </span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 })
