@@ -192,8 +192,17 @@ export async function listarTarjetasPorCategoria(torneoId, categoria) {
 
 // Botón manual "Levantar suspensión" / "Reincorporar" - para cuando el
 // Maestro quiere forzar el levantamiento antes de tiempo (o
-// reincorporar a un eliminado). No resetea rojasAcumuladas: si el
-// jugador vuelve a llegar al umbral de rojas, se elimina de nuevo.
+// reincorporar a un eliminado).
+//
+// Resetea amarillasAcumuladas a 0 (igual que reconciliarSuspensionesPorFecha,
+// el levantamiento automatico) - si no, el jugador quedaba con las
+// amarillas viejas ya cumplidas y la primera tarjeta nueva lo volvia a
+// suspender al toque.
+//
+// NO resetea rojasAcumuladas a proposito: ese contador es el que hace
+// funcionar la eliminacion automatica por reincidencia (umbralRojas,
+// ver Amonestados) - si se reseteara aca, un jugador podria acumular
+// rojas toda la temporada sin llegar nunca a esa eliminacion.
 export async function limpiarSuspension(jugadorId) {
   await updateDoc(doc(db, 'torneo_jugadores', jugadorId), {
     suspendido: false,
@@ -204,6 +213,7 @@ export async function limpiarSuspension(jugadorId) {
     suspendidoHastaFecha: null,
     eliminado: false,
     motivoEliminacion: null,
+    amarillasAcumuladas: 0,
   })
 }
 
