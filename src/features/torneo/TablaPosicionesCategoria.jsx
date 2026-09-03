@@ -6,9 +6,7 @@ import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { calcularTablaPosiciones } from '../../utils/tablaPosiciones'
 
 const ESTILO_PODIO = {
-  1: { badge: 'bg-gold text-white', fila: 'bg-gold-soft/50' },
-  2: { badge: 'bg-ink-soft text-white', fila: 'bg-paper' },
-  3: { badge: 'bg-warning text-white', fila: 'bg-warning-soft/40' },
+  1: { badge: 'bg-warning text-white', fila: 'bg-warning-soft/50' },
 }
 
 /**
@@ -145,8 +143,8 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
                       podio
                         ? podio.badge
                         : eliminado
-                          ? 'bg-danger-soft text-danger'
-                          : 'bg-brand-soft text-brand'
+                          ? 'bg-danger text-white'
+                          : 'bg-ink-soft text-white'
                     }`}
                   >
                     {puesto}
