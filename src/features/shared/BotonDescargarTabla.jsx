@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import html2canvas from 'html2canvas'
+import { toCanvas } from 'html-to-image'
 import jsPDF from 'jspdf'
 
 // Descarga una captura del elemento que apunta `targetRef` como imagen
 // (PNG, para compartir por WhatsApp) o PDF. No hay backend en este
-// proyecto, asi que la "foto" se genera enteramente en el navegador
-// con html2canvas en vez de renderizarse del lado del servidor.
+// proyecto, asi que la "foto" se genera enteramente en el navegador.
+//
+// Se usa html-to-image (no html2canvas): serializa el DOM a SVG y deja
+// que el propio navegador lo dibuje en un <canvas>, asi que entiende
+// cualquier color CSS moderno tal cual el navegador lo renderiza.
+// html2canvas trae su propio parser de colores y no soporta oklab/
+// oklch/color-mix - justo los que usa Tailwind v4 para los modificadores
+// de opacidad (ej. "bg-danger-soft/40"), y tiraba
+// "unsupported color function oklab".
 export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
   const [generando, setGenerando] = useState(null) // 'imagen' | 'pdf' | null
   const [abierto, setAbierto] = useState(false)
@@ -15,7 +22,7 @@ export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
     if (!targetRef.current) {
       throw new Error('Todavía no hay nada para descargar.')
     }
-    return html2canvas(targetRef.current, { backgroundColor: '#ffffff', scale: 2 })
+    return toCanvas(targetRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 })
   }
 
   async function handleDescargarImagen() {
