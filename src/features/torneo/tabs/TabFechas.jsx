@@ -562,35 +562,30 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         </button>
       </div>
 
-      <div className="flex items-center gap-2 px-3 pb-3 pt-1">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="space-y-1.5 px-3 pb-3 pt-1">
+        <div className="flex items-center gap-2">
           <EscudoEquipo nombre={nombreLocal} />
-          <span className="min-w-0 truncate text-sm font-medium text-ink">{nombreLocal}</span>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5 rounded-xl bg-paper px-1.5 py-1.5">
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{nombreLocal}</span>
           <input
             type="number"
             min="0"
             inputMode="numeric"
             value={golesLocal}
             onChange={(e) => onChange(partido.id, 'golesLocal', e.target.value)}
-            className="money w-10 rounded-lg border border-line bg-surface py-1 text-center text-base font-bold text-ink outline-none focus-visible:border-brand"
+            className="money w-12 shrink-0 rounded-lg border border-line bg-paper py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand"
           />
-          <span className="text-xs font-semibold text-ink-soft/60">—</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <EscudoEquipo nombre={nombreVisitante} />
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{nombreVisitante}</span>
           <input
             type="number"
             min="0"
             inputMode="numeric"
             value={golesVisitante}
             onChange={(e) => onChange(partido.id, 'golesVisitante', e.target.value)}
-            className="money w-10 rounded-lg border border-line bg-surface py-1 text-center text-base font-bold text-ink outline-none focus-visible:border-brand"
+            className="money w-12 shrink-0 rounded-lg border border-line bg-paper py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand"
           />
-        </div>
-
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-          <span className="min-w-0 truncate text-right text-sm font-medium text-ink">{nombreVisitante}</span>
-          <EscudoEquipo nombre={nombreVisitante} />
         </div>
       </div>
 

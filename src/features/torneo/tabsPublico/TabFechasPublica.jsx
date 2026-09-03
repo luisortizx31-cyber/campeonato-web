@@ -131,17 +131,21 @@ export default function TabFechasPublica({ torneoId }) {
                       </span>
                     </p>
                   )}
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{nombreEquipo(p.equipoLocalId)}</span>
-                    {jugado ? (
-                      <span className="money shrink-0 rounded-lg bg-paper px-3 py-1 text-sm font-semibold text-ink">
-                        {p.golesLocal} — {p.golesVisitante}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{nombreEquipo(p.equipoLocalId)}</span>
+                      <span className="money w-8 shrink-0 rounded-lg bg-paper py-1 text-center text-sm font-semibold text-ink">
+                        {jugado ? p.golesLocal : '-'}
                       </span>
-                    ) : (
-                      <span className="shrink-0 rounded-lg bg-paper px-3 py-1 text-xs text-ink-soft">Pendiente</span>
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-right text-sm text-ink">{nombreEquipo(p.equipoVisitanteId)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{nombreEquipo(p.equipoVisitanteId)}</span>
+                      <span className="money w-8 shrink-0 rounded-lg bg-paper py-1 text-center text-sm font-semibold text-ink">
+                        {jugado ? p.golesVisitante : '-'}
+                      </span>
+                    </div>
                   </div>
+                  {!jugado && <p className="mt-1.5 text-xs text-ink-soft">Pendiente</p>}
                 </li>
               )
             })}
