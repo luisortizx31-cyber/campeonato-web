@@ -23,13 +23,31 @@ export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
     if (!nodo) {
       throw new Error('Todavía no hay nada para descargar.')
     }
-    // En pantallas angostas la tabla scrollea horizontal (tiene mas
-    // columnas de las que entran) - sin forzar el ancho real de la
-    // tabla ahi adentro, la captura salia recortada a lo que se ve sin
-    // hacer scroll (le faltaban las ultimas columnas).
-    const tabla = nodo.querySelector('table')
-    const ancho = tabla ? tabla.scrollWidth : nodo.scrollWidth
-    return toCanvas(nodo, { backgroundColor: '#ffffff', pixelRatio: 2, width: ancho })
+
+    // En pantallas angostas el contenedor de la tabla scrollea
+    // horizontal (mas columnas de las que entran) - pasarle un ancho
+    // mayor a html-to-image no alcanza porque el .overflow-x-auto
+    // sigue recortando ahi adentro. Se clona el nodo FUERA de pantalla
+    // (para no mostrarle el cambio al usuario), se le saca el scroll
+    // al clon nada mas, y se captura ese clon ya expandido del todo.
+    const clon = nodo.cloneNode(true)
+    clon.style.position = 'fixed'
+    clon.style.top = '0'
+    clon.style.left = '-99999px'
+    clon.style.width = 'max-content'
+
+    const scrollContainer = clon.querySelector('.overflow-x-auto')
+    if (scrollContainer) {
+      scrollContainer.style.overflow = 'visible'
+      scrollContainer.style.width = 'max-content'
+    }
+
+    document.body.appendChild(clon)
+    try {
+      return await toCanvas(clon, { backgroundColor: '#ffffff', pixelRatio: 2 })
+    } finally {
+      document.body.removeChild(clon)
+    }
   }
 
   async function handleDescargarImagen() {
