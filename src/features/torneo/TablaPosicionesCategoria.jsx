@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../services/torneoEquiposService'
 import { listarPartidosPorCategoria } from '../../services/torneoPartidosService'
 import { listarAjustesPorCategoria } from '../../services/torneoAjustesService'
@@ -23,8 +23,15 @@ const ESTILO_PODIO = {
  * `onFilas` (opcional): recibe las filas ya calculadas, para que el
  * padre pueda reusarlas (ej. exportar a Excel) sin volver a
  * consultar Firestore por su cuenta.
+ *
+ * Expone su nodo raiz via `ref` para que el padre pueda capturarla
+ * como imagen/PDF (ver BotonDescargarTabla) sin que este componente
+ * sepa nada de esa funcionalidad.
  */
-export default function TablaPosicionesCategoria({ torneoId, categoria, refreshKey, onFilas }) {
+const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
+  { torneoId, categoria, refreshKey, onFilas },
+  ref
+) {
   const [filas, setFilas] = useState([])
   const [equiposEliminados, setEquiposEliminados] = useState(0)
   const [cargando, setCargando] = useState(true)
@@ -95,7 +102,7 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
     equiposEliminados > 0 ? Math.max(0, filas.length - equiposEliminados) : null
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+    <div ref={ref} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[460px] text-xs">
           <thead>
@@ -185,4 +192,6 @@ export default function TablaPosicionesCategoria({ torneoId, categoria, refreshK
       )}
     </div>
   )
-}
+})
+
+export default TablaPosicionesCategoria

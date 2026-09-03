@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarAjustesPorCategoria, eliminarAjustePuntos } from '../../../services/torneoAjustesService'
 import { obtenerConfigCategoria, actualizarEquiposEliminados } from '../../../services/torneoConfigService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { BotonExportarExcel } from '../../shared/BotonExportarExcel'
+import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaPosicionesCategoria from '../TablaPosicionesCategoria'
 import ModalAjustarPuntos from '../ModalAjustarPuntos'
 
 export default function TabPosiciones({ torneoId }) {
+  const tablaRef = useRef(null)
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
   const [equipos, setEquipos] = useState([])
   const [ajustes, setAjustes] = useState([])
@@ -133,6 +135,7 @@ export default function TabPosiciones({ torneoId }) {
           ]}
           filas={filasExport}
         />
+        <BotonDescargarTabla targetRef={tablaRef} nombreArchivo={`posiciones-${categoria}`} />
         <button
           onClick={() => setModal(true)}
           disabled={equipos.length === 0}
@@ -142,7 +145,13 @@ export default function TabPosiciones({ torneoId }) {
         </button>
       </div>
 
-      <TablaPosicionesCategoria torneoId={torneoId} categoria={categoria} refreshKey={refreshKey} onFilas={setFilasExport} />
+      <TablaPosicionesCategoria
+        ref={tablaRef}
+        torneoId={torneoId}
+        categoria={categoria}
+        refreshKey={refreshKey}
+        onFilas={setFilasExport}
+      />
 
       {errorAccion && (
         <p className="mt-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorAccion}</p>

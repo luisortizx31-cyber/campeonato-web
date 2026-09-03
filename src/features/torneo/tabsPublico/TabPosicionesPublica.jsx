@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaPosicionesCategoria from '../TablaPosicionesCategoria'
 
 export default function TabPosicionesPublica({ torneoId }) {
+  const tablaRef = useRef(null)
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
   const [equipos, setEquipos] = useState([])
   const [mostrarDelegados, setMostrarDelegados] = useState(false)
@@ -32,7 +34,11 @@ export default function TabPosicionesPublica({ torneoId }) {
         ))}
       </div>
 
-      <TablaPosicionesCategoria torneoId={torneoId} categoria={categoria} />
+      <div className="mb-2 flex justify-end">
+        <BotonDescargarTabla targetRef={tablaRef} nombreArchivo={`posiciones-${categoria}`} />
+      </div>
+
+      <TablaPosicionesCategoria ref={tablaRef} torneoId={torneoId} categoria={categoria} />
 
       {equiposConDelegado.length > 0 && (
         <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
