@@ -46,3 +46,10 @@ export const OPCIONES_UMBRAL_AMARILLAS = [2, 3, 4, 5]
 // valor por defecto: si el Maestro no lo configura para una
 // categoria, nunca se elimina a nadie automaticamente.
 export const OPCIONES_UMBRAL_ROJAS = [1, 2, 3, 4]
+
+// Cuantos jugadores juegan por equipo en esta categoria (futbol 6, 7
+// u 11) - por defecto 11. Se usa en ControlPartido para guiar cuantos
+// titulares corresponde marcar, sin bloquear al Maestro si en un
+// partido puntual hay que jugar con menos (lesiones, etc).
+export const JUGADORES_POR_EQUIPO_DEFAULT = 11
+export const OPCIONES_JUGADORES_POR_EQUIPO = [6, 7, 11]

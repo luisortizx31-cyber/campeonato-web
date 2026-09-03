@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../config/firebase'
-import { UMBRAL_SUSPENSION_AMARILLAS_DEFAULT } from '../models/torneo'
+import { UMBRAL_SUSPENSION_AMARILLAS_DEFAULT, JUGADORES_POR_EQUIPO_DEFAULT } from '../models/torneo'
 
 const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024
 
@@ -62,6 +62,9 @@ export async function obtenerConfigTorneo(torneoId) {
 //    el resto son los que "pasan". 0 significa que no hay corte
 //    (comportamiento por defecto). Es solo visual (linea de corte en
 //    TablaPosicionesCategoria), no bloquea nada del fixture.
+//  - jugadoresPorEquipo: formato del partido (futbol 6, 7 u 11) - se
+//    usa en ControlPartido para mostrar cuantos titulares corresponde
+//    marcar, solo como guia (no bloquea si hace falta jugar con menos).
 export async function obtenerConfigCategoria(torneoId, categoria) {
   const snap = await getDoc(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
   const data = snap.exists() ? snap.data() : {}
@@ -69,6 +72,7 @@ export async function obtenerConfigCategoria(torneoId, categoria) {
     umbralAmarillas: data.umbralAmarillas || UMBRAL_SUSPENSION_AMARILLAS_DEFAULT,
     umbralRojas: data.umbralRojas || null,
     equiposEliminados: data.equiposEliminados || 0,
+    jugadoresPorEquipo: data.jugadoresPorEquipo || JUGADORES_POR_EQUIPO_DEFAULT,
   }
 }
 
@@ -92,6 +96,14 @@ export async function actualizarEquiposEliminados(torneoId, categoria, cantidad)
   await setDoc(
     doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
     { torneoId, equiposEliminados: Number(cantidad) || 0 },
+    { merge: true }
+  )
+}
+
+export async function actualizarJugadoresPorEquipo(torneoId, categoria, cantidad) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, jugadoresPorEquipo: Number(cantidad) || JUGADORES_POR_EQUIPO_DEFAULT },
     { merge: true }
   )
 }

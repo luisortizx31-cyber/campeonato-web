@@ -12,6 +12,7 @@ import {
   obtenerConfigCategoria,
   actualizarUmbralAmarillas,
   actualizarUmbralRojas,
+  actualizarJugadoresPorEquipo,
 } from '../../../services/torneoConfigService'
 import { calcularFechaActual } from '../../../utils/fixtureTorneo'
 import {
@@ -21,6 +22,7 @@ import {
   TIPO_TARJETA_STYLES,
   OPCIONES_UMBRAL_AMARILLAS,
   OPCIONES_UMBRAL_ROJAS,
+  OPCIONES_JUGADORES_POR_EQUIPO,
 } from '../../../models/torneo'
 import ModalAgregarTarjeta from '../ModalAgregarTarjeta'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
@@ -109,6 +111,20 @@ export default function TabAmonestados({ torneoId }) {
     }
   }
 
+  async function handleCambiarJugadoresPorEquipo(nuevaCantidad) {
+    setConfig((c) => ({ ...c, jugadoresPorEquipo: Number(nuevaCantidad) }))
+    setGuardandoUmbral(true)
+    setErrorAccion(null)
+    try {
+      await actualizarJugadoresPorEquipo(torneoId, categoria, nuevaCantidad)
+    } catch (err) {
+      console.error('[TabAmonestados]', err)
+      setErrorAccion('No se pudo guardar el formato del partido.')
+    } finally {
+      setGuardandoUmbral(false)
+    }
+  }
+
   function nombreJugador(id) {
     return jugadores.find((j) => j.id === id)?.nombre || '—'
   }
@@ -179,6 +195,25 @@ export default function TabAmonestados({ torneoId }) {
           Fecha actual: {fechaActual > 0 ? fechaActual : '— (ninguna fecha completa todavía)'}
         </p>
       )}
+
+      <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+        <label htmlFor="jugadores-por-equipo" className="text-sm text-ink-soft">
+          Formato del partido
+        </label>
+        <div className="flex items-center gap-2">
+          <select
+            id="jugadores-por-equipo"
+            value={config?.jugadoresPorEquipo ?? ''}
+            disabled={!config || guardandoUmbral}
+            onChange={(e) => handleCambiarJugadoresPorEquipo(e.target.value)}
+            className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+          >
+            {OPCIONES_JUGADORES_POR_EQUIPO.map((n) => (
+              <option key={n} value={n}>Fútbol {n}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
         <label htmlFor="umbral-amarillas" className="text-sm text-ink-soft">

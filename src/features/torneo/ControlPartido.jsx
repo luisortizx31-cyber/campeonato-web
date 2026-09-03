@@ -8,7 +8,8 @@ import {
   listarTarjetasPorPartido,
   eliminarTarjeta,
 } from '../../services/torneoTarjetasService'
-import { TIPO_TARJETA } from '../../models/torneo'
+import { obtenerConfigCategoria } from '../../services/torneoConfigService'
+import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 
 // Titulares primero (orden alfabetico entre ellos), suplentes despues
@@ -43,15 +44,18 @@ function FilaAlineacion({ jugador, esTitular, expulsado, onClick }) {
   )
 }
 
-function SelectorAlineacion({ titulo, jugadores, titulares, color, abierto, onToggle, onTocarJugador, estaExpulsado }) {
+function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, color, abierto, onToggle, onTocarJugador, estaExpulsado }) {
   const ordenados = ordenarPorTitular(jugadores, titulares)
+  const completo = titulares.length >= jugadoresPorEquipo
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
       <button onClick={onToggle} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left">
         <span className={`truncate text-xs font-bold ${color.text}`}>{titulo}</span>
-        <span className="flex shrink-0 items-center gap-2 text-[11px] text-ink-soft">
-          {titulares.length} titular{titulares.length === 1 ? '' : 'es'}
-          <span className={`transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
+        <span className="flex shrink-0 items-center gap-2 text-[11px]">
+          <span className={completo ? 'font-semibold text-success' : 'text-ink-soft'}>
+            {titulares.length}/{jugadoresPorEquipo} titulares
+          </span>
+          <span className={`text-ink-soft transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
         </span>
       </button>
       {abierto && (
@@ -143,6 +147,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [tarjetas, setTarjetas] = useState([])
   const [titularesLocal, setTitularesLocal] = useState(partido.titularesLocal || [])
   const [titularesVisitante, setTitularesVisitante] = useState(partido.titularesVisitante || [])
+  const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(JUGADORES_POR_EQUIPO_DEFAULT)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -156,16 +161,18 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setCargando(true)
     setError(null)
     try {
-      const [jl, jv, gs, ts] = await Promise.all([
+      const [jl, jv, gs, ts, cfg] = await Promise.all([
         listarJugadoresPorEquipo(partido.equipoLocalId),
         listarJugadoresPorEquipo(partido.equipoVisitanteId),
         listarGolesPorPartido(partido.id),
         listarTarjetasPorPartido(partido.id),
+        obtenerConfigCategoria(torneoId, categoria),
       ])
       setJugadoresLocal(jl.filter((j) => !j.eliminado))
       setJugadoresVisitante(jv.filter((j) => !j.eliminado))
       setGoles(gs)
       setTarjetas(ts)
+      setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo cargar la información del partido.')
@@ -243,9 +250,26 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setCambio({ equipo, saliente: jugador, suplentes })
   }
 
+  // Promover un suplente a titular directo desde el desplegable de
+  // arriba (a diferencia de un cambio, esto NO baja a nadie, asi que
+  // puede pasarse del formato configurado - se avisa pero no se
+  // bloquea, por si hace falta jugar con uno de mas por algun motivo).
   function handleTocarEnAlineacion(equipo, jugador, esTitular) {
-    if (esTitular) handleTocarTitular(equipo, jugador)
-    else handleToggleTitular(equipo, jugador.id, true)
+    if (esTitular) {
+      handleTocarTitular(equipo, jugador)
+      return
+    }
+    const titulares = equipo === 'local' ? titularesLocal : titularesVisitante
+    if (titulares.length >= jugadoresPorEquipo) {
+      if (
+        !confirm(
+          `Este equipo ya tiene ${titulares.length} titulares (fútbol ${jugadoresPorEquipo}). ¿Agregar a ${jugador.nombre} igual?`
+        )
+      ) {
+        return
+      }
+    }
+    handleToggleTitular(equipo, jugador.id, true)
   }
 
   async function handleConfirmarCambio(entranteId) {
@@ -424,6 +448,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
               jugadores={jugadoresLocal}
               titulares={titularesLocal}
+              jugadoresPorEquipo={jugadoresPorEquipo}
               color={colorLocal}
               abierto={alineacionAbierta.local}
               onToggle={() => setAlineacionAbierta((a) => ({ ...a, local: !a.local }))}
@@ -434,6 +459,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
               jugadores={jugadoresVisitante}
               titulares={titularesVisitante}
+              jugadoresPorEquipo={jugadoresPorEquipo}
               color={colorVisitante}
               abierto={alineacionAbierta.visitante}
               onToggle={() => setAlineacionAbierta((a) => ({ ...a, visitante: !a.visitante }))}
