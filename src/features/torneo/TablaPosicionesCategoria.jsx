@@ -103,86 +103,84 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
 
   return (
     <div ref={ref} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[460px] text-xs">
-          <thead>
-            <tr className="bg-brand-dark text-[10px] uppercase tracking-wider text-white/70">
-              <th className="px-2 py-2 text-left font-semibold text-white">#</th>
-              <th className="px-2 py-2 text-left font-semibold text-white">Equipo</th>
-              <th className="px-2 py-2 text-center font-semibold text-white">Pts</th>
-              <th className="px-1.5 py-2 text-center font-medium">PJ</th>
-              <th className="px-1.5 py-2 text-center font-medium">PG</th>
-              <th className="px-1.5 py-2 text-center font-medium">PE</th>
-              <th className="px-1.5 py-2 text-center font-medium">PP</th>
-              <th className="px-1.5 py-2 text-center font-medium">GF</th>
-              <th className="px-1.5 py-2 text-center font-medium">GC</th>
-              <th className="px-1.5 py-2 text-center font-medium">DG</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((f, i) => {
-              const puesto = i + 1
-              const podio = ESTILO_PODIO[puesto]
-              const eliminado = corte != null && puesto > corte
-              const esPrimerEliminado = corte != null && puesto === corte + 1
-              return (
-                <tr
-                  key={f.equipoId}
-                  className={`border-b border-line last:border-0 transition-colors hover:bg-brand-soft/40 ${
-                    esPrimerEliminado ? 'border-t-2 border-t-danger' : ''
-                  } ${
-                    podio
-                      ? podio.fila
-                      : eliminado
-                        ? 'bg-danger-soft/40'
-                        : i % 2 === 0
-                          ? 'bg-surface'
-                          : 'bg-paper/60'
-                  }`}
-                >
-                  <td className="px-2 py-1.5">
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        podio
-                          ? podio.badge
-                          : eliminado
-                            ? 'bg-danger-soft text-danger'
-                            : 'bg-brand-soft text-brand'
-                      }`}
-                    >
-                      {puesto}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1.5 text-sm font-semibold text-ink whitespace-nowrap">{f.nombre}</td>
-                  <td className="px-2 py-1.5 text-center">
-                    <span className="money inline-flex min-w-[1.75rem] items-center justify-center rounded-md bg-brand px-1.5 py-0.5 text-xs font-bold text-white">
-                      {f.pts}
-                    </span>
-                    {f.ajustePts !== 0 && (
-                      <span className={`ml-1 text-[10px] font-medium ${f.ajustePts > 0 ? 'text-success' : 'text-danger'}`}>
-                        ({f.ajustePts > 0 ? '+' : ''}{f.ajustePts})
-                      </span>
-                    )}
-                  </td>
-                  <td className="money px-1.5 py-1.5 text-center text-ink-soft">{f.pj}</td>
-                  <td className="money px-1.5 py-1.5 text-center text-ink-soft">{f.pg}</td>
-                  <td className="money px-1.5 py-1.5 text-center text-ink-soft">{f.pe}</td>
-                  <td className="money px-1.5 py-1.5 text-center text-ink-soft">{f.pp}</td>
-                  <td className="money px-1.5 py-1.5 text-center text-ink-soft">{f.gf}</td>
-                  <td className="money px-1.5 py-1.5 text-center text-ink-soft">{f.gc}</td>
-                  <td
-                    className={`money px-1.5 py-1.5 text-center font-semibold ${
-                      f.dg > 0 ? 'text-success' : f.dg < 0 ? 'text-danger' : 'text-ink-soft'
+      <table className="w-full table-fixed text-xs">
+        <thead>
+          <tr className="bg-brand-dark text-[9px] uppercase tracking-wider text-white/70">
+            <th className="w-7 px-1 py-2 text-left font-semibold text-white">#</th>
+            <th className="px-1.5 py-2 text-left font-semibold text-white">Equipo</th>
+            <th className="w-10 px-1 py-2 text-center font-semibold text-white">Pts</th>
+            <th className="w-6 px-0.5 py-2 text-center font-medium">PJ</th>
+            <th className="w-6 px-0.5 py-2 text-center font-medium">PG</th>
+            <th className="w-6 px-0.5 py-2 text-center font-medium">PE</th>
+            <th className="w-6 px-0.5 py-2 text-center font-medium">PP</th>
+            <th className="w-6 px-0.5 py-2 text-center font-medium">GF</th>
+            <th className="w-6 px-0.5 py-2 text-center font-medium">GC</th>
+            <th className="w-8 px-1 py-2 text-center font-medium">DG</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filas.map((f, i) => {
+            const puesto = i + 1
+            const podio = ESTILO_PODIO[puesto]
+            const eliminado = corte != null && puesto > corte
+            const esPrimerEliminado = corte != null && puesto === corte + 1
+            return (
+              <tr
+                key={f.equipoId}
+                className={`border-b border-line last:border-0 transition-colors hover:bg-brand-soft/40 ${
+                  esPrimerEliminado ? 'border-t-2 border-t-danger' : ''
+                } ${
+                  podio
+                    ? podio.fila
+                    : eliminado
+                      ? 'bg-danger-soft/40'
+                      : i % 2 === 0
+                        ? 'bg-surface'
+                        : 'bg-paper/60'
+                }`}
+              >
+                <td className="px-1 py-1.5">
+                  <span
+                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                      podio
+                        ? podio.badge
+                        : eliminado
+                          ? 'bg-danger-soft text-danger'
+                          : 'bg-brand-soft text-brand'
                     }`}
                   >
-                    {f.dg > 0 ? `+${f.dg}` : f.dg}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                    {puesto}
+                  </span>
+                </td>
+                <td className="truncate px-1.5 py-1.5 text-sm font-semibold text-ink">{f.nombre}</td>
+                <td className="px-1 py-1.5 text-center">
+                  <span className="money inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-brand px-1 py-0.5 text-xs font-bold text-white">
+                    {f.pts}
+                  </span>
+                  {f.ajustePts !== 0 && (
+                    <span className={`block text-[9px] font-medium ${f.ajustePts > 0 ? 'text-success' : 'text-danger'}`}>
+                      ({f.ajustePts > 0 ? '+' : ''}{f.ajustePts})
+                    </span>
+                  )}
+                </td>
+                <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.pj}</td>
+                <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.pg}</td>
+                <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.pe}</td>
+                <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.pp}</td>
+                <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.gf}</td>
+                <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.gc}</td>
+                <td
+                  className={`money px-1 py-1.5 text-center text-[11px] font-semibold ${
+                    f.dg > 0 ? 'text-success' : f.dg < 0 ? 'text-danger' : 'text-ink-soft'
+                  }`}
+                >
+                  {f.dg > 0 ? `+${f.dg}` : f.dg}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
 
       {corte != null && corte < filas.length && (
         <div className="flex items-center gap-2 border-t border-line bg-danger-soft/40 px-3 py-1.5 text-[11px] font-medium text-danger">
