@@ -24,22 +24,27 @@ export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
       throw new Error('Todavía no hay nada para descargar.')
     }
 
-    // En pantallas angostas el contenedor de la tabla scrollea
-    // horizontal (mas columnas de las que entran) - pasarle un ancho
-    // mayor a html-to-image no alcanza porque el .overflow-x-auto
-    // sigue recortando ahi adentro. Se clona el nodo FUERA de pantalla
-    // (para no mostrarle el cambio al usuario), se le saca el scroll
-    // al clon nada mas, y se captura ese clon ya expandido del todo.
+    // Se clona el nodo FUERA de pantalla (para no mostrarle el cambio
+    // al usuario) y se captura ese clon.
     const clon = nodo.cloneNode(true)
     clon.style.position = 'fixed'
     clon.style.top = '0'
     clon.style.left = '-99999px'
-    clon.style.width = 'max-content'
 
+    // Si el contenido tiene un contenedor con scroll horizontal (tablas
+    // viejas mas anchas que la pantalla), hay que sacarle el scroll y
+    // agrandar todo a "max-content" para que entre completo. Las
+    // tablas actuales (table-layout: fixed, sin scroll) NO tienen este
+    // contenedor - ahi hay que dejar el clon con el mismo ancho que
+    // tiene en pantalla, porque forzar "max-content" rompe el calculo
+    // de columnas de table-fixed y termina rendereando todo en blanco.
     const scrollContainer = clon.querySelector('.overflow-x-auto')
     if (scrollContainer) {
       scrollContainer.style.overflow = 'visible'
       scrollContainer.style.width = 'max-content'
+      clon.style.width = 'max-content'
+    } else {
+      clon.style.width = `${nodo.offsetWidth}px`
     }
 
     document.body.appendChild(clon)
