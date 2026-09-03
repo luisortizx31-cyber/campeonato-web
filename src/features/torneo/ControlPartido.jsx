@@ -11,11 +11,127 @@ import {
 import { TIPO_TARJETA } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 
+// Titulares primero (orden alfabetico entre ellos), suplentes despues
+// - se usa en el desplegable de alineacion de arriba.
+function ordenarPorTitular(jugadores, titulares) {
+  return [...jugadores].sort((a, b) => {
+    const aTit = titulares.includes(a.id) ? 0 : 1
+    const bTit = titulares.includes(b.id) ? 0 : 1
+    if (aTit !== bTit) return aTit - bTit
+    return a.nombre.localeCompare(b.nombre)
+  })
+}
+
+// Fila del desplegable de ALINEACION (arriba): muestra a todo el
+// plantel del equipo, titulares primero. Tocar el nombre alterna
+// titular/suplente (o abre el selector de reemplazo si ya era
+// titular, decidido por el padre via `onClick`).
+function FilaAlineacion({ jugador, esTitular, expulsado, onClick }) {
+  return (
+    <li>
+      <button
+        onClick={onClick}
+        disabled={expulsado}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs disabled:opacity-50"
+      >
+        <span className={esTitular ? 'font-medium text-ink' : 'text-ink-soft'}>
+          {esTitular ? '●' : '○'} {jugador.nombre}
+        </span>
+        {expulsado && <span className="shrink-0 font-semibold text-danger">🟥 Expulsado</span>}
+      </button>
+    </li>
+  )
+}
+
+function SelectorAlineacion({ titulo, jugadores, titulares, color, abierto, onToggle, onTocarJugador, estaExpulsado }) {
+  const ordenados = ordenarPorTitular(jugadores, titulares)
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+      <button onClick={onToggle} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left">
+        <span className={`truncate text-xs font-bold ${color.text}`}>{titulo}</span>
+        <span className="flex shrink-0 items-center gap-2 text-[11px] text-ink-soft">
+          {titulares.length} titular{titulares.length === 1 ? '' : 'es'}
+          <span className={`transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
+        </span>
+      </button>
+      {abierto && (
+        <ul className="divide-y divide-line border-t border-line">
+          {ordenados.map((j) => {
+            const esTitular = titulares.includes(j.id)
+            return (
+              <FilaAlineacion
+                key={j.id}
+                jugador={j}
+                esTitular={esTitular}
+                expulsado={estaExpulsado(j.id)}
+                onClick={() => onTocarJugador(j, esTitular)}
+              />
+            )
+          })}
+          {ordenados.length === 0 && (
+            <li className="px-3 py-3 text-center text-[11px] text-ink-soft">Sin jugadores</li>
+          )}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// Fila de la CANCHA (abajo): solo jugadores en cancha ahora mismo
+// (titulares, no expulsados) - aca se cargan los eventos del partido.
+// Tocar el nombre abre el selector de cambio (decidido por el padre).
+function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, onGol, onAmarilla, onRoja }) {
+  return (
+    <li className="px-2.5 py-2">
+      <button
+        onClick={onTocar}
+        className="flex w-full items-center justify-between gap-1.5 text-left"
+        title="Tocar para sacarlo y elegir reemplazo"
+      >
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">{jugador.nombre}</span>
+        {(nGoles > 0 || amarillasPartido > 0) && (
+          <span className="flex shrink-0 items-center gap-1 text-[11px]">
+            {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
+            {Array.from({ length: amarillasPartido }).map((_, i) => (
+              <span key={i}>🟨</span>
+            ))}
+          </span>
+        )}
+      </button>
+      <div className="mt-1.5 flex gap-1">
+        <button
+          onClick={onGol}
+          disabled={procesando}
+          className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] disabled:opacity-50"
+        >
+          ⚽
+        </button>
+        <button
+          onClick={onAmarilla}
+          disabled={procesando || jugador.suspendido}
+          className="flex-1 rounded-md border border-warning/30 bg-warning-soft py-1 text-[11px] disabled:opacity-50"
+        >
+          🟨
+        </button>
+        <button
+          onClick={onRoja}
+          disabled={procesando || jugador.suspendido}
+          className="flex-1 rounded-md border border-danger/30 bg-danger-soft py-1 text-[11px] disabled:opacity-50"
+        >
+          🟥
+        </button>
+      </div>
+    </li>
+  )
+}
+
 /**
- * Pantalla de "control en vivo" de un partido puntual: elegir titulares
- * de cada equipo y cargar goles/tarjetas jugador por jugador con un
- * toque, mientras se juega. El marcador se arma solo sumando los
- * goles cargados aca - recien queda "Jugado" de verdad (con
+ * Pantalla de "control en vivo" de un partido puntual: arriba, un
+ * desplegable por equipo para armar la alineacion (titulares y
+ * suplentes); abajo, la cancha con SOLO los que estan jugando en este
+ * momento (titulares menos los expulsados), para cargar goles/tarjetas
+ * jugador por jugador con un toque. El marcador se arma solo sumando
+ * los goles cargados aca - recien queda "Jugado" de verdad (con
  * golesLocal/golesVisitante fijados) cuando se toca "Finalizar
  * partido". Antes de eso el partido sigue viendose "Pendiente" en el
  * resto de la app.
@@ -27,6 +143,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [tarjetas, setTarjetas] = useState([])
   const [titularesLocal, setTitularesLocal] = useState(partido.titularesLocal || [])
   const [titularesVisitante, setTitularesVisitante] = useState(partido.titularesVisitante || [])
+  const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [procesando, setProcesando] = useState(false)
@@ -90,6 +207,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const expulsadosLocal = jugadoresLocal.filter((j) => estaExpulsadoEnPartido(j.id))
   const expulsadosVisitante = jugadoresVisitante.filter((j) => estaExpulsadoEnPartido(j.id))
 
+  // Quienes estan jugando AHORA en la cancha: titulares que no fueron
+  // expulsados (un expulsado desaparece de la cancha, queda solo en
+  // "Expulsados" - ver mas abajo).
+  const enCanchaLocal = jugadoresLocal.filter((j) => titularesLocal.includes(j.id) && !estaExpulsadoEnPartido(j.id))
+  const enCanchaVisitante = jugadoresVisitante.filter(
+    (j) => titularesVisitante.includes(j.id) && !estaExpulsadoEnPartido(j.id)
+  )
+
   async function handleToggleTitular(equipo, jugadorId, esTitular) {
     const setTitulares = equipo === 'local' ? setTitularesLocal : setTitularesVisitante
     setTitulares((t) => (esTitular ? [...t, jugadorId] : t.filter((id) => id !== jugadorId)))
@@ -108,12 +233,19 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   function handleTocarTitular(equipo, jugador) {
     const jugadoresEquipo = equipo === 'local' ? jugadoresLocal : jugadoresVisitante
     const titulares = equipo === 'local' ? titularesLocal : titularesVisitante
-    const suplentes = jugadoresEquipo.filter((j) => j.id !== jugador.id && !titulares.includes(j.id))
+    const suplentes = jugadoresEquipo.filter(
+      (j) => j.id !== jugador.id && !titulares.includes(j.id) && !estaExpulsadoEnPartido(j.id)
+    )
     if (suplentes.length === 0) {
       handleToggleTitular(equipo, jugador.id, false)
       return
     }
     setCambio({ equipo, saliente: jugador, suplentes })
+  }
+
+  function handleTocarEnAlineacion(equipo, jugador, esTitular) {
+    if (esTitular) handleTocarTitular(equipo, jugador)
+    else handleToggleTitular(equipo, jugador.id, true)
   }
 
   async function handleConfirmarCambio(entranteId) {
@@ -254,65 +386,6 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
-  function Fila({ jugador, equipoId, equipo, titulares }) {
-    const esTitular = titulares.includes(jugador.id)
-    const nGoles = golesDe(jugador.id)
-    const tj = tarjetasDe(jugador.id)
-    const amarillasPartido = tj.filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length
-    const tieneRoja = tj.some((t) => t.tipo === TIPO_TARJETA.ROJA)
-    const expulsado = tieneRoja || amarillasPartido >= 2
-    return (
-      <li className={`px-2.5 py-2 ${expulsado ? 'bg-danger-soft/40' : ''}`}>
-        <button
-          onClick={() => (esTitular ? handleTocarTitular(equipo, jugador) : handleToggleTitular(equipo, jugador.id, true))}
-          disabled={expulsado}
-          className="flex w-full items-center justify-between gap-1.5 text-left disabled:opacity-70"
-          title={esTitular ? 'Titular (tocar para sacarlo y elegir reemplazo)' : 'Suplente (tocar para marcar titular)'}
-        >
-          <span className={`min-w-0 flex-1 truncate text-xs font-medium ${esTitular ? 'text-ink' : 'text-ink-soft'}`}>
-            {esTitular ? '●' : '○'} {jugador.nombre}
-          </span>
-          <span className="flex shrink-0 items-center gap-1 text-[11px]">
-            {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
-            {Array.from({ length: amarillasPartido }).map((_, i) => (
-              <span key={i}>🟨</span>
-            ))}
-            {tieneRoja && <span>🟥</span>}
-          </span>
-        </button>
-        {expulsado ? (
-          <p className="mt-1.5 text-center text-[11px] font-semibold text-danger">
-            🟥 Expulsado{!tieneRoja && amarillasPartido >= 2 ? ' (2 amarillas)' : ''}
-          </p>
-        ) : (
-          <div className="mt-1.5 flex gap-1">
-            <button
-              onClick={() => handleGol(jugador, equipoId)}
-              disabled={procesando}
-              className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] disabled:opacity-50"
-            >
-              ⚽
-            </button>
-            <button
-              onClick={() => handleTarjeta(jugador, equipoId, TIPO_TARJETA.AMARILLA)}
-              disabled={procesando || jugador.suspendido}
-              className="flex-1 rounded-md border border-warning/30 bg-warning-soft py-1 text-[11px] disabled:opacity-50"
-            >
-              🟨
-            </button>
-            <button
-              onClick={() => handleTarjeta(jugador, equipoId, TIPO_TARJETA.ROJA)}
-              disabled={procesando || jugador.suspendido}
-              className="flex-1 rounded-md border border-danger/30 bg-danger-soft py-1 text-[11px] disabled:opacity-50"
-            >
-              🟥
-            </button>
-          </div>
-        )}
-      </li>
-    )
-  }
-
   const colorLocal = colorEquipo(nombreEquipo(partido.equipoLocalId))
   const colorVisitante = colorEquipo(nombreEquipo(partido.equipoVisitanteId))
 
@@ -346,9 +419,34 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         <p className="text-sm text-ink-soft">Cargando…</p>
       ) : (
         <>
+          <div className="mb-3 space-y-2">
+            <SelectorAlineacion
+              titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
+              jugadores={jugadoresLocal}
+              titulares={titularesLocal}
+              color={colorLocal}
+              abierto={alineacionAbierta.local}
+              onToggle={() => setAlineacionAbierta((a) => ({ ...a, local: !a.local }))}
+              onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('local', j, esTitular)}
+              estaExpulsado={estaExpulsadoEnPartido}
+            />
+            <SelectorAlineacion
+              titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
+              jugadores={jugadoresVisitante}
+              titulares={titularesVisitante}
+              color={colorVisitante}
+              abierto={alineacionAbierta.visitante}
+              onToggle={() => setAlineacionAbierta((a) => ({ ...a, visitante: !a.visitante }))}
+              onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('visitante', j, esTitular)}
+              estaExpulsado={estaExpulsadoEnPartido}
+            />
+          </div>
+
           {/* Fondo verde tipo cancha, con las dos alineaciones separadas
               por una linea central - no es un campo tactico con
-              posiciones reales, es un agrupamiento visual simple. */}
+              posiciones reales, es un agrupamiento visual simple. Solo
+              se muestra a quien esta jugando ahora (titulares menos los
+              expulsados) - los suplentes se eligen arriba. */}
           <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl border-2 border-white/10 bg-brand-dark p-2">
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
@@ -357,11 +455,23 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 {nombreEquipo(partido.equipoLocalId)}
               </div>
               <ul className="divide-y divide-line">
-                {jugadoresLocal.map((j) => (
-                  <Fila key={j.id} jugador={j} equipoId={partido.equipoLocalId} equipo="local" titulares={titularesLocal} />
+                {enCanchaLocal.map((j) => (
+                  <FilaAccion
+                    key={j.id}
+                    jugador={j}
+                    nGoles={golesDe(j.id)}
+                    amarillasPartido={tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length}
+                    procesando={procesando}
+                    onTocar={() => handleTocarTitular('local', j)}
+                    onGol={() => handleGol(j, partido.equipoLocalId)}
+                    onAmarilla={() => handleTarjeta(j, partido.equipoLocalId, TIPO_TARJETA.AMARILLA)}
+                    onRoja={() => handleTarjeta(j, partido.equipoLocalId, TIPO_TARJETA.ROJA)}
+                  />
                 ))}
-                {jugadoresLocal.length === 0 && (
-                  <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Sin jugadores</li>
+                {enCanchaLocal.length === 0 && (
+                  <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">
+                    Elegí titulares arriba
+                  </li>
                 )}
               </ul>
             </div>
@@ -372,11 +482,23 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 {nombreEquipo(partido.equipoVisitanteId)}
               </div>
               <ul className="divide-y divide-line">
-                {jugadoresVisitante.map((j) => (
-                  <Fila key={j.id} jugador={j} equipoId={partido.equipoVisitanteId} equipo="visitante" titulares={titularesVisitante} />
+                {enCanchaVisitante.map((j) => (
+                  <FilaAccion
+                    key={j.id}
+                    jugador={j}
+                    nGoles={golesDe(j.id)}
+                    amarillasPartido={tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length}
+                    procesando={procesando}
+                    onTocar={() => handleTocarTitular('visitante', j)}
+                    onGol={() => handleGol(j, partido.equipoVisitanteId)}
+                    onAmarilla={() => handleTarjeta(j, partido.equipoVisitanteId, TIPO_TARJETA.AMARILLA)}
+                    onRoja={() => handleTarjeta(j, partido.equipoVisitanteId, TIPO_TARJETA.ROJA)}
+                  />
                 ))}
-                {jugadoresVisitante.length === 0 && (
-                  <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Sin jugadores</li>
+                {enCanchaVisitante.length === 0 && (
+                  <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">
+                    Elegí titulares arriba
+                  </li>
                 )}
               </ul>
             </div>
