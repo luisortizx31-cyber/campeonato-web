@@ -55,15 +55,17 @@ export default function PanelTorneo() {
           )}
           <button
             onClick={copiarLinkPublico}
+            title="Copiar link público"
             className="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-soft active:scale-95 transition-transform"
           >
-            {linkCopiado ? '✓ Copiado' : 'Copiar link público'}
+            {linkCopiado ? '✓' : '🔗'}
           </button>
           <button
             onClick={() => logout()}
+            title="Salir"
             className="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-soft"
           >
-            Salir
+            ✕
           </button>
         </div>
       </header>
