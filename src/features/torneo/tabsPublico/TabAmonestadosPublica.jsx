@@ -11,6 +11,8 @@ export default function TabAmonestadosPublica({ torneoId }) {
   const [jugadores, setJugadores] = useState([])
   const [tarjetas, setTarjetas] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [mostrarHistorial, setMostrarHistorial] = useState(false)
+  const [busquedaHistorial, setBusquedaHistorial] = useState('')
 
   useEffect(() => {
     let cancelado = false
@@ -44,6 +46,11 @@ export default function TabAmonestadosPublica({ torneoId }) {
 
   const eliminados = jugadores.filter((j) => j.eliminado)
   const suspendidos = jugadores.filter((j) => j.suspendido && !j.eliminado)
+
+  const busquedaNormalizada = busquedaHistorial.trim().toLowerCase()
+  const tarjetasFiltradas = busquedaNormalizada
+    ? tarjetas.filter((t) => nombreJugador(t.jugadorId).toLowerCase().includes(busquedaNormalizada))
+    : tarjetas
 
   return (
     <div>
@@ -136,38 +143,62 @@ export default function TabAmonestadosPublica({ torneoId }) {
             </ul>
           )}
 
-          <h2 className="mb-2 text-sm font-semibold text-ink">
-            Historial de tarjetas {tarjetas.length > 0 && `(${tarjetas.length})`}
-          </h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-ink">
+              Historial de tarjetas {tarjetas.length > 0 && `(${tarjetas.length})`}
+            </h2>
+            {tarjetas.length > 0 && (
+              <button
+                onClick={() => setMostrarHistorial((v) => !v)}
+                className="shrink-0 text-xs font-medium text-brand"
+              >
+                {mostrarHistorial ? 'Ocultar' : 'Ver historial'}
+              </button>
+            )}
+          </div>
+
           {tarjetas.length === 0 ? (
             <p className="text-sm text-ink-soft">Todavía no hay tarjetas cargadas.</p>
-          ) : (
-            <ul className="space-y-2">
-              {tarjetas.map((t) => {
-                const estilo = TIPO_TARJETA_STYLES[t.tipo]
-                return (
-                  <li key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
-                    <div className="flex shrink-0 flex-col items-center gap-1">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estilo.fondo} ${estilo.texto}`}>
-                        {TIPO_TARJETA_LABELS[t.tipo]}
-                      </span>
-                      <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">
-                        {t.fechaNumero != null ? `Fecha ${t.fechaNumero}` : 'Sin fecha'}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{nombreJugador(t.jugadorId)}</p>
-                      <p className="text-xs text-ink-soft">
-                        {nombreEquipo(t.equipoId)}
-                        {' · '}
-                        {t.fecha?.toDate?.().toLocaleDateString('es-PE') || ''}
-                      </p>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+          ) : mostrarHistorial ? (
+            <>
+              <input
+                type="search"
+                value={busquedaHistorial}
+                onChange={(e) => setBusquedaHistorial(e.target.value)}
+                placeholder="Buscar jugador…"
+                className="mb-3 w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink placeholder:text-ink-soft/60 outline-none focus-visible:border-brand"
+              />
+              {tarjetasFiltradas.length === 0 ? (
+                <p className="text-sm text-ink-soft">No hay ninguna tarjeta que coincida con "{busquedaHistorial}".</p>
+              ) : (
+                <ul className="space-y-2">
+                  {tarjetasFiltradas.map((t) => {
+                    const estilo = TIPO_TARJETA_STYLES[t.tipo]
+                    return (
+                      <li key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+                        <div className="flex shrink-0 flex-col items-center gap-1">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estilo.fondo} ${estilo.texto}`}>
+                            {TIPO_TARJETA_LABELS[t.tipo]}
+                          </span>
+                          <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">
+                            {t.fechaNumero != null ? `Fecha ${t.fechaNumero}` : 'Sin fecha'}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-ink">{nombreJugador(t.jugadorId)}</p>
+                          <p className="text-xs text-ink-soft">
+                            {nombreEquipo(t.equipoId)}
+                            {' · '}
+                            {t.fecha?.toDate?.().toLocaleDateString('es-PE') || ''}
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </>
+          ) : null}
         </>
       )}
     </div>
