@@ -177,6 +177,48 @@ export async function eliminarFixture(torneoId, categoria) {
   await batch.commit()
 }
 
+// Vuelve a "Pendiente" (golesLocal/golesVisitante = null) los
+// partidos de UNA fecha puntual - a diferencia de eliminarFixture, no
+// borra los partidos ni el fixture, solo el marcador ya cargado, para
+// que el Maestro pueda corregir una fecha entera sin tener que volver
+// a armar los cruces. No toca tarjetas ni sanciones.
+export async function reiniciarResultadosFecha(torneoId, categoria, fechaNumero) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'torneo_partidos'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria),
+      where('fechaNumero', '==', Number(fechaNumero))
+    )
+  )
+  if (snap.empty) return
+
+  const batch = writeBatch(db)
+  snap.docs.forEach((d) => batch.update(d.ref, { golesLocal: null, golesVisitante: null }))
+  await batch.commit()
+}
+
+// Igual que reiniciarResultadosFecha pero para TODAS las fechas de la
+// categoria a la vez: el fixture queda intacto (mismos cruces, mismo
+// numero de fecha) pero todos los partidos vuelven a "Pendiente".
+// Tampoco toca tarjetas ni sanciones - para eso esta
+// reiniciarTemporadaCompleta.
+export async function reiniciarResultadosTodasLasFechas(torneoId, categoria) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'torneo_partidos'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria)
+    )
+  )
+  const partidosFixture = snap.docs.filter((d) => d.data().fechaNumero != null)
+  if (partidosFixture.length === 0) return
+
+  const batch = writeBatch(db)
+  partidosFixture.forEach((d) => batch.update(d.ref, { golesLocal: null, golesVisitante: null }))
+  await batch.commit()
+}
+
 // Reinicio total de una categoria: borra TODOS sus partidos (con o
 // sin fechaNumero, tengan o no resultado) y TODAS sus tarjetas, y deja
 // a todos los jugadores de la categoria sin amarillas/rojas ni

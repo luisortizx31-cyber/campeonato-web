@@ -4,6 +4,8 @@ import {
   listarPartidosPorCategoria,
   generarFixture,
   eliminarFixture,
+  reiniciarResultadosFecha,
+  reiniciarResultadosTodasLasFechas,
   reiniciarTemporadaCompleta,
   registrarResultadoPartido,
   eliminarPartido,
@@ -47,6 +49,12 @@ export default function TabFechas({ torneoId }) {
 
   const [reiniciando, setReiniciando] = useState(false)
   const [errorReiniciar, setErrorReiniciar] = useState(null)
+
+  const [reiniciandoResultadosFecha, setReiniciandoResultadosFecha] = useState(false)
+  const [errorReiniciarResultadosFecha, setErrorReiniciarResultadosFecha] = useState(null)
+
+  const [reiniciandoResultadosTodas, setReiniciandoResultadosTodas] = useState(false)
+  const [errorReiniciarResultadosTodas, setErrorReiniciarResultadosTodas] = useState(null)
 
   const [reiniciandoTodo, setReiniciandoTodo] = useState(false)
   const [errorReiniciarTodo, setErrorReiniciarTodo] = useState(null)
@@ -132,6 +140,47 @@ export default function TabFechas({ torneoId }) {
       setErrorReiniciar(err.message || 'No se pudo reiniciar el fixture.')
     } finally {
       setReiniciando(false)
+    }
+  }
+
+  // Vuelve a "Pendiente" los partidos de la fecha que se esta viendo -
+  // a diferencia de handleReiniciar, no borra el fixture ni se bloquea
+  // por tener resultados (es justo lo contrario: sirve para corregir
+  // una fecha entera cargada mal).
+  async function handleReiniciarResultadosFecha() {
+    if (fechaSeleccionada == null) return
+    if (!confirm(`¿Reiniciar los resultados de la Fecha ${fechaSeleccionada}? Los partidos quedan pendientes de nuevo (no se borra el fixture ni las tarjetas).`)) return
+    setReiniciandoResultadosFecha(true)
+    setErrorReiniciarResultadosFecha(null)
+    try {
+      await reiniciarResultadosFecha(torneoId, categoria, fechaSeleccionada)
+      await cargar()
+    } catch (err) {
+      console.error('[TabFechas]', err)
+      setErrorReiniciarResultadosFecha(err.message || 'No se pudieron reiniciar los resultados de la fecha.')
+    } finally {
+      setReiniciandoResultadosFecha(false)
+    }
+  }
+
+  // Igual que handleReiniciarResultadosFecha pero para todas las
+  // fechas de la categoria a la vez.
+  async function handleReiniciarResultadosTodas() {
+    const confirmacion = confirm(
+      `¿Reiniciar los resultados de TODAS las fechas de ${CATEGORIA_TORNEO_LABELS[categoria]}?\n\n` +
+        'Todos los partidos quedan pendientes de nuevo. El fixture, las tarjetas y las sanciones NO se borran.'
+    )
+    if (!confirmacion) return
+    setReiniciandoResultadosTodas(true)
+    setErrorReiniciarResultadosTodas(null)
+    try {
+      await reiniciarResultadosTodasLasFechas(torneoId, categoria)
+      await cargar()
+    } catch (err) {
+      console.error('[TabFechas]', err)
+      setErrorReiniciarResultadosTodas(err.message || 'No se pudieron reiniciar los resultados.')
+    } finally {
+      setReiniciandoResultadosTodas(false)
     }
   }
 
@@ -403,12 +452,19 @@ export default function TabFechas({ torneoId }) {
                   )
                 })}
               </div>
-              <div className="mb-3 flex justify-end gap-2">
+              <div className="mb-3 flex flex-wrap justify-end gap-2">
                 <button
                   onClick={() => setModalAgregar(true)}
                   className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
                 >
                   + Agregar partido
+                </button>
+                <button
+                  onClick={handleReiniciarResultadosFecha}
+                  disabled={reiniciandoResultadosFecha || !partidosDeFecha.some((p) => p.golesLocal != null)}
+                  className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-warning/30 hover:text-warning disabled:opacity-50"
+                >
+                  {reiniciandoResultadosFecha ? '…' : `Reiniciar resultados (Fecha ${fechaSeleccionada})`}
                 </button>
                 <button
                   onClick={handleReiniciar}
@@ -419,6 +475,10 @@ export default function TabFechas({ torneoId }) {
                 </button>
               </div>
             </>
+          )}
+
+          {errorReiniciarResultadosFecha && (
+            <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorReiniciarResultadosFecha}</p>
           )}
 
           {errorReiniciar && (
@@ -484,8 +544,25 @@ export default function TabFechas({ torneoId }) {
         </>
       )}
 
-      {!cargando && !error && (
+      {!cargando && !error && hayFixture && (
         <div className="mt-6 border-t border-line pt-4 text-center">
+          {errorReiniciarResultadosTodas && (
+            <p className="mb-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorReiniciarResultadosTodas}</p>
+          )}
+          <button
+            onClick={handleReiniciarResultadosTodas}
+            disabled={reiniciandoResultadosTodas}
+            className="text-xs text-warning underline disabled:opacity-50"
+          >
+            {reiniciandoResultadosTodas
+              ? 'Reiniciando…'
+              : `Reiniciar resultados de TODAS las fechas de ${CATEGORIA_TORNEO_LABELS[categoria]} (deja el fixture intacto)`}
+          </button>
+        </div>
+      )}
+
+      {!cargando && !error && (
+        <div className="mt-3 border-t border-line pt-4 text-center">
           {errorReiniciarTodo && (
             <p className="mb-2 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorReiniciarTodo}</p>
           )}
