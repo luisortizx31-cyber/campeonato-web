@@ -27,6 +27,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [procesando, setProcesando] = useState(false)
   const [finalizando, setFinalizando] = useState(false)
   const [ultimaAccion, setUltimaAccion] = useState(null) // { tipo: 'gol' | 'tarjeta', docId, descripcion }
+  const [cambio, setCambio] = useState(null) // { equipo, saliente, suplentes } - ver handleTocarTitular
 
   async function cargar() {
     setCargando(true)
@@ -78,6 +79,36 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       console.error('[ControlPartido]', err)
       setError('No se pudo guardar la alineación.')
     }
+  }
+
+  // Tocar a un titular para sacarlo no lo pasa directo a suplente: abre
+  // el selector de "por quien entra" con los suplentes disponibles de
+  // su mismo equipo, para que el cambio quede armado en un solo paso
+  // (sale uno, entra otro) en vez de dos toques sueltos.
+  function handleTocarTitular(equipo, jugador) {
+    const jugadoresEquipo = equipo === 'local' ? jugadoresLocal : jugadoresVisitante
+    const titulares = equipo === 'local' ? titularesLocal : titularesVisitante
+    const suplentes = jugadoresEquipo.filter((j) => j.id !== jugador.id && !titulares.includes(j.id))
+    if (suplentes.length === 0) {
+      handleToggleTitular(equipo, jugador.id, false)
+      return
+    }
+    setCambio({ equipo, saliente: jugador, suplentes })
+  }
+
+  async function handleConfirmarCambio(entranteId) {
+    if (!cambio) return
+    const { equipo, saliente, suplentes } = cambio
+    const entrante = suplentes.find((s) => s.id === entranteId)
+    setCambio(null)
+    await handleToggleTitular(equipo, saliente.id, false)
+    if (entrante) await handleToggleTitular(equipo, entrante.id, true)
+  }
+
+  function handleSacarSinReemplazo() {
+    if (!cambio) return
+    handleToggleTitular(cambio.equipo, cambio.saliente.id, false)
+    setCambio(null)
   }
 
   async function handleGol(jugador, equipoId) {
@@ -173,9 +204,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     return (
       <li className="px-2.5 py-2">
         <button
-          onClick={() => handleToggleTitular(equipo, jugador.id, !esTitular)}
+          onClick={() => (esTitular ? handleTocarTitular(equipo, jugador) : handleToggleTitular(equipo, jugador.id, true))}
           className="flex w-full items-center justify-between gap-1.5 text-left"
-          title={esTitular ? 'Titular (tocar para pasar a suplente)' : 'Suplente (tocar para marcar titular)'}
+          title={esTitular ? 'Titular (tocar para sacarlo y elegir reemplazo)' : 'Suplente (tocar para marcar titular)'}
         >
           <span className={`min-w-0 flex-1 truncate text-xs font-medium ${esTitular ? 'text-ink' : 'text-ink-soft'}`}>
             {esTitular ? '●' : '○'} {jugador.nombre}
@@ -304,6 +335,38 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 : 'Finalizar partido'}
           </button>
         </>
+      )}
+
+      {cambio && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-paper shadow-xl sm:rounded-3xl">
+            <div className="flex items-center justify-between border-b border-line bg-surface px-5 py-4">
+              <h1 className="text-base font-semibold text-ink">¿Quién entra por {cambio.saliente.nombre}?</h1>
+              <button onClick={() => setCambio(null)} className="text-2xl leading-none text-ink-soft px-1">×</button>
+            </div>
+            <ul className="divide-y divide-line">
+              {cambio.suplentes.map((s) => (
+                <li key={s.id}>
+                  <button
+                    onClick={() => handleConfirmarCambio(s.id)}
+                    className="flex w-full items-center justify-between gap-2 px-5 py-3 text-left text-sm text-ink hover:bg-surface"
+                  >
+                    {s.nombre}
+                    <span className="shrink-0 text-xs font-medium text-brand">Entra →</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="p-4">
+              <button
+                onClick={handleSacarSinReemplazo}
+                className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
+              >
+                Sacarlo sin reemplazo
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
