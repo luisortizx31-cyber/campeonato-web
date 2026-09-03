@@ -140,6 +140,21 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
   })
 }
 
+// Vuelve un partido puntual a su estado inicial: sin titulares
+// marcados y sin resultado (Pendiente de nuevo) - ver ControlPartido,
+// boton "Reiniciar partido". No toca goles ni tarjetas: esos si
+// pueden tener efectos ya aplicados en el jugador que hay que
+// revertir por su cuenta (ver eliminarGol/eliminarTarjeta), asi que
+// los borra quien llama a esta funcion antes de invocarla.
+export async function reiniciarPartido(partidoId) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    titularesLocal: [],
+    titularesVisitante: [],
+    golesLocal: null,
+    golesVisitante: null,
+  })
+}
+
 // Marca (o desmarca) a un jugador como titular de un partido puntual
 // (ver ControlPartido) - `equipo` es 'local' o 'visitante', elige el
 // array correspondiente (titularesLocal / titularesVisitante) sobre

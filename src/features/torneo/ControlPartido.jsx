@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import { listarJugadoresPorEquipo } from '../../services/torneoJugadoresService'
-import { actualizarTitular, registrarResultadoPartido } from '../../services/torneoPartidosService'
+import { actualizarTitular, registrarResultadoPartido, reiniciarPartido } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
-import { registrarTarjeta, listarTarjetasPorPartido, eliminarTarjeta } from '../../services/torneoTarjetasService'
+import {
+  registrarTarjetaPartido,
+  finalizarTarjetasPartido,
+  listarTarjetasPorPartido,
+  eliminarTarjeta,
+} from '../../services/torneoTarjetasService'
 import { TIPO_TARJETA } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 
@@ -26,6 +31,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [error, setError] = useState(null)
   const [procesando, setProcesando] = useState(false)
   const [finalizando, setFinalizando] = useState(false)
+  const [reiniciando, setReiniciando] = useState(false)
   const [ultimaAccion, setUltimaAccion] = useState(null) // { tipo: 'gol' | 'tarjeta', docId, descripcion }
   const [cambio, setCambio] = useState(null) // { equipo, saliente, suplentes } - ver handleTocarTitular
 
@@ -69,6 +75,20 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   function tarjetasDe(jugadorId) {
     return tarjetas.filter((t) => t.jugadorId === jugadorId)
   }
+
+  // Expulsado EN ESTE PARTIDO: roja directa, o 2da amarilla (todavia
+  // sin procesar - el efecto de temporada recien se aplica al
+  // finalizar, ver finalizarTarjetasPartido, pero para la UI en vivo
+  // ya cuenta como afuera).
+  function estaExpulsadoEnPartido(jugadorId) {
+    const cartas = tarjetasDe(jugadorId)
+    const amarillas = cartas.filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length
+    const roja = cartas.some((t) => t.tipo === TIPO_TARJETA.ROJA)
+    return roja || amarillas >= 2
+  }
+
+  const expulsadosLocal = jugadoresLocal.filter((j) => estaExpulsadoEnPartido(j.id))
+  const expulsadosVisitante = jugadoresVisitante.filter((j) => estaExpulsadoEnPartido(j.id))
 
   async function handleToggleTitular(equipo, jugadorId, esTitular) {
     const setTitulares = equipo === 'local' ? setTitularesLocal : setTitularesVisitante
@@ -134,11 +154,16 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
+  // La tarjeta queda "en borrador" (no afecta amarillasAcumuladas ni
+  // suspende todavia) hasta que se toca "Finalizar partido" - asi una
+  // 2da amarilla del mismo partido se puede reconocer como equivalente
+  // a una roja antes de aplicarle ningun efecto real al jugador (ver
+  // finalizarTarjetasPartido).
   async function handleTarjeta(jugador, equipoId, tipo) {
     setProcesando(true)
     setError(null)
     try {
-      const tarjetaId = await registrarTarjeta({
+      const tarjetaId = await registrarTarjetaPartido({
         torneoId,
         categoria,
         jugadorId: jugador.id,
@@ -146,8 +171,6 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         tipo,
         partidoId: partido.id,
         fecha: new Date(),
-        motivo: '',
-        fechasSuspension: tipo === TIPO_TARJETA.ROJA ? 1 : null,
         fechaNumero: partido.fechaNumero,
       })
       setUltimaAccion({
@@ -186,6 +209,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setFinalizando(true)
     setError(null)
     try {
+      // Recien aca se aplican de verdad las tarjetas "en borrador" a
+      // los contadores de temporada de cada jugador.
+      await finalizarTarjetasPartido({ torneoId, categoria, partidoId: partido.id, fechaNumero: partido.fechaNumero })
       await registrarResultadoPartido(partido.id, { golesLocal: golesLocalCount, golesVisitante: golesVisitanteCount })
       onFinalizado()
     } catch (err) {
@@ -195,17 +221,52 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
+  // Deja el partido como si nunca se hubiera jugado: borra sus goles y
+  // tarjetas (revirtiendo el efecto de las que ya estaban procesadas,
+  // ver eliminarTarjeta), vacia la alineacion y vuelve el resultado a
+  // Pendiente.
+  async function handleReiniciarPartido() {
+    if (
+      !confirm(
+        '¿Reiniciar este partido? Se borran los goles, las tarjetas y la alineación cargados, y el resultado vuelve a Pendiente.\n\nEsta acción no se puede deshacer.'
+      )
+    )
+      return
+    setReiniciando(true)
+    setError(null)
+    try {
+      for (const g of goles) {
+        await eliminarGol(g.id)
+      }
+      for (const t of tarjetas) {
+        await eliminarTarjeta(t.id)
+      }
+      await reiniciarPartido(partido.id)
+      setTitularesLocal([])
+      setTitularesVisitante([])
+      setUltimaAccion(null)
+      await cargar()
+    } catch (err) {
+      console.error('[ControlPartido]', err)
+      setError(err.message || 'No se pudo reiniciar el partido.')
+    } finally {
+      setReiniciando(false)
+    }
+  }
+
   function Fila({ jugador, equipoId, equipo, titulares }) {
     const esTitular = titulares.includes(jugador.id)
     const nGoles = golesDe(jugador.id)
     const tj = tarjetasDe(jugador.id)
-    const tieneAmarilla = tj.some((t) => t.tipo === TIPO_TARJETA.AMARILLA)
+    const amarillasPartido = tj.filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length
     const tieneRoja = tj.some((t) => t.tipo === TIPO_TARJETA.ROJA)
+    const expulsado = tieneRoja || amarillasPartido >= 2
     return (
-      <li className="px-2.5 py-2">
+      <li className={`px-2.5 py-2 ${expulsado ? 'bg-danger-soft/40' : ''}`}>
         <button
           onClick={() => (esTitular ? handleTocarTitular(equipo, jugador) : handleToggleTitular(equipo, jugador.id, true))}
-          className="flex w-full items-center justify-between gap-1.5 text-left"
+          disabled={expulsado}
+          className="flex w-full items-center justify-between gap-1.5 text-left disabled:opacity-70"
           title={esTitular ? 'Titular (tocar para sacarlo y elegir reemplazo)' : 'Suplente (tocar para marcar titular)'}
         >
           <span className={`min-w-0 flex-1 truncate text-xs font-medium ${esTitular ? 'text-ink' : 'text-ink-soft'}`}>
@@ -213,33 +274,41 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
           </span>
           <span className="flex shrink-0 items-center gap-1 text-[11px]">
             {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
-            {tieneAmarilla && <span>🟨</span>}
+            {Array.from({ length: amarillasPartido }).map((_, i) => (
+              <span key={i}>🟨</span>
+            ))}
             {tieneRoja && <span>🟥</span>}
           </span>
         </button>
-        <div className="mt-1.5 flex gap-1">
-          <button
-            onClick={() => handleGol(jugador, equipoId)}
-            disabled={procesando}
-            className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] disabled:opacity-50"
-          >
-            ⚽
-          </button>
-          <button
-            onClick={() => handleTarjeta(jugador, equipoId, TIPO_TARJETA.AMARILLA)}
-            disabled={procesando || jugador.suspendido}
-            className="flex-1 rounded-md border border-warning/30 bg-warning-soft py-1 text-[11px] disabled:opacity-50"
-          >
-            🟨
-          </button>
-          <button
-            onClick={() => handleTarjeta(jugador, equipoId, TIPO_TARJETA.ROJA)}
-            disabled={procesando || jugador.suspendido}
-            className="flex-1 rounded-md border border-danger/30 bg-danger-soft py-1 text-[11px] disabled:opacity-50"
-          >
-            🟥
-          </button>
-        </div>
+        {expulsado ? (
+          <p className="mt-1.5 text-center text-[11px] font-semibold text-danger">
+            🟥 Expulsado{!tieneRoja && amarillasPartido >= 2 ? ' (2 amarillas)' : ''}
+          </p>
+        ) : (
+          <div className="mt-1.5 flex gap-1">
+            <button
+              onClick={() => handleGol(jugador, equipoId)}
+              disabled={procesando}
+              className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] disabled:opacity-50"
+            >
+              ⚽
+            </button>
+            <button
+              onClick={() => handleTarjeta(jugador, equipoId, TIPO_TARJETA.AMARILLA)}
+              disabled={procesando || jugador.suspendido}
+              className="flex-1 rounded-md border border-warning/30 bg-warning-soft py-1 text-[11px] disabled:opacity-50"
+            >
+              🟨
+            </button>
+            <button
+              onClick={() => handleTarjeta(jugador, equipoId, TIPO_TARJETA.ROJA)}
+              disabled={procesando || jugador.suspendido}
+              className="flex-1 rounded-md border border-danger/30 bg-danger-soft py-1 text-[11px] disabled:opacity-50"
+            >
+              🟥
+            </button>
+          </div>
+        )}
       </li>
     )
   }
@@ -313,6 +382,25 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             </div>
           </div>
 
+          {(expulsadosLocal.length > 0 || expulsadosVisitante.length > 0) && (
+            <div className="mb-3 overflow-hidden rounded-2xl border border-danger/30 bg-danger-soft">
+              <p className="border-b border-danger/20 px-3 py-1.5 text-xs font-semibold text-danger">
+                🟥 Expulsados
+              </p>
+              <ul className="divide-y divide-danger/20">
+                {[...expulsadosLocal, ...expulsadosVisitante].map((j) => {
+                  const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
+                  return (
+                    <li key={j.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
+                      <span className="min-w-0 truncate text-ink">{j.nombre}</span>
+                      <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+
           {ultimaAccion && (
             <button
               onClick={handleDeshacer}
@@ -325,7 +413,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
           <button
             onClick={handleFinalizar}
-            disabled={finalizando}
+            disabled={finalizando || reiniciando}
             className="w-full rounded-lg bg-brand py-2.5 font-medium text-white disabled:opacity-50"
           >
             {finalizando
@@ -333,6 +421,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               : partido.golesLocal != null
                 ? 'Actualizar resultado final'
                 : 'Finalizar partido'}
+          </button>
+
+          <button
+            onClick={handleReiniciarPartido}
+            disabled={reiniciando || finalizando}
+            className="mt-2 w-full rounded-lg border border-danger/30 py-2 text-xs font-medium text-danger disabled:opacity-50"
+          >
+            {reiniciando ? 'Reiniciando…' : '↺ Reiniciar partido (vuelve todo a cero)'}
           </button>
         </>
       )}

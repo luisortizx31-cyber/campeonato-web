@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  addDoc,
   runTransaction,
   updateDoc,
   writeBatch,
@@ -118,6 +119,13 @@ export async function registrarTarjeta({ torneoId, jugadorId, equipoId, categori
       equipoId,
       categoria,
       tipo,
+      // Que efecto se le aplico realmente al jugador (ver
+      // registrarTarjetaPartido/finalizarTarjetasPartido: ahi puede
+      // diferir de `tipo`, ej. la 2da amarilla del mismo partido se
+      // procesa como roja) - aca coinciden porque el efecto se aplica
+      // en el momento, tal cual se cargo.
+      tipoEfectivo: tipo,
+      procesada: true,
       partidoId: partidoId || null,
       fecha,
       fechaNumero: fechaNum,
@@ -128,6 +136,131 @@ export async function registrarTarjeta({ torneoId, jugadorId, equipoId, categori
   })
 
   return tarjetaRef.id
+}
+
+// Tarjeta "en borrador" cargada desde ControlPartido mientras el
+// partido se esta jugando: se guarda el registro (para no perderlo si
+// se cierra la app), pero NO afecta todavia el contador del jugador -
+// eso recien pasa en finalizarTarjetasPartido, cuando se toca
+// "Finalizar partido". Asi una 2da amarilla del mismo partido se
+// puede reconocer como equivalente a una roja antes de aplicar ningun
+// efecto (ver finalizarTarjetasPartido).
+export async function registrarTarjetaPartido({ torneoId, categoria, jugadorId, equipoId, tipo, partidoId, fecha, fechaNumero }) {
+  const ref = await addDoc(collection(db, 'torneo_tarjetas'), {
+    torneoId,
+    jugadorId,
+    equipoId,
+    categoria,
+    tipo,
+    tipoEfectivo: null,
+    procesada: false,
+    partidoId,
+    fecha,
+    fechaNumero: fechaNumero != null ? Number(fechaNumero) : null,
+    motivo: null,
+    fechasSuspension: null,
+    creadoEn: serverTimestamp(),
+  })
+  return ref.id
+}
+
+// Aplica de una sola vez el efecto de temporada (amarillasAcumuladas /
+// rojasAcumuladas / suspension / eliminacion) de todas las tarjetas
+// "en borrador" de un partido - se llama al tocar "Finalizar partido"
+// en ControlPartido. Por jugador, procesa sus tarjetas de ESE partido
+// en orden: la 1ra amarilla cuenta como amarilla normal, pero a partir
+// de la 2da amarilla (o si hay una roja directa) se procesa como
+// roja - "doble amarilla = expulsion", igual que en una cancha real.
+// Una vez que una tarjeta deja al jugador suspendido, las que sigan de
+// ese mismo partido ya no le vuelven a tocar el contador (solo quedan
+// marcadas como procesadas).
+export async function finalizarTarjetasPartido({ torneoId, categoria, partidoId, fechaNumero }) {
+  const snap = await getDocs(
+    query(collection(db, 'torneo_tarjetas'), where('partidoId', '==', partidoId), where('procesada', '==', false))
+  )
+  if (snap.empty) return
+
+  const porJugador = new Map()
+  snap.docs.forEach((d) => {
+    const lista = porJugador.get(d.data().jugadorId) || []
+    lista.push(d)
+    porJugador.set(d.data().jugadorId, lista)
+  })
+
+  const fechaNum = fechaNumero != null ? Number(fechaNumero) : null
+
+  await runTransaction(db, async (tx) => {
+    const configSnap = await tx.get(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
+    const { umbralAmarillas, umbralRojas } = leerUmbrales(configSnap)
+
+    for (const [jugadorId, docs] of porJugador) {
+      const jugadorRef = doc(db, 'torneo_jugadores', jugadorId)
+      const jugadorSnap = await tx.get(jugadorRef)
+      if (!jugadorSnap.exists()) continue
+      const jugador = jugadorSnap.data()
+
+      const ordenados = [...docs].sort(
+        (a, b) => (a.data().creadoEn?.toMillis?.() || 0) - (b.data().creadoEn?.toMillis?.() || 0)
+      )
+
+      let amarillasEnPartido = 0
+      let yaSuspendidoPorEsteProceso = jugador.suspendido
+      let amarillasAcumuladas = jugador.amarillasAcumuladas || 0
+      let rojasAcumuladas = jugador.rojasAcumuladas || 0
+
+      for (const d of ordenados) {
+        const data = d.data()
+        let tipoEfectivo = data.tipo
+
+        if (data.tipo === TIPO_TARJETA.AMARILLA) {
+          amarillasEnPartido += 1
+          if (amarillasEnPartido >= 2) tipoEfectivo = TIPO_TARJETA.ROJA
+        }
+
+        if (yaSuspendidoPorEsteProceso) {
+          tx.update(d.ref, { procesada: true, tipoEfectivo })
+          continue
+        }
+
+        const cambios = {}
+        if (tipoEfectivo === TIPO_TARJETA.AMARILLA) {
+          amarillasAcumuladas += 1
+          cambios.amarillasAcumuladas = amarillasAcumuladas
+          if (amarillasAcumuladas >= umbralAmarillas) {
+            cambios.suspendido = true
+            cambios.motivoSuspension = `${umbralAmarillas} amarillas acumuladas`
+            cambios.suspendidoDesde = serverTimestamp()
+            if (fechaNum != null) {
+              cambios.suspendidoDesdeFecha = fechaNum + 1
+              cambios.suspendidoHastaFecha = fechaNum + DURACION_SUSPENSION_AMARILLAS
+            }
+            yaSuspendidoPorEsteProceso = true
+          }
+        } else {
+          rojasAcumuladas += 1
+          cambios.rojasAcumuladas = rojasAcumuladas
+          cambios.suspendido = true
+          cambios.motivoSuspension =
+            data.tipo === TIPO_TARJETA.ROJA ? 'Tarjeta roja directa' : '2 amarillas en el mismo partido'
+          cambios.suspendidoDesde = serverTimestamp()
+          const duracion = data.fechasSuspension ? Number(data.fechasSuspension) : 1
+          cambios.fechasSuspension = duracion
+          if (fechaNum != null) {
+            cambios.suspendidoDesdeFecha = fechaNum + 1
+            cambios.suspendidoHastaFecha = fechaNum + duracion
+          }
+          if (umbralRojas && rojasAcumuladas >= umbralRojas) {
+            cambios.eliminado = true
+            cambios.motivoEliminacion = `${rojasAcumuladas} suspensiones por tarjeta roja directa`
+          }
+          yaSuspendidoPorEsteProceso = true
+        }
+
+        tx.update(jugadorRef, cambios)
+        tx.update(d.ref, { procesada: true, tipoEfectivo })
+      }
+    }
+  })
 }
 
 // Corrige una tarjeta cargada por error: descuenta el contador
@@ -141,6 +274,18 @@ export async function eliminarTarjeta(tarjetaId) {
     if (!tarjetaSnap.exists()) return
     const tarjeta = tarjetaSnap.data()
 
+    // Una tarjeta "en borrador" (procesada:false, ver
+    // registrarTarjetaPartido) todavia no le toco ningun contador al
+    // jugador - borrarla es simplemente sacarla, sin revertir nada.
+    // Puede llegar aca por cualquier camino (ej. "Eliminar" desde el
+    // historial de Amonestados mientras un partido sigue sin
+    // finalizar), asi que esta funcion tiene que ser segura para los
+    // dos casos.
+    if (tarjeta.procesada === false) {
+      tx.delete(tarjetaRef)
+      return
+    }
+
     const jugadorRef = doc(db, 'torneo_jugadores', tarjeta.jugadorId)
     const jugadorSnap = await tx.get(jugadorRef)
 
@@ -148,14 +293,20 @@ export async function eliminarTarjeta(tarjetaId) {
       const configSnap = await tx.get(doc(db, 'torneo_config', idConfigCategoria(tarjeta.torneoId, tarjeta.categoria)))
       const { umbralAmarillas, umbralRojas } = leerUmbrales(configSnap)
 
+      // tipoEfectivo puede diferir de tipo (ej. una 2da amarilla del
+      // mismo partido se proceso como roja, ver finalizarTarjetasPartido)
+      // - hay que descontar del contador que realmente se toco, no del
+      // que se ve en la tarjeta. Las tarjetas viejas (de antes de este
+      // campo) no tienen tipoEfectivo, ahi se usa `tipo` tal cual.
+      const tipoEfectivo = tarjeta.tipoEfectivo || tarjeta.tipo
       const jugador = jugadorSnap.data()
       const amarillas = Math.max(
         0,
-        (jugador.amarillasAcumuladas || 0) - (tarjeta.tipo === TIPO_TARJETA.AMARILLA ? 1 : 0)
+        (jugador.amarillasAcumuladas || 0) - (tipoEfectivo === TIPO_TARJETA.AMARILLA ? 1 : 0)
       )
       const rojas = Math.max(
         0,
-        (jugador.rojasAcumuladas || 0) - (tarjeta.tipo === TIPO_TARJETA.ROJA ? 1 : 0)
+        (jugador.rojasAcumuladas || 0) - (tipoEfectivo === TIPO_TARJETA.ROJA ? 1 : 0)
       )
       const sigueEliminado = Boolean(umbralRojas && rojas >= umbralRojas)
       const sigueSuspendido = sigueEliminado || amarillas >= umbralAmarillas || rojas >= 1
