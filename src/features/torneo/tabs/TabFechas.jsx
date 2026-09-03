@@ -576,9 +576,30 @@ function inicial(nombre) {
   return nombre?.trim()?.charAt(0)?.toUpperCase() || '—'
 }
 
+// Colores fijos de la paleta del tema, elegidos por hash del nombre -
+// muchos torneos usan nombres de equipo que comparten la misma
+// inicial (ej. "Promo 2000", "Promo 2001"...), asi que el color es lo
+// que realmente distingue un escudo de otro de un vistazo.
+const COLORES_EQUIPO = [
+  { bg: 'bg-brand-soft', text: 'text-brand' },
+  { bg: 'bg-gold-soft', text: 'text-gold' },
+  { bg: 'bg-success-soft', text: 'text-success' },
+  { bg: 'bg-warning-soft', text: 'text-warning' },
+  { bg: 'bg-danger-soft', text: 'text-danger' },
+]
+
+function colorEquipo(nombre) {
+  let hash = 0
+  for (let i = 0; i < (nombre?.length || 0); i++) {
+    hash = (hash * 31 + nombre.charCodeAt(i)) | 0
+  }
+  return COLORES_EQUIPO[Math.abs(hash) % COLORES_EQUIPO.length]
+}
+
 function EscudoEquipo({ nombre }) {
+  const color = colorEquipo(nombre)
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand">
+    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
       {inicial(nombre)}
     </span>
   )
@@ -588,13 +609,15 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
   const golesLocal = form?.golesLocal ?? partido.golesLocal ?? ''
   const golesVisitante = form?.golesVisitante ?? partido.golesVisitante ?? ''
   const jugado = partido.golesLocal != null
+  const ganoLocal = jugado && partido.golesLocal > partido.golesVisitante
+  const ganoVisitante = jugado && partido.golesVisitante > partido.golesLocal
   const nombreLocal = nombreEquipo(partido.equipoLocalId)
   const nombreVisitante = nombreEquipo(partido.equipoVisitanteId)
 
   return (
     <li
-      className={`overflow-hidden rounded-2xl border bg-surface shadow-sm transition-colors ${
-        jugado ? 'border-line' : 'border-dashed border-line'
+      className={`overflow-hidden rounded-2xl border border-l-4 bg-surface shadow-sm transition-colors ${
+        jugado ? 'border-line border-l-success' : 'border-dashed border-line border-l-line'
       }`}
     >
       <div className="flex items-center gap-2 px-3 pt-3 pb-1">
@@ -631,26 +654,42 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
       <div className="space-y-1.5 px-3 pb-3 pt-1">
         <div className="flex items-center gap-2">
           <EscudoEquipo nombre={nombreLocal} />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{nombreLocal}</span>
+          <span
+            className={`min-w-0 flex-1 truncate text-sm ${
+              ganoLocal ? 'font-bold text-ink' : ganoVisitante ? 'font-medium text-ink-soft' : 'font-medium text-ink'
+            }`}
+          >
+            {nombreLocal}
+          </span>
           <input
             type="number"
             min="0"
             inputMode="numeric"
             value={golesLocal}
             onChange={(e) => onChange(partido.id, 'golesLocal', e.target.value)}
-            className="money w-12 shrink-0 rounded-lg border border-line bg-paper py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand"
+            className={`money w-12 shrink-0 rounded-lg border py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand ${
+              jugado ? 'border-success/30 bg-success-soft' : 'border-line bg-paper'
+            }`}
           />
         </div>
         <div className="flex items-center gap-2">
           <EscudoEquipo nombre={nombreVisitante} />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{nombreVisitante}</span>
+          <span
+            className={`min-w-0 flex-1 truncate text-sm ${
+              ganoVisitante ? 'font-bold text-ink' : ganoLocal ? 'font-medium text-ink-soft' : 'font-medium text-ink'
+            }`}
+          >
+            {nombreVisitante}
+          </span>
           <input
             type="number"
             min="0"
             inputMode="numeric"
             value={golesVisitante}
             onChange={(e) => onChange(partido.id, 'golesVisitante', e.target.value)}
-            className="money w-12 shrink-0 rounded-lg border border-line bg-paper py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand"
+            className={`money w-12 shrink-0 rounded-lg border py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand ${
+              jugado ? 'border-success/30 bg-success-soft' : 'border-line bg-paper'
+            }`}
           />
         </div>
       </div>
