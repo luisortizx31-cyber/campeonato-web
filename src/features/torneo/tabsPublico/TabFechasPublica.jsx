@@ -4,6 +4,7 @@ import { listarPartidosPorCategoria } from '../../../services/torneoPartidosServ
 import { calcularLegPartido } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
+import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 
 // Solo lectura: muestra los cruces y resultados por fecha del
 // fixture. A diferencia de TabFechas (panel admin), no tiene ningun
@@ -124,38 +125,85 @@ export default function TabFechasPublica({ torneoId }) {
             })}
           </div>
 
-          <ul className="space-y-2" {...swipeFecha}>
+          <ul className="space-y-2.5" {...swipeFecha}>
             {partidosDeFecha.map((p) => {
               const jugado = p.golesLocal != null && p.golesVisitante != null
               const leg = calcularLegPartido(p, partidos)
+              const ganoLocal = jugado && p.golesLocal > p.golesVisitante
+              const ganoVisitante = jugado && p.golesVisitante > p.golesLocal
+              const nombreLocal = nombreEquipo(p.equipoLocalId)
+              const nombreVisitante = nombreEquipo(p.equipoVisitanteId)
+              const colorLocal = colorEquipo(nombreLocal)
+              const colorVisitante = colorEquipo(nombreVisitante)
               return (
-                <li key={p.id} className="rounded-xl border border-line bg-surface px-4 py-3">
-                  {leg && (
-                    <p className="mb-1.5">
+                <li
+                  key={p.id}
+                  className={`overflow-hidden rounded-2xl border border-l-4 bg-surface shadow-sm ${
+                    jugado ? 'border-line border-l-success' : 'border-dashed border-line border-l-line'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+                    {jugado ? (
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-success">
+                        <span className="h-1.5 w-1.5 rounded-full bg-success" /> Jugado
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">
+                        <span className="h-1.5 w-1.5 rounded-full bg-line" /> Pendiente
+                      </span>
+                    )}
+                    {leg === 'ida' && (
+                      <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand">Ida</span>
+                    )}
+                    {leg === 'vuelta' && (
+                      <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold">↩ Vuelta</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 px-4 pb-3 pt-1">
+                    <div className="flex items-center gap-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          leg === 'vuelta' ? 'bg-gold-soft text-gold' : 'bg-brand-soft text-brand'
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${colorLocal.bg} ${colorLocal.text}`}
+                      >
+                        {inicialEquipo(nombreLocal)}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${
+                          ganoLocal ? 'font-bold text-ink' : ganoVisitante ? 'font-medium text-ink-soft' : 'font-medium text-ink'
                         }`}
                       >
-                        {leg === 'vuelta' ? '↩ Vuelta' : 'Ida'}
+                        {nombreLocal}
                       </span>
-                    </p>
-                  )}
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{nombreEquipo(p.equipoLocalId)}</span>
-                      <span className="money w-8 shrink-0 rounded-lg bg-paper py-1 text-center text-sm font-semibold text-ink">
-                        {jugado ? p.golesLocal : '-'}
+                      <span
+                        className={`money w-10 shrink-0 rounded-lg py-1.5 text-center text-base font-bold text-ink ${
+                          jugado ? 'bg-success-soft' : 'bg-paper text-ink-soft'
+                        }`}
+                      >
+                        {jugado ? p.golesLocal : '–'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate text-sm text-ink">{nombreEquipo(p.equipoVisitanteId)}</span>
-                      <span className="money w-8 shrink-0 rounded-lg bg-paper py-1 text-center text-sm font-semibold text-ink">
-                        {jugado ? p.golesVisitante : '-'}
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${colorVisitante.bg} ${colorVisitante.text}`}
+                      >
+                        {inicialEquipo(nombreVisitante)}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${
+                          ganoVisitante ? 'font-bold text-ink' : ganoLocal ? 'font-medium text-ink-soft' : 'font-medium text-ink'
+                        }`}
+                      >
+                        {nombreVisitante}
+                      </span>
+                      <span
+                        className={`money w-10 shrink-0 rounded-lg py-1.5 text-center text-base font-bold text-ink ${
+                          jugado ? 'bg-success-soft' : 'bg-paper text-ink-soft'
+                        }`}
+                      >
+                        {jugado ? p.golesVisitante : '–'}
                       </span>
                     </div>
                   </div>
-                  {!jugado && <p className="mt-1.5 text-xs text-ink-soft">Pendiente</p>}
                 </li>
               )
             })}
