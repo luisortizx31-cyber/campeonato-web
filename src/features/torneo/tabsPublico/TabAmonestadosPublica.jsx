@@ -3,6 +3,7 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
 import { listarTarjetasPorCategoria } from '../../../services/torneoTarjetasService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS, TIPO_TARJETA_LABELS, TIPO_TARJETA_STYLES } from '../../../models/torneo'
+import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 
 export default function TabAmonestadosPublica({ torneoId }) {
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
@@ -86,16 +87,52 @@ export default function TabAmonestadosPublica({ torneoId }) {
           {suspendidos.length === 0 ? (
             <p className="mb-6 text-sm text-ink-soft">Nadie está suspendido en esta categoría.</p>
           ) : (
-            <ul className="mb-6 space-y-2">
-              {suspendidos.map((j) => (
-                <li key={j.id} className="rounded-xl border border-danger/30 bg-danger-soft px-4 py-3">
-                  <p className="text-sm font-semibold text-ink">{j.nombre}</p>
-                  <p className="text-xs text-ink-soft">
-                    {nombreEquipo(j.equipoId)} · {j.motivoSuspension}
-                    {j.fechasSuspension ? ` · ${j.fechasSuspension} fecha(s)` : ''}
-                  </p>
-                </li>
-              ))}
+            <ul className="mb-6 space-y-3">
+              {suspendidos.map((j) => {
+                const equipo = nombreEquipo(j.equipoId)
+                const color = colorEquipo(equipo)
+                const desde = j.suspendidoDesdeFecha
+                const hasta = j.suspendidoHastaFecha
+                const vuelve = hasta != null ? hasta + 1 : null
+                return (
+                  <li key={j.id} className="overflow-hidden rounded-2xl border border-danger/30 bg-surface shadow-sm">
+                    <div className="flex items-center gap-3 bg-danger-soft px-4 py-3">
+                      <span
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${color.bg} ${color.text}`}
+                      >
+                        {inicialEquipo(equipo)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-bold text-ink">{j.nombre}</p>
+                        <span className="inline-block rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-ink-soft">
+                          {equipo}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(desde != null || hasta != null) && (
+                      <div className="grid grid-cols-2 divide-x divide-line border-t border-danger/20">
+                        <div className="px-4 py-2.5 text-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">No juega</p>
+                          <p className="text-lg font-bold text-danger">
+                            Fecha {desde}{hasta != null && hasta !== desde ? `–${hasta}` : ''}
+                          </p>
+                        </div>
+                        <div className="px-4 py-2.5 text-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">Vuelve a jugar</p>
+                          <p className="text-lg font-bold text-success">
+                            {vuelve != null ? `Fecha ${vuelve}` : '—'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="border-t border-danger/20 px-4 py-2 text-xs text-ink-soft">
+                      {j.motivoSuspension}
+                    </p>
+                  </li>
+                )
+              })}
             </ul>
           )}
 

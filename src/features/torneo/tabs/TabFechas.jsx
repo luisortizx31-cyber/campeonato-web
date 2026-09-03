@@ -11,6 +11,7 @@ import {
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { calcularNumeroFechas, calcularLegPartido } from '../../../utils/fixtureTorneo'
+import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
@@ -572,35 +573,11 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
   )
 }
 
-function inicial(nombre) {
-  return nombre?.trim()?.charAt(0)?.toUpperCase() || '—'
-}
-
-// Colores fijos de la paleta del tema, elegidos por hash del nombre -
-// muchos torneos usan nombres de equipo que comparten la misma
-// inicial (ej. "Promo 2000", "Promo 2001"...), asi que el color es lo
-// que realmente distingue un escudo de otro de un vistazo.
-const COLORES_EQUIPO = [
-  { bg: 'bg-brand-soft', text: 'text-brand' },
-  { bg: 'bg-gold-soft', text: 'text-gold' },
-  { bg: 'bg-success-soft', text: 'text-success' },
-  { bg: 'bg-warning-soft', text: 'text-warning' },
-  { bg: 'bg-danger-soft', text: 'text-danger' },
-]
-
-function colorEquipo(nombre) {
-  let hash = 0
-  for (let i = 0; i < (nombre?.length || 0); i++) {
-    hash = (hash * 31 + nombre.charCodeAt(i)) | 0
-  }
-  return COLORES_EQUIPO[Math.abs(hash) % COLORES_EQUIPO.length]
-}
-
 function EscudoEquipo({ nombre }) {
   const color = colorEquipo(nombre)
   return (
     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
-      {inicial(nombre)}
+      {inicialEquipo(nombre)}
     </span>
   )
 }
