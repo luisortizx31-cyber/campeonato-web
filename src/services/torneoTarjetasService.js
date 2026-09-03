@@ -190,6 +190,13 @@ export async function listarTarjetasPorCategoria(torneoId, categoria) {
   return tarjetas
 }
 
+// Tarjetas de UN partido puntual (ver ControlPartido).
+export async function listarTarjetasPorPartido(partidoId) {
+  const q = query(collection(db, 'torneo_tarjetas'), where('partidoId', '==', partidoId))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
 // Botón manual "Levantar suspensión" / "Reincorporar" - para cuando el
 // Maestro quiere forzar el levantamiento antes de tiempo (o
 // reincorporar a un eliminado).

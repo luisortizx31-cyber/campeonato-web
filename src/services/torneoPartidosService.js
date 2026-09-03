@@ -9,6 +9,8 @@ import {
   query,
   where,
   serverTimestamp,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { generarRondas } from '../utils/fixtureTorneo'
@@ -135,6 +137,19 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
     golesLocal: Number(golesLocal),
     golesVisitante: Number(golesVisitante),
+  })
+}
+
+// Marca (o desmarca) a un jugador como titular de un partido puntual
+// (ver ControlPartido) - `equipo` es 'local' o 'visitante', elige el
+// array correspondiente (titularesLocal / titularesVisitante) sobre
+// el propio doc del partido. Cualquier jugador del equipo que no este
+// en ese array se considera suplente por defecto, sin necesidad de
+// otra lista aparte.
+export async function actualizarTitular(partidoId, equipo, jugadorId, esTitular) {
+  const campo = equipo === 'local' ? 'titularesLocal' : 'titularesVisitante'
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    [campo]: esTitular ? arrayUnion(jugadorId) : arrayRemove(jugadorId),
   })
 }
 

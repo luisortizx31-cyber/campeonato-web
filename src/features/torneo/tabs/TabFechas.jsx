@@ -15,6 +15,7 @@ import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
+import ControlPartido from '../ControlPartido'
 
 /**
  * Genera el fixture "todos contra todos" de una categoria (una vez
@@ -61,6 +62,8 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
   const [modalAgregar, setModalAgregar] = useState(false)
 
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
+
+  const [partidoControl, setPartidoControl] = useState(null)
 
   const barraFechasRef = useRef(null)
   useEffect(() => {
@@ -311,6 +314,24 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
         .sort((a, b) => a.fechaNumero - b.fechaNumero)
     : []
 
+  if (partidoControl) {
+    return (
+      <div>
+        <ControlPartido
+          torneoId={torneoId}
+          categoria={categoria}
+          partido={partidoControl}
+          nombreEquipo={nombreEquipo}
+          onVolver={() => setPartidoControl(null)}
+          onFinalizado={async () => {
+            setPartidoControl(null)
+            await cargar()
+          }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
@@ -493,6 +514,7 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
                     onEliminar={handleEliminarPartido}
                     eliminando={eliminandoPartido === p.id}
                     nombreEquipo={nombreEquipo}
+                    onAbrirControl={setPartidoControl}
                   />
                 ))}
               </ul>
@@ -511,6 +533,7 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
                     onEliminar={handleEliminarPartido}
                     eliminando={eliminandoPartido === p.id}
                     nombreEquipo={nombreEquipo}
+                    onAbrirControl={setPartidoControl}
                   />
                 ))}
               </ul>
@@ -589,7 +612,7 @@ function EscudoEquipo({ nombre }) {
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, nombreEquipo }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, nombreEquipo, onAbrirControl }) {
   const golesLocal = form?.golesLocal ?? partido.golesLocal ?? ''
   const golesVisitante = form?.golesVisitante ?? partido.golesVisitante ?? ''
   const jugado = partido.golesLocal != null
@@ -625,6 +648,15 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
           <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold">↩ Vuelta</span>
         )}
         <span className="flex-1" />
+        {onAbrirControl && (
+          <button
+            onClick={() => onAbrirControl(partido)}
+            className="shrink-0 rounded-lg border border-line bg-surface px-2 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
+            title="Alineación y eventos del partido"
+          >
+            📋 Control
+          </button>
+        )}
         <button
           onClick={() => onEliminar(partido)}
           disabled={eliminando}
