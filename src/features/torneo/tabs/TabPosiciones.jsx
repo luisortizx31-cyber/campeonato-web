@@ -46,6 +46,11 @@ export default function TabPosiciones({ torneoId }) {
     setErrorAccion(null)
     try {
       await actualizarEquiposEliminados(torneoId, categoria, cantidad)
+      // TablaPosicionesCategoria trae su propia copia de la config (la
+      // comparte con la pagina publica) - sin esto, la zona de
+      // eliminacion que se ve en la tabla de abajo quedaba desactualizada
+      // hasta recargar la pagina.
+      setRefreshKey((k) => k + 1)
     } catch (err) {
       console.error('[TabPosiciones]', err)
       setErrorAccion('No se pudo guardar la cantidad de equipos eliminados.')
@@ -103,7 +108,7 @@ export default function TabPosiciones({ torneoId }) {
               value={config?.equiposEliminados ?? 0}
               disabled={!config || guardandoConfig}
               onChange={(e) => handleCambiarEquiposEliminados(e.target.value)}
-              className="w-16 rounded-lg border border-line bg-paper px-2 py-1.5 text-center text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+              className="no-spinner w-16 rounded-lg border border-line bg-paper px-2 py-1.5 text-center text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
             />
             <span className="text-sm text-ink-soft">de {equipos.length}</span>
           </div>

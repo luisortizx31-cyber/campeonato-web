@@ -61,3 +61,15 @@ body {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
+
+/* Oculta las flechitas de incremento/decremento en <input type="number">
+   (ej. "Equipos eliminados" en Posiciones) - se sigue escribiendo el
+   numero normal, solo se saca el control nativo del navegador. */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+}
