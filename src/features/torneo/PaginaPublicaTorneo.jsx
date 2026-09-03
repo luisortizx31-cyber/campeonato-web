@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { obtenerConfigTorneo } from '../../services/torneoConfigService'
 import { obtenerTorneo } from '../../services/torneosService'
-import { useSwipeTabs } from '../../hooks/useSwipeTabs'
 import TabPosicionesPublica from './tabsPublico/TabPosicionesPublica'
 import TabFechasPublica from './tabsPublico/TabFechasPublica'
 import TabJugadoresPublica from './tabsPublico/TabJugadoresPublica'
@@ -54,7 +53,6 @@ export default function PaginaPublicaTorneo() {
 
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente
-  const swipe = useSwipeTabs(TABS, tabActiva, setTabActiva)
 
   if (torneoNoEncontrado) {
     return (
@@ -101,7 +99,7 @@ export default function PaginaPublicaTorneo() {
         ))}
       </nav>
 
-      <main className="mx-auto max-w-2xl px-4 py-6" {...swipe}>
+      <main className="mx-auto max-w-2xl px-4 py-6">
         <Componente torneoId={torneoId} />
       </main>
     </div>

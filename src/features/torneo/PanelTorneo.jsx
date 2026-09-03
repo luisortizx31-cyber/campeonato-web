@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { logout } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
-import { useSwipeTabs } from '../../hooks/useSwipeTabs'
 import TabEquipos from './tabs/TabEquipos'
 import TabFechas from './tabs/TabFechas'
 import TabPosiciones from './tabs/TabPosiciones'
@@ -26,7 +25,6 @@ export default function PanelTorneo() {
 
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente
-  const swipe = useSwipeTabs(TABS, tabActiva, setTabActiva)
 
   async function copiarLinkPublico() {
     const url = `${window.location.origin}/campeonato/${torneoId}`
@@ -86,7 +84,7 @@ export default function PanelTorneo() {
         ))}
       </nav>
 
-      <main className="mx-auto max-w-2xl px-4 py-6" {...swipe}>
+      <main className="mx-auto max-w-2xl px-4 py-6">
         <Componente torneoId={torneoId} />
       </main>
     </div>
