@@ -12,8 +12,8 @@ const TABS = [
   { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadoresPublica },
-  { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestadosPublica },
+  { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
 ]
 
 // Pagina publica de UN torneo (tenant) - sin login, pensada para
