@@ -22,6 +22,7 @@ export default function TabGoleadores({ torneoId }) {
   const [modal, setModal] = useState(false)
   const [eliminando, setEliminando] = useState(null)
   const [errorAccion, setErrorAccion] = useState(null)
+  const [fechaFiltro, setFechaFiltro] = useState('') // '' = todas las fechas
 
   async function cargarAuxiliares() {
     setCargando(true)
@@ -52,12 +53,25 @@ export default function TabGoleadores({ torneoId }) {
     cargarAuxiliares()
   }, [torneoId, categoria, refreshKey])
 
+  useEffect(() => {
+    setFechaFiltro('')
+  }, [categoria])
+
   function nombreJugador(id) {
     return jugadores.find((j) => j.id === id)?.nombre || '—'
   }
   function nombreEquipo(id) {
     return equipos.find((e) => e.id === id)?.nombre || '—'
   }
+
+  const fechasConGoles = [...new Set(goles.filter((g) => g.fechaNumero != null).map((g) => g.fechaNumero))].sort((a, b) => a - b)
+  const hayGolesSinFecha = goles.some((g) => g.fechaNumero == null)
+  const golesFiltrados =
+    fechaFiltro === ''
+      ? goles
+      : fechaFiltro === 'sin-fecha'
+        ? goles.filter((g) => g.fechaNumero == null)
+        : goles.filter((g) => g.fechaNumero === Number(fechaFiltro))
 
   async function handleEliminarGol(gol) {
     if (!confirm('¿Eliminar este gol registrado?')) return
@@ -126,11 +140,29 @@ export default function TabGoleadores({ torneoId }) {
 
       {!cargando && goles.length > 0 && (
         <>
-          <h2 className="mt-6 mb-2 text-sm font-semibold text-ink">
-            Historial de goles ({goles.length})
-          </h2>
+          <div className="mt-6 mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-ink">
+              Historial de goles ({golesFiltrados.length})
+            </h2>
+            {fechasConGoles.length > 0 && (
+              <select
+                value={fechaFiltro}
+                onChange={(e) => setFechaFiltro(e.target.value)}
+                className="shrink-0 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink outline-none focus-visible:border-brand"
+              >
+                <option value="">Todas las fechas</option>
+                {fechasConGoles.map((f) => (
+                  <option key={f} value={f}>Fecha {f}</option>
+                ))}
+                {hayGolesSinFecha && <option value="sin-fecha">Sin fecha</option>}
+              </select>
+            )}
+          </div>
+          {golesFiltrados.length === 0 ? (
+            <p className="text-sm text-ink-soft">No hay goles en esa fecha.</p>
+          ) : (
           <ul className="space-y-2">
-            {goles.map((g) => (
+            {golesFiltrados.map((g) => (
               <li
                 key={g.id}
                 className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm"
@@ -157,6 +189,7 @@ export default function TabGoleadores({ torneoId }) {
               </li>
             ))}
           </ul>
+          )}
         </>
       )}
 
