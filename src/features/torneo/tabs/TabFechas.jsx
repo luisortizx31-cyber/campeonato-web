@@ -29,7 +29,7 @@ import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
  * buscador) y le carga el resultado ahi, sin importar en que "Fecha"
  * del sistema haya quedado.
  */
-export default function TabFechas({ torneoId }) {
+export default function TabFechas({ torneoId, onIrAPosiciones }) {
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
@@ -431,20 +431,30 @@ export default function TabFechas({ torneoId }) {
                   )
                 })}
               </div>
-              <div className="mb-3 flex flex-wrap justify-end gap-2">
-                <button
-                  onClick={() => setModalAgregar(true)}
-                  className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
-                >
-                  + Agregar partido
-                </button>
-                <button
-                  onClick={handleReiniciarResultadosFecha}
-                  disabled={reiniciandoResultadosFecha || !partidosDeFecha.some((p) => p.golesLocal != null)}
-                  className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-warning/30 hover:text-warning disabled:opacity-50"
-                >
-                  {reiniciandoResultadosFecha ? '…' : `Reiniciar resultados (Fecha ${fechaSeleccionada})`}
-                </button>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                {onIrAPosiciones && (
+                  <button
+                    onClick={onIrAPosiciones}
+                    className="flex items-center gap-1.5 text-sm font-medium text-brand transition-colors hover:text-brand-dark"
+                  >
+                    📊 Ver tabla de posiciones
+                  </button>
+                )}
+                <div className="ml-auto flex flex-wrap justify-end gap-2">
+                  <button
+                    onClick={() => setModalAgregar(true)}
+                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
+                  >
+                    + Agregar partido
+                  </button>
+                  <button
+                    onClick={handleReiniciarResultadosFecha}
+                    disabled={reiniciandoResultadosFecha || !partidosDeFecha.some((p) => p.golesLocal != null)}
+                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-warning/30 hover:text-warning disabled:opacity-50"
+                  >
+                    {reiniciandoResultadosFecha ? '…' : `Reiniciar resultados (Fecha ${fechaSeleccionada})`}
+                  </button>
+                </div>
               </div>
             </>
           )}
