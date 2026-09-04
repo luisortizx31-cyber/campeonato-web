@@ -95,7 +95,16 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
     }
   }, [categoria])
 
+  // OJO: este efecto NO puede escribir en sessionStorage hasta que se
+  // haya intentado restaurar (ver mas abajo) - partidoControl arranca
+  // en null en el primer render, asi que si escribiera desde el
+  // principio borraria el id guardado (con removeItem) ANTES de que
+  // el efecto de restauracion llegara a leerlo, porque ese espera a
+  // que termine la primera carga (cargando pasa a false mas tarde).
+  // Eso era justo lo que rompia el refresh: volvia siempre a la lista
+  // de fechas en vez de reabrir el Control de Partido.
   useEffect(() => {
+    if (!restauroPartidoControl.current) return
     try {
       if (partidoControl) sessionStorage.setItem(STORAGE_PARTIDO_CONTROL_ID, partidoControl.id)
       else sessionStorage.removeItem(STORAGE_PARTIDO_CONTROL_ID)
@@ -109,14 +118,16 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
   // partido ya actualizado (no con una copia vieja del storage).
   useEffect(() => {
     if (restauroPartidoControl.current || cargando) return
-    restauroPartidoControl.current = true
     try {
       const idGuardado = sessionStorage.getItem(STORAGE_PARTIDO_CONTROL_ID)
-      if (!idGuardado) return
-      const encontrado = partidos.find((p) => p.id === idGuardado)
-      if (encontrado) setPartidoControl(encontrado)
+      if (idGuardado) {
+        const encontrado = partidos.find((p) => p.id === idGuardado)
+        if (encontrado) setPartidoControl(encontrado)
+      }
     } catch {
       // Sin sessionStorage (modo privado, etc) simplemente no restaura.
+    } finally {
+      restauroPartidoControl.current = true
     }
   }, [cargando, partidos])
 
