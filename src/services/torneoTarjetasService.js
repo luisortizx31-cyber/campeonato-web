@@ -193,9 +193,21 @@ export async function finalizarTarjetasPartido({ torneoId, categoria, partidoId,
     const configSnap = await tx.get(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
     const { umbralAmarillas, umbralRojas } = leerUmbrales(configSnap)
 
+    // Firestore exige que TODAS las lecturas de una transaccion pasen
+    // antes que cualquier escritura - con 2+ jugadores distintos con
+    // tarjetas en borrador, alternar tx.get() (jugador siguiente) con
+    // tx.update() (jugador anterior) dentro del mismo for tiraba
+    // "transactions require all reads to be executed before all
+    // writes". Por eso primero se leen TODOS los jugadores, y recien
+    // despues se calculan/aplican los cambios de cada uno.
+    const snapsPorJugador = new Map()
+    for (const jugadorId of porJugador.keys()) {
+      snapsPorJugador.set(jugadorId, await tx.get(doc(db, 'torneo_jugadores', jugadorId)))
+    }
+
     for (const [jugadorId, docs] of porJugador) {
-      const jugadorRef = doc(db, 'torneo_jugadores', jugadorId)
-      const jugadorSnap = await tx.get(jugadorRef)
+      const jugadorSnap = snapsPorJugador.get(jugadorId)
+      const jugadorRef = jugadorSnap.ref
       if (!jugadorSnap.exists()) continue
       const jugador = jugadorSnap.data()
 
