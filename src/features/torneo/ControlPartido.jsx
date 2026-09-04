@@ -269,7 +269,10 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, on
         className="flex w-full items-center justify-between gap-1.5 text-left"
         title="Tocar para sacarlo y elegir reemplazo"
       >
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">{jugador.nombre}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+          {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
+          {jugador.nombre}
+        </span>
         {(nGoles > 0 || amarillasPartido > 0) && (
           <span className="flex shrink-0 items-center gap-1 text-[11px]">
             {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
