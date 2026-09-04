@@ -200,7 +200,7 @@ function SelectorAlineacion({
             <span className={`normal-case transition-transform ${seccionAbierta.pool ? 'rotate-180' : ''}`}>⌄</span>
           </button>
           {seccionAbierta.pool && (
-            <ul className="divide-y divide-line">
+            <ul className="divide-y-2 divide-ink-soft/20">
               {listaPool.map((j, i) => (
                 <FilaAlineacion
                   key={j.id}
@@ -229,7 +229,7 @@ function SelectorAlineacion({
             <span className={`normal-case transition-transform ${seccionAbierta.titulares ? 'rotate-180' : ''}`}>⌄</span>
           </button>
           {seccionAbierta.titulares && (
-            <ul className="divide-y divide-line">
+            <ul className="divide-y-2 divide-ink-soft/20">
               {listaTitulares.map((j, i) => (
                 <FilaAlineacion
                   key={j.id}
@@ -256,7 +256,7 @@ function SelectorAlineacion({
             <span className={`normal-case transition-transform ${seccionAbierta.suplentes ? 'rotate-180' : ''}`}>⌄</span>
           </button>
           {seccionAbierta.suplentes && (
-            <ul className="divide-y divide-line">
+            <ul className="divide-y-2 divide-ink-soft/20">
               {listaSuplentes.map((j, i) => (
                 <FilaAlineacion
                   key={j.id}
@@ -286,7 +286,7 @@ function SelectorAlineacion({
                 <span className={`normal-case transition-transform ${seccionAbierta.expulsados ? 'rotate-180' : ''}`}>⌄</span>
               </button>
               {seccionAbierta.expulsados && (
-                <ul className="divide-y divide-line">
+                <ul className="divide-y-2 divide-ink-soft/20">
                   {listaExpulsados.map((j, i) => (
                     <FilaAlineacion
                       key={j.id}
