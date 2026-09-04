@@ -4,6 +4,7 @@ import {
   actualizarTitular,
   actualizarSuplente,
   actualizarDniConfirmado,
+  actualizarReclamo,
   registrarResultadoPartido,
   reiniciarPartido,
 } from '../../services/torneoPartidosService'
@@ -416,6 +417,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [reiniciando, setReiniciando] = useState(false)
   const [ultimaAccion, setUltimaAccion] = useState(null) // { tipo: 'gol' | 'tarjeta', docId, descripcion }
   const [cambio, setCambio] = useState(null) // { equipo, saliente, suplentes } - ver handleTocarTitular
+  // reclamoGuardado es lo ultimo que quedo guardado en Firestore;
+  // reclamoDraft es lo que se esta escribiendo mientras se edita -
+  // separados para poder "Cancelar" sin depender de `partido.reclamo`
+  // (el prop es estatico, no se actualiza solo despues de guardar).
+  const [reclamoGuardado, setReclamoGuardado] = useState(partido.reclamo || '')
+  const [reclamoDraft, setReclamoDraft] = useState(partido.reclamo || '')
+  const [editandoReclamo, setEditandoReclamo] = useState(false)
+  const [guardandoReclamo, setGuardandoReclamo] = useState(false)
 
   async function cargar() {
     setCargando(true)
@@ -691,6 +700,34 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
+  // Reclamo/protesta sobre este partido puntual - texto libre, no
+  // afecta nada del sistema (ni resultado ni sanciones), solo queda
+  // asentado por si hace falta revisarlo despues.
+  function handleAbrirReclamo() {
+    setReclamoDraft(reclamoGuardado)
+    setEditandoReclamo(true)
+  }
+
+  function handleCancelarReclamo() {
+    setReclamoDraft(reclamoGuardado)
+    setEditandoReclamo(false)
+  }
+
+  async function handleGuardarReclamo() {
+    setGuardandoReclamo(true)
+    setError(null)
+    try {
+      await actualizarReclamo(partido.id, reclamoDraft)
+      setReclamoGuardado(reclamoDraft.trim())
+      setEditandoReclamo(false)
+    } catch (err) {
+      console.error('[ControlPartido]', err)
+      setError('No se pudo guardar el reclamo.')
+    } finally {
+      setGuardandoReclamo(false)
+    }
+  }
+
   async function handleFinalizar() {
     if (!confirm(`¿Finalizar el partido con marcador ${golesLocalCount} - ${golesVisitanteCount}?`)) return
     setFinalizando(true)
@@ -949,6 +986,51 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
           >
             {reiniciando ? 'Reiniciando…' : '↺ Reiniciar goles y tarjetas (no toca la alineación)'}
           </button>
+
+          <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface">
+            <div className="flex items-center justify-between gap-2 border-b border-line bg-ink-soft/15 px-3 py-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-ink">📋 Reclamo</span>
+              {!editandoReclamo && (
+                <button onClick={handleAbrirReclamo} className="text-xs font-medium text-brand">
+                  {reclamoGuardado ? 'Editar' : '+ Anotar'}
+                </button>
+              )}
+            </div>
+            <div className="p-3">
+              {editandoReclamo ? (
+                <>
+                  <textarea
+                    value={reclamoDraft}
+                    onChange={(e) => setReclamoDraft(e.target.value)}
+                    rows={3}
+                    placeholder="Ej: El equipo visitante reclama por…"
+                    className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm text-ink outline-none focus-visible:border-brand"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelarReclamo}
+                      disabled={guardandoReclamo}
+                      className="flex-1 rounded-lg border border-line py-2 text-xs font-medium text-ink-soft disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleGuardarReclamo}
+                      disabled={guardandoReclamo}
+                      className="flex-1 rounded-lg bg-brand py-2 text-xs font-medium text-white disabled:opacity-50"
+                    >
+                      {guardandoReclamo ? 'Guardando…' : 'Guardar'}
+                    </button>
+                  </div>
+                </>
+              ) : reclamoGuardado ? (
+                <p className="whitespace-pre-wrap text-sm text-ink">{reclamoGuardado}</p>
+              ) : (
+                <p className="text-sm text-ink-soft">Sin reclamos anotados para este partido.</p>
+              )}
+            </div>
+          </div>
         </>
       )}
       </div>

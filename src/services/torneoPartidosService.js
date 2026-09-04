@@ -155,6 +155,19 @@ export async function reiniciarPartido(partidoId) {
   })
 }
 
+// Reclamo/protesta que un equipo (o el propio Maestro) quiere dejar
+// asentado sobre un partido puntual - texto libre, no dispara ninguna
+// logica del sistema (no suspende, no cambia el resultado). Se guarda
+// junto con quien lo anoto y cuando, para tener un registro de cuando
+// se cargo si hace falta revisarlo despues.
+export async function actualizarReclamo(partidoId, texto) {
+  const limpio = texto?.trim() || null
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    reclamo: limpio,
+    reclamoFecha: limpio ? serverTimestamp() : null,
+  })
+}
+
 // Marca (o desmarca) a un jugador como titular/suplente de un partido
 // puntual (ver ControlPartido) - `equipo` es 'local' o 'visitante',
 // elige el array correspondiente sobre el propio doc del partido. Un
