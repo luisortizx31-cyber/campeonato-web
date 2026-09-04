@@ -25,6 +25,18 @@ function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
 }
 
+// Nombre y primer apellido, para la Cancha (lista angosta, sin lugar
+// para un nombre completo con segundo nombre y dos apellidos). Con
+// nombres tipo "Luis Alberto Ortiz Jauregui" (nombre1 nombre2
+// apellido1 apellido2), el primer apellido es la anteultima palabra
+// - la ultima es siempre el segundo apellido, que es el que sobra. Con
+// 1 o 2 palabras no hay nada que acortar, se muestra tal cual.
+function nombreCorto(nombreCompleto) {
+  const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean)
+  if (partes.length <= 2) return partes.join(' ')
+  return `${partes[0]} ${partes[partes.length - 2]}`
+}
+
 // Fila del desplegable de ALINEACION (arriba): numerada 1..n dentro de
 // cada lista (Jugadores/Titulares/Suplentes/Expulsados) para poder
 // referirse a "el 3 de suplentes" de un vistazo. En Titulares/
@@ -308,7 +320,7 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, on
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
           {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
-          {jugador.nombre}
+          {nombreCorto(jugador.nombre)}
         </span>
         {(nGoles > 0 || amarillasPartido > 0) && (
           <span className="flex shrink-0 items-center gap-1 text-[11px]">
@@ -815,7 +827,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               <div
                 className={`truncate px-2 py-1.5 text-center text-[11px] font-bold ${colorLocal.bg} ${colorLocal.text}`}
               >
-                {nombreEquipo(partido.equipoLocalId)}
+                {nombreEquipo(partido.equipoLocalId)} ({enCanchaLocal.length})
               </div>
               <ul className="divide-y divide-line">
                 {enCanchaLocal.map((j) => (
@@ -842,7 +854,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               <div
                 className={`truncate px-2 py-1.5 text-center text-[11px] font-bold ${colorVisitante.bg} ${colorVisitante.text}`}
               >
-                {nombreEquipo(partido.equipoVisitanteId)}
+                {nombreEquipo(partido.equipoVisitanteId)} ({enCanchaVisitante.length})
               </div>
               <ul className="divide-y divide-line">
                 {enCanchaVisitante.map((j) => (
