@@ -122,10 +122,19 @@ service cloud.firestore {
       allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
       allow update, delete: if esMaestroDe(resource.data.torneoId);
 
+      // El doc /privado/datos es OPCIONAL (solo se crea si el jugador
+      // tiene DNI o telefono cargado, ver registrarJugador) - para un
+      // jugador sin ninguno de los dos, eliminarJugador igual intenta
+      // borrarlo (por si acaso) y obtenerDatosPrivadosJugador igual lo
+      // lee ("Ver datos"). Cuando el doc no existe, `resource` es null
+      // en la regla - hay que contemplar ese caso explicitamente, si no
+      // CUALQUIER operacion sobre un doc que no existe queda denegada
+      // (aunque el jugador sea del propio Maestro) porque resource.data
+      // no se puede leer de un resource null.
       match /privado/{docId} {
-        allow get: if esMaestro() && resource.data.torneoId == miTorneoId();
+        allow get: if esMaestro() && (resource == null || resource.data.torneoId == miTorneoId());
         allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
-        allow update, delete: if esMaestro() && resource.data.torneoId == miTorneoId();
+        allow update, delete: if esMaestro() && (resource == null || resource.data.torneoId == miTorneoId());
       }
     }
 
