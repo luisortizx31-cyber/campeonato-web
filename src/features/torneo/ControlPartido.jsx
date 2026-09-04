@@ -944,11 +944,17 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 🟥 Expulsados
               </p>
               <ul className="divide-y divide-danger/20">
-                {[...expulsadosLocal, ...expulsadosVisitante].map((j) => {
+                {[
+                  ...expulsadosLocal.map((j) => ({ jugador: j, equipoId: partido.equipoLocalId })),
+                  ...expulsadosVisitante.map((j) => ({ jugador: j, equipoId: partido.equipoVisitanteId })),
+                ].map(({ jugador: j, equipoId }) => {
                   const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
                   return (
                     <li key={j.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
-                      <span className="min-w-0 truncate text-ink">{j.nombre}</span>
+                      <div className="min-w-0">
+                        <p className="truncate text-ink">{j.nombre}</p>
+                        <p className="truncate text-[10px] text-ink-soft">{nombreEquipo(equipoId)}</p>
+                      </div>
                       <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
                     </li>
                   )
