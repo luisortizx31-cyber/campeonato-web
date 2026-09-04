@@ -149,12 +149,12 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, on
 }
 
 /**
- * Pantalla de "control en vivo" de un partido puntual: arriba, un
- * desplegable por equipo para armar la alineacion (titulares y
- * suplentes); abajo, la cancha con SOLO los que estan jugando en este
- * momento (titulares menos los expulsados), para cargar goles/tarjetas
- * jugador por jugador con un toque. El marcador se arma solo sumando
- * los goles cargados aca - recien queda "Jugado" de verdad (con
+ * Pantalla de "control en vivo" de un partido puntual, con dos
+ * pestañas: Alineación (desplegable por equipo para armar titulares y
+ * suplentes) y Cancha (SOLO los que estan jugando ahora mismo -
+ * titulares menos los expulsados - para cargar goles/tarjetas jugador
+ * por jugador con un toque). El marcador se arma solo sumando los
+ * goles cargados aca - recien queda "Jugado" de verdad (con
  * golesLocal/golesVisitante fijados) cuando se toca "Finalizar
  * partido". Antes de eso el partido sigue viendose "Pendiente" en el
  * resto de la app.
@@ -168,6 +168,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [titularesVisitante, setTitularesVisitante] = useState(partido.titularesVisitante || [])
   const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(JUGADORES_POR_EQUIPO_DEFAULT)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
+  // Si el partido ya tenia alineacion cargada (se volvio a abrir un
+  // partido en curso), arranca directo en la cancha - si no, en
+  // Alineacion, que es el primer paso antes de poder cargar nada.
+  const [vista, setVista] = useState(() =>
+    (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0) ? 'cancha' : 'alineacion'
+  )
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [procesando, setProcesando] = useState(false)
@@ -458,40 +464,62 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
       )}
 
+      {!cargando && (
+        <div className="mb-3 flex overflow-hidden rounded-xl border border-line">
+          <button
+            onClick={() => setVista('alineacion')}
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              vista === 'alineacion' ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
+            }`}
+          >
+            Alineación
+          </button>
+          <button
+            onClick={() => setVista('cancha')}
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              vista === 'cancha' ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
+            }`}
+          >
+            Cancha
+          </button>
+        </div>
+      )}
+
       {cargando ? (
         <p className="text-sm text-ink-soft">Cargando…</p>
+      ) : vista === 'alineacion' ? (
+        <div className="space-y-2">
+          <SelectorAlineacion
+            titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
+            jugadores={jugadoresLocal}
+            titulares={titularesLocal}
+            jugadoresPorEquipo={jugadoresPorEquipo}
+            color={colorLocal}
+            abierto={alineacionAbierta.local}
+            onToggle={() => setAlineacionAbierta((a) => ({ ...a, local: !a.local }))}
+            onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('local', j, esTitular)}
+            estaExpulsado={estaExpulsadoEnPartido}
+          />
+          <SelectorAlineacion
+            titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
+            jugadores={jugadoresVisitante}
+            titulares={titularesVisitante}
+            jugadoresPorEquipo={jugadoresPorEquipo}
+            color={colorVisitante}
+            abierto={alineacionAbierta.visitante}
+            onToggle={() => setAlineacionAbierta((a) => ({ ...a, visitante: !a.visitante }))}
+            onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('visitante', j, esTitular)}
+            estaExpulsado={estaExpulsadoEnPartido}
+          />
+        </div>
       ) : (
         <>
-          <div className="mb-3 space-y-2">
-            <SelectorAlineacion
-              titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
-              jugadores={jugadoresLocal}
-              titulares={titularesLocal}
-              jugadoresPorEquipo={jugadoresPorEquipo}
-              color={colorLocal}
-              abierto={alineacionAbierta.local}
-              onToggle={() => setAlineacionAbierta((a) => ({ ...a, local: !a.local }))}
-              onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('local', j, esTitular)}
-              estaExpulsado={estaExpulsadoEnPartido}
-            />
-            <SelectorAlineacion
-              titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
-              jugadores={jugadoresVisitante}
-              titulares={titularesVisitante}
-              jugadoresPorEquipo={jugadoresPorEquipo}
-              color={colorVisitante}
-              abierto={alineacionAbierta.visitante}
-              onToggle={() => setAlineacionAbierta((a) => ({ ...a, visitante: !a.visitante }))}
-              onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('visitante', j, esTitular)}
-              estaExpulsado={estaExpulsadoEnPartido}
-            />
-          </div>
-
           {/* Fondo verde tipo cancha, con las dos alineaciones separadas
               por una linea central - no es un campo tactico con
               posiciones reales, es un agrupamiento visual simple. Solo
               se muestra a quien esta jugando ahora (titulares menos los
-              expulsados) - los suplentes se eligen arriba. */}
+              expulsados) - los suplentes se eligen en la pestaña
+              Alineación. */}
           <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl border-2 border-white/10 bg-brand-dark p-2">
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
@@ -515,7 +543,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 ))}
                 {enCanchaLocal.length === 0 && (
                   <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">
-                    Elegí titulares arriba
+                    Elegí titulares en Alineación
                   </li>
                 )}
               </ul>
@@ -542,7 +570,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 ))}
                 {enCanchaVisitante.length === 0 && (
                   <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">
-                    Elegí titulares arriba
+                    Elegí titulares en Alineación
                   </li>
                 )}
               </ul>
