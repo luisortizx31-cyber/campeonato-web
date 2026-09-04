@@ -93,20 +93,27 @@ function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onC
         Trajo DNI hoy
       </label>
       {estado === 'pool' && (
-        <div className="mt-1.5 flex gap-1.5 pl-5">
-          <button
-            onClick={onElegirTitular}
-            className="flex-1 rounded-md border border-success/30 bg-success-soft py-1 text-[11px] font-medium text-success"
-          >
-            → Titular
-          </button>
-          <button
-            onClick={onElegirSuplente}
-            className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] font-medium text-ink-soft"
-          >
-            → Suplente
-          </button>
-        </div>
+        <>
+          <div className="mt-1.5 flex gap-1.5 pl-5">
+            <button
+              onClick={onElegirTitular}
+              disabled={!dniConfirmado}
+              className="flex-1 rounded-md border border-success/30 bg-success-soft py-1 text-[11px] font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              → Titular
+            </button>
+            <button
+              onClick={onElegirSuplente}
+              disabled={!dniConfirmado}
+              className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] font-medium text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              → Suplente
+            </button>
+          </div>
+          {!dniConfirmado && (
+            <p className="mt-1 pl-5 text-[10px] text-ink-soft">Marcá que trajo el DNI para poder convocarlo.</p>
+          )}
+        </>
       )}
     </li>
   )
