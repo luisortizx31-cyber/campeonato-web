@@ -370,13 +370,32 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [dniConfirmadoVisitante, setDniConfirmadoVisitante] = useState(partido.dniConfirmadoVisitante || [])
   const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(JUGADORES_POR_EQUIPO_DEFAULT)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
-  // Si el partido ya tenia alineacion cargada (se volvio a abrir un
-  // partido en curso), arranca directo en la cancha - si no, en
-  // Alineacion, que es el primer paso antes de poder cargar nada.
-  const [vista, setVista] = useState(() =>
-    (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0) ? 'cancha' : 'alineacion'
-  )
+  // Que pestaña (Alineación/Cancha) se ve para ESTE partido puntual -
+  // se guarda en sessionStorage para que un refresh de pagina no
+  // vuelva siempre a Alineación. Si no hay nada guardado: directo a
+  // Cancha si el partido ya tenia alineacion cargada (se volvio a
+  // abrir uno en curso), si no a Alineación, que es el primer paso
+  // antes de poder cargar nada.
+  const vistaStorageKey = `campeonato_partido_${partido.id}_vista`
+  const [vista, setVista] = useState(() => {
+    try {
+      const guardada = sessionStorage.getItem(vistaStorageKey)
+      if (VISTAS.includes(guardada)) return guardada
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no restaura.
+    }
+    return (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0) ? 'cancha' : 'alineacion'
+  })
   const swipeVista = useSwipeHorizontal(VISTAS, vista, setVista)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(vistaStorageKey, vista)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [procesando, setProcesando] = useState(false)

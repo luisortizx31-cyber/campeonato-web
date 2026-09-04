@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { logout } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import TabEquipos from './tabs/TabEquipos'
@@ -21,10 +21,32 @@ const TABS = [
   { id: 'configuracion', label: 'Configuración', icon: '⚙️', Componente: TabConfiguracion },
 ]
 
+// Se guarda en sessionStorage (no localStorage: es solo para que un
+// refresh de la pagina no tire al Maestro de nuevo a Equipos, no hace
+// falta que sobreviva a cerrar la pestaña) para que un F5 en medio de
+// cualquier pestaña -incluido el Control de Partido dentro de
+// Fechas, ver TabFechas- deje todo tal cual estaba.
+const TAB_STORAGE_KEY = 'campeonato_tabActiva'
+
 export default function PanelTorneo() {
   const { torneoId } = useAuth()
-  const [tabActiva, setTabActiva] = useState('equipos')
+  const [tabActiva, setTabActiva] = useState(() => {
+    try {
+      const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
+      return TABS.some((t) => t.id === guardada) ? guardada : 'equipos'
+    } catch {
+      return 'equipos'
+    }
+  })
   const [linkCopiado, setLinkCopiado] = useState(false)
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, tabActiva)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+  }, [tabActiva])
 
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente

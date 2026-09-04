@@ -31,8 +31,22 @@ import { EscudoEquipo } from '../../shared/EscudoEquipo'
  * buscador) y le carga el resultado ahi, sin importar en que "Fecha"
  * del sistema haya quedado.
  */
+// sessionStorage (no localStorage, es solo navegacion efimera dentro
+// de la sesion) para que un refresh de pagina mientras se esta
+// controlando un partido puntual (ver `partidoControl` mas abajo) no
+// tire al Maestro de vuelta a la lista de fechas.
+const STORAGE_CATEGORIA = 'campeonato_fechas_categoria'
+const STORAGE_PARTIDO_CONTROL_ID = 'campeonato_fechas_partidoControlId'
+
 export default function TabFechas({ torneoId, onIrAPosiciones }) {
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+  const [categoria, setCategoria] = useState(() => {
+    try {
+      const guardada = sessionStorage.getItem(STORAGE_CATEGORIA)
+      return Object.values(CATEGORIA_TORNEO).includes(guardada) ? guardada : CATEGORIA_TORNEO.MASTER
+    } catch {
+      return CATEGORIA_TORNEO.MASTER
+    }
+  })
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -64,6 +78,7 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
 
   const [partidoControl, setPartidoControl] = useState(null)
+  const restauroPartidoControl = useRef(false)
 
   const barraFechasRef = useRef(null)
   useEffect(() => {
@@ -71,6 +86,39 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
     const activo = barraFechasRef.current.querySelector(`[data-fecha="${fechaSeleccionada}"]`)
     activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }, [fechaSeleccionada])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_CATEGORIA, categoria)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+  }, [categoria])
+
+  useEffect(() => {
+    try {
+      if (partidoControl) sessionStorage.setItem(STORAGE_PARTIDO_CONTROL_ID, partidoControl.id)
+      else sessionStorage.removeItem(STORAGE_PARTIDO_CONTROL_ID)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+  }, [partidoControl])
+
+  // Una sola vez, apenas termina la primera carga: si habia un
+  // Control de Partido abierto antes del refresh, lo reabre con el
+  // partido ya actualizado (no con una copia vieja del storage).
+  useEffect(() => {
+    if (restauroPartidoControl.current || cargando) return
+    restauroPartidoControl.current = true
+    try {
+      const idGuardado = sessionStorage.getItem(STORAGE_PARTIDO_CONTROL_ID)
+      if (!idGuardado) return
+      const encontrado = partidos.find((p) => p.id === idGuardado)
+      if (encontrado) setPartidoControl(encontrado)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no restaura.
+    }
+  }, [cargando, partidos])
 
   async function cargar() {
     setCargando(true)
