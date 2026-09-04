@@ -34,7 +34,7 @@ function porNombre(a, b) {
 // hoy) no hay un solo tap posible: dos botones aparte para mandarlo a
 // Titular o a Suplente. El numero de camiseta y el check de DNI del
 // dia quedan siempre visibles y editables, sean cual sea el estado.
-function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onClick, onElegirTitular, onElegirSuplente, onGuardarCamiseta, onCambiarDni }) {
+function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, titularesCompletos, onClick, onElegirTitular, onElegirSuplente, onGuardarCamiseta, onCambiarDni }) {
   const [numero, setNumero] = useState(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
 
   useEffect(() => {
@@ -59,7 +59,7 @@ function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onC
         ) : (
           <button
             onClick={onClick}
-            disabled={expulsado}
+            disabled={expulsado || (estado === 'suplente' && titularesCompletos)}
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-50"
           >
             <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
@@ -97,7 +97,7 @@ function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onC
           <div className="mt-1.5 flex gap-1.5 pl-5">
             <button
               onClick={onElegirTitular}
-              disabled={!dniConfirmado}
+              disabled={!dniConfirmado || titularesCompletos}
               className="flex-1 rounded-md border border-success/30 bg-success-soft py-1 text-[11px] font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
             >
               → Titular
@@ -110,9 +110,11 @@ function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onC
               → Suplente
             </button>
           </div>
-          {!dniConfirmado && (
+          {!dniConfirmado ? (
             <p className="mt-1 pl-5 text-[10px] text-ink-soft">Marcá que trajo el DNI para poder convocarlo.</p>
-          )}
+          ) : titularesCompletos ? (
+            <p className="mt-1 pl-5 text-[10px] text-ink-soft">Ya se llegó al máximo de titulares - solo puede ir a Suplente.</p>
+          ) : null}
         </>
       )}
     </li>
@@ -209,6 +211,7 @@ function SelectorAlineacion({
                   estado="suplente"
                   expulsado={estaExpulsado(j.id)}
                   dniConfirmado={dniConfirmados.includes(j.id)}
+                  titularesCompletos={completo}
                   onClick={() => onTocarSuplente(j)}
                   onGuardarCamiseta={onGuardarCamiseta}
                   onCambiarDni={onCambiarDni}
@@ -237,6 +240,7 @@ function SelectorAlineacion({
                   estado="pool"
                   expulsado={estaExpulsado(j.id)}
                   dniConfirmado={dniConfirmados.includes(j.id)}
+                  titularesCompletos={completo}
                   onElegirTitular={() => onElegirDesdePool(j, 'titular')}
                   onElegirSuplente={() => onElegirDesdePool(j, 'suplente')}
                   onGuardarCamiseta={onGuardarCamiseta}
@@ -443,12 +447,16 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
-  function confirmarSiPasaDelMaximo(equipo, jugador) {
+  // Ya no se puede pasar del maximo del formato configurado (futbol
+  // 6/7/11) - antes se avisaba con un confirm() y se dejaba agregar
+  // igual, ahora se bloquea directo: hay que sacar a alguien primero.
+  function puedeAgregarTitular(equipo, jugador) {
     const titulares = equipo === 'local' ? titularesLocal : titularesVisitante
     if (titulares.length >= jugadoresPorEquipo) {
-      return confirm(
-        `Este equipo ya tiene ${titulares.length} titulares (fútbol ${jugadoresPorEquipo}). ¿Agregar a ${jugador.nombre} igual?`
+      setError(
+        `Este equipo ya tiene el máximo de ${jugadoresPorEquipo} titulares (fútbol ${jugadoresPorEquipo}). Sacá a alguien antes de agregar a ${jugador.nombre}.`
       )
+      return false
     }
     return true
   }
@@ -472,11 +480,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   }
 
   // Tocar a un suplente lo promueve directo a titular (a diferencia de
-  // un cambio, esto NO baja a nadie, asi que puede pasarse del formato
-  // configurado - se avisa pero no se bloquea, por si hace falta jugar
-  // con uno de mas por algun motivo).
+  // un cambio, esto NO baja a nadie, asi que no se permite si ya se
+  // llego al maximo del formato configurado).
   function handleTocarSuplente(equipo, jugador) {
-    if (!confirmarSiPasaDelMaximo(equipo, jugador)) return
+    if (!puedeAgregarTitular(equipo, jugador)) return
     moverJugadorA(equipo, jugador.id, 'titular')
   }
 
@@ -484,7 +491,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   // para ESTE partido - a Suplente no tiene tope (no hay limite de
   // convocados en la banca).
   function handleElegirDesdePool(equipo, jugador, nuevoEstado) {
-    if (nuevoEstado === 'titular' && !confirmarSiPasaDelMaximo(equipo, jugador)) return
+    if (nuevoEstado === 'titular' && !puedeAgregarTitular(equipo, jugador)) return
     moverJugadorA(equipo, jugador.id, nuevoEstado)
   }
 
