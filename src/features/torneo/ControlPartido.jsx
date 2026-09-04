@@ -825,7 +825,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
           <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
-                className={`truncate px-2 py-1.5 text-center text-[11px] font-bold ${colorLocal.bg} ${colorLocal.text}`}
+                className={`truncate px-2 py-1.5 text-center text-[11px] font-bold text-ink ${colorLocal.bg}`}
               >
                 {nombreEquipo(partido.equipoLocalId)} ({enCanchaLocal.length})
               </div>
@@ -852,7 +852,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             </div>
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
-                className={`truncate px-2 py-1.5 text-center text-[11px] font-bold ${colorVisitante.bg} ${colorVisitante.text}`}
+                className={`truncate px-2 py-1.5 text-center text-[11px] font-bold text-ink ${colorVisitante.bg}`}
               >
                 {nombreEquipo(partido.equipoVisitanteId)} ({enCanchaVisitante.length})
               </div>
