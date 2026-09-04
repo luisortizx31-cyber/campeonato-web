@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { logout } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import TabEquipos from './tabs/TabEquipos'
@@ -48,6 +48,18 @@ export default function PanelTorneo() {
     }
   }, [tabActiva])
 
+  // La barra de pestañas se desplaza horizontal (overflow-x-auto) -
+  // sin esto, al restaurar una pestaña lejos del final (ej.
+  // Configuración) despues de un refresh, la barra arranca scrolleada
+  // al principio y hay que arrastrarla a mano para ver cual quedo
+  // activa.
+  const barraTabsRef = useRef(null)
+  useEffect(() => {
+    if (!barraTabsRef.current) return
+    const activo = barraTabsRef.current.querySelector(`[data-tab="${tabActiva}"]`)
+    activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [tabActiva])
+
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente
 
@@ -87,10 +99,11 @@ export default function PanelTorneo() {
         </div>
       </header>
 
-      <nav className="flex border-b border-line bg-surface overflow-x-auto">
+      <nav ref={barraTabsRef} className="flex border-b border-line bg-surface overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.id}
+            data-tab={t.id}
             onClick={() => setTabActiva(t.id)}
             className={`shrink-0 flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
               tabActiva === t.id
