@@ -8,21 +8,12 @@ import {
   limpiarSuspension,
   reconciliarSuspensionesPorFecha,
 } from '../../../services/torneoTarjetasService'
-import {
-  obtenerConfigCategoria,
-  actualizarUmbralAmarillas,
-  actualizarUmbralRojas,
-  actualizarJugadoresPorEquipo,
-} from '../../../services/torneoConfigService'
 import { calcularFechaActual } from '../../../utils/fixtureTorneo'
 import {
   CATEGORIA_TORNEO,
   CATEGORIA_TORNEO_LABELS,
   TIPO_TARJETA_LABELS,
   TIPO_TARJETA_STYLES,
-  OPCIONES_UMBRAL_AMARILLAS,
-  OPCIONES_UMBRAL_ROJAS,
-  OPCIONES_JUGADORES_POR_EQUIPO,
 } from '../../../models/torneo'
 import ModalAgregarTarjeta from '../ModalAgregarTarjeta'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
@@ -35,8 +26,6 @@ export default function TabAmonestados({ torneoId }) {
   const [tarjetas, setTarjetas] = useState([])
   const [partidos, setPartidos] = useState([])
   const [fechaActual, setFechaActual] = useState(0)
-  const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas }
-  const [guardandoUmbral, setGuardandoUmbral] = useState(false)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [modal, setModal] = useState(false)
@@ -49,10 +38,9 @@ export default function TabAmonestados({ torneoId }) {
     setCargando(true)
     setError(null)
     try {
-      const [eq, ts, cfg, ps] = await Promise.all([
+      const [eq, ts, ps] = await Promise.all([
         listarEquiposPorCategoria(torneoId, categoria),
         listarTarjetasPorCategoria(torneoId, categoria),
-        obtenerConfigCategoria(torneoId, categoria),
         listarPartidosPorCategoria(torneoId, categoria),
       ])
       const fechaActualCalculada = calcularFechaActual(ps)
@@ -67,7 +55,6 @@ export default function TabAmonestados({ torneoId }) {
       setEquipos(eq)
       setJugadores(js)
       setTarjetas(ts)
-      setConfig(cfg)
       setPartidos(ps)
       setFechaActual(fechaActualCalculada)
     } catch (err) {
@@ -81,49 +68,6 @@ export default function TabAmonestados({ torneoId }) {
   useEffect(() => {
     cargar()
   }, [torneoId, categoria])
-
-  async function handleCambiarUmbralAmarillas(nuevoUmbral) {
-    setConfig((c) => ({ ...c, umbralAmarillas: Number(nuevoUmbral) }))
-    setGuardandoUmbral(true)
-    setErrorAccion(null)
-    try {
-      await actualizarUmbralAmarillas(torneoId, categoria, nuevoUmbral)
-    } catch (err) {
-      console.error('[TabAmonestados]', err)
-      setErrorAccion('No se pudo guardar el umbral de suspensión.')
-    } finally {
-      setGuardandoUmbral(false)
-    }
-  }
-
-  async function handleCambiarUmbralRojas(nuevoUmbral) {
-    const valor = nuevoUmbral ? Number(nuevoUmbral) : null
-    setConfig((c) => ({ ...c, umbralRojas: valor }))
-    setGuardandoUmbral(true)
-    setErrorAccion(null)
-    try {
-      await actualizarUmbralRojas(torneoId, categoria, valor)
-    } catch (err) {
-      console.error('[TabAmonestados]', err)
-      setErrorAccion('No se pudo guardar el umbral de eliminación.')
-    } finally {
-      setGuardandoUmbral(false)
-    }
-  }
-
-  async function handleCambiarJugadoresPorEquipo(nuevaCantidad) {
-    setConfig((c) => ({ ...c, jugadoresPorEquipo: Number(nuevaCantidad) }))
-    setGuardandoUmbral(true)
-    setErrorAccion(null)
-    try {
-      await actualizarJugadoresPorEquipo(torneoId, categoria, nuevaCantidad)
-    } catch (err) {
-      console.error('[TabAmonestados]', err)
-      setErrorAccion('No se pudo guardar el formato del partido.')
-    } finally {
-      setGuardandoUmbral(false)
-    }
-  }
 
   function nombreJugador(id) {
     return jugadores.find((j) => j.id === id)?.nombre || '—'
@@ -195,66 +139,6 @@ export default function TabAmonestados({ torneoId }) {
           Fecha actual: {fechaActual > 0 ? fechaActual : '— (ninguna fecha completa todavía)'}
         </p>
       )}
-
-      <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-        <label htmlFor="jugadores-por-equipo" className="text-sm text-ink-soft">
-          Formato del partido
-        </label>
-        <div className="flex items-center gap-2">
-          <select
-            id="jugadores-por-equipo"
-            value={config?.jugadoresPorEquipo ?? ''}
-            disabled={!config || guardandoUmbral}
-            onChange={(e) => handleCambiarJugadoresPorEquipo(e.target.value)}
-            className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
-          >
-            {OPCIONES_JUGADORES_POR_EQUIPO.map((n) => (
-              <option key={n} value={n}>Fútbol {n}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-        <label htmlFor="umbral-amarillas" className="text-sm text-ink-soft">
-          Suspender al llegar a
-        </label>
-        <div className="flex items-center gap-2">
-          <select
-            id="umbral-amarillas"
-            value={config?.umbralAmarillas ?? ''}
-            disabled={!config || guardandoUmbral}
-            onChange={(e) => handleCambiarUmbralAmarillas(e.target.value)}
-            className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
-          >
-            {OPCIONES_UMBRAL_AMARILLAS.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-          <span className="text-sm text-ink-soft">amarillas</span>
-        </div>
-      </div>
-
-      <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-        <label htmlFor="umbral-rojas" className="text-sm text-ink-soft">
-          Eliminar del campeonato al
-        </label>
-        <div className="flex items-center gap-2">
-          <select
-            id="umbral-rojas"
-            value={config?.umbralRojas ?? ''}
-            disabled={!config || guardandoUmbral}
-            onChange={(e) => handleCambiarUmbralRojas(e.target.value)}
-            className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
-          >
-            <option value="">Nunca</option>
-            {OPCIONES_UMBRAL_ROJAS.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-          <span className="text-sm text-ink-soft">suspensiones por roja</span>
-        </div>
-      </div>
 
       <div className="mb-4 flex justify-end">
         <button

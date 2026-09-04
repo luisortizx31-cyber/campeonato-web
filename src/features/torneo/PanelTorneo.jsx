@@ -9,6 +9,7 @@ import TabGoleadores from './tabs/TabGoleadores'
 import TabJugadores from './tabs/TabJugadores'
 import TabAmonestados from './tabs/TabAmonestados'
 import TabBases from './tabs/TabBases'
+import TabConfiguracion from './tabs/TabConfiguracion'
 
 const TABS = [
   { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
@@ -18,6 +19,7 @@ const TABS = [
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestados },
   { id: 'bases', label: 'Bases', icon: '📄', Componente: TabBases },
+  { id: 'configuracion', label: 'Configuración', icon: '⚙️', Componente: TabConfiguracion },
 ]
 
 export default function PanelTorneo() {
