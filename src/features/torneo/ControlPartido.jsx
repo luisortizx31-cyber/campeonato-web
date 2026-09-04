@@ -810,7 +810,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               se muestra a quien esta jugando ahora (titulares menos los
               expulsados) - los suplentes se eligen en la pestaña
               Alineación. */}
-          <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl border-2 border-white/10 bg-brand-dark p-2">
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
                 className={`truncate px-2 py-1.5 text-center text-[11px] font-bold ${colorLocal.bg} ${colorLocal.text}`}
