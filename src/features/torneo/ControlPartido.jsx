@@ -705,9 +705,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       ) : (
       <div {...swipeVista}>
       {vista === 'alineacion' ? (
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border-2 border-white/10 bg-brand-dark p-2">
           <SelectorAlineacion
-            titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
+            titulo={nombreEquipo(partido.equipoLocalId)}
             jugadores={jugadoresLocal}
             titulares={titularesLocal}
             suplentes={suplentesLocal}
@@ -723,11 +723,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onGuardarCamiseta={handleGuardarCamiseta}
             onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('local', jugadorId, confirmado)}
           />
-
-          <div className="my-1 h-1.5 rounded-full bg-black" />
-
           <SelectorAlineacion
-            titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
+            titulo={nombreEquipo(partido.equipoVisitanteId)}
             jugadores={jugadoresVisitante}
             titulares={titularesVisitante}
             suplentes={suplentesVisitante}
