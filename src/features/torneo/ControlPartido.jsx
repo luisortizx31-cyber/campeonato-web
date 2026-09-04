@@ -613,14 +613,15 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
-  // Deja el partido como si nunca se hubiera jugado: borra sus goles y
-  // tarjetas (revirtiendo el efecto de las que ya estaban procesadas,
-  // ver eliminarTarjeta), vacia la alineacion y vuelve el resultado a
-  // Pendiente.
+  // Borra los goles y tarjetas del partido (revirtiendo el efecto de
+  // las que ya estaban procesadas, ver eliminarTarjeta) y vuelve el
+  // resultado a Pendiente - la alineacion (titulares, suplentes, DNI
+  // confirmado) queda tal cual, no hace falta rearmarla si lo unico
+  // que estaba mal era el marcador.
   async function handleReiniciarPartido() {
     if (
       !confirm(
-        '¿Reiniciar este partido? Se borran los goles, las tarjetas y la alineación cargados, y el resultado vuelve a Pendiente.\n\nEsta acción no se puede deshacer.'
+        '¿Reiniciar este partido? Se borran los goles y las tarjetas cargados, y el resultado vuelve a Pendiente. La alineación no se toca.\n\nEsta acción no se puede deshacer.'
       )
     )
       return
@@ -634,12 +635,6 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         await eliminarTarjeta(t.id)
       }
       await reiniciarPartido(partido.id)
-      setTitularesLocal([])
-      setTitularesVisitante([])
-      setSuplentesLocal([])
-      setSuplentesVisitante([])
-      setDniConfirmadoLocal([])
-      setDniConfirmadoVisitante([])
       setUltimaAccion(null)
       await cargar()
     } catch (err) {
@@ -852,7 +847,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             disabled={reiniciando || finalizando}
             className="mt-2 w-full rounded-lg border border-danger/30 py-2 text-xs font-medium text-danger disabled:opacity-50"
           >
-            {reiniciando ? 'Reiniciando…' : '↺ Reiniciar partido (vuelve todo a cero)'}
+            {reiniciando ? 'Reiniciando…' : '↺ Reiniciar goles y tarjetas (no toca la alineación)'}
           </button>
         </>
       )}

@@ -140,21 +140,16 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
   })
 }
 
-// Vuelve un partido puntual a su estado inicial: sin alineacion
-// marcada (titulares, suplentes ni DNI confirmado) y sin resultado
-// (Pendiente de nuevo) - ver ControlPartido, boton "Reiniciar
-// partido". No toca goles ni tarjetas: esos si pueden tener efectos ya
-// aplicados en el jugador que hay que revertir por su cuenta (ver
-// eliminarGol/eliminarTarjeta), asi que los borra quien llama a esta
-// funcion antes de invocarla.
+// Vuelve el RESULTADO de un partido puntual a Pendiente - ver
+// ControlPartido, boton "Reiniciar partido". No toca la alineacion
+// (titulares, suplentes, DNI confirmado): queda tal cual, para no
+// tener que volver a armarla si lo que estaba mal era solo el
+// marcador. Tampoco toca goles ni tarjetas: esos si pueden tener
+// efectos ya aplicados en el jugador que hay que revertir por su
+// cuenta (ver eliminarGol/eliminarTarjeta), asi que los borra quien
+// llama a esta funcion antes de invocarla.
 export async function reiniciarPartido(partidoId) {
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
-    titularesLocal: [],
-    titularesVisitante: [],
-    suplentesLocal: [],
-    suplentesVisitante: [],
-    dniConfirmadoLocal: [],
-    dniConfirmadoVisitante: [],
     golesLocal: null,
     golesVisitante: null,
   })
