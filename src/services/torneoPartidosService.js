@@ -140,31 +140,60 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
   })
 }
 
-// Vuelve un partido puntual a su estado inicial: sin titulares
-// marcados y sin resultado (Pendiente de nuevo) - ver ControlPartido,
-// boton "Reiniciar partido". No toca goles ni tarjetas: esos si
-// pueden tener efectos ya aplicados en el jugador que hay que
-// revertir por su cuenta (ver eliminarGol/eliminarTarjeta), asi que
-// los borra quien llama a esta funcion antes de invocarla.
+// Vuelve un partido puntual a su estado inicial: sin alineacion
+// marcada (titulares, suplentes ni DNI confirmado) y sin resultado
+// (Pendiente de nuevo) - ver ControlPartido, boton "Reiniciar
+// partido". No toca goles ni tarjetas: esos si pueden tener efectos ya
+// aplicados en el jugador que hay que revertir por su cuenta (ver
+// eliminarGol/eliminarTarjeta), asi que los borra quien llama a esta
+// funcion antes de invocarla.
 export async function reiniciarPartido(partidoId) {
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
     titularesLocal: [],
     titularesVisitante: [],
+    suplentesLocal: [],
+    suplentesVisitante: [],
+    dniConfirmadoLocal: [],
+    dniConfirmadoVisitante: [],
     golesLocal: null,
     golesVisitante: null,
   })
 }
 
-// Marca (o desmarca) a un jugador como titular de un partido puntual
-// (ver ControlPartido) - `equipo` es 'local' o 'visitante', elige el
-// array correspondiente (titularesLocal / titularesVisitante) sobre
-// el propio doc del partido. Cualquier jugador del equipo que no este
-// en ese array se considera suplente por defecto, sin necesidad de
-// otra lista aparte.
+// Marca (o desmarca) a un jugador como titular/suplente de un partido
+// puntual (ver ControlPartido) - `equipo` es 'local' o 'visitante',
+// elige el array correspondiente sobre el propio doc del partido. Un
+// jugador del equipo que no este en NINGUNO de los dos arrays queda en
+// "Jugadores" (todavia sin decidir si juega hoy) - a diferencia de
+// antes, ya no cae en suplente por defecto: hay que elegirlo a
+// proposito, para que Suplentes refleje solo a quienes de verdad se
+// convocaron para este partido puntual (el plantel completo del
+// equipo puede tener muchos mas jugadores registrados en la temporada
+// que los que van a la cancha un dia puntual).
 export async function actualizarTitular(partidoId, equipo, jugadorId, esTitular) {
   const campo = equipo === 'local' ? 'titularesLocal' : 'titularesVisitante'
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
     [campo]: esTitular ? arrayUnion(jugadorId) : arrayRemove(jugadorId),
+  })
+}
+
+export async function actualizarSuplente(partidoId, equipo, jugadorId, esSuplente) {
+  const campo = equipo === 'local' ? 'suplentesLocal' : 'suplentesVisitante'
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    [campo]: esSuplente ? arrayUnion(jugadorId) : arrayRemove(jugadorId),
+  })
+}
+
+// Check manual, aparte del DNI que ya se guarda en la ficha del
+// jugador (Jugadores -> datos privados): confirma si ESE jugador trajo
+// el documento fisico ESTE partido puntual, para el control de
+// identidad del dia. No se toca ni se lee de /privado a proposito -
+// puede tener el DNI cargado en el sistema y no haberlo traido hoy, o
+// al reves.
+export async function actualizarDniConfirmado(partidoId, equipo, jugadorId, confirmado) {
+  const campo = equipo === 'local' ? 'dniConfirmadoLocal' : 'dniConfirmadoVisitante'
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    [campo]: confirmado ? arrayUnion(jugadorId) : arrayRemove(jugadorId),
   })
 }
 

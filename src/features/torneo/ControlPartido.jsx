@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 import { listarJugadoresPorEquipo, actualizarNumeroCamiseta } from '../../services/torneoJugadoresService'
-import { actualizarTitular, registrarResultadoPartido, reiniciarPartido } from '../../services/torneoPartidosService'
+import {
+  actualizarTitular,
+  actualizarSuplente,
+  actualizarDniConfirmado,
+  registrarResultadoPartido,
+  reiniciarPartido,
+} from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
   registrarTarjetaPartido,
@@ -19,67 +25,118 @@ function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
 }
 
-// Fila del desplegable de ALINEACION (arriba): muestra a todo el
-// plantel del equipo, titulares primero, numerados 1..n dentro de
-// cada lista (Titulares/Suplentes) para poder referirse a "el 3 de
-// suplentes" de un vistazo. Tocar el nombre alterna titular/suplente
-// (o abre el selector de reemplazo si ya era titular, decidido por el
-// padre via `onClick`). El numero de camiseta se edita ahi mismo -
-// input aparte del boton del nombre (no puede ir adentro, un <input>
-// no es valido dentro de un <button>), con stopPropagation para que
-// tocarlo no dispare el toggle de titular/suplente.
-function FilaAlineacion({ indice, jugador, esTitular, expulsado, onClick, onGuardarCamiseta }) {
+// Fila del desplegable de ALINEACION (arriba): numerada 1..n dentro de
+// cada lista (Titulares/Suplentes/Jugadores) para poder referirse a
+// "el 3 de suplentes" de un vistazo. En Titulares/Suplentes, tocar el
+// nombre saca a ese jugador de su estado actual (decidido por el
+// padre via `onClick` - swap si es titular, promocion directa si es
+// suplente). En Jugadores (estado="pool", todavia sin decidir si juega
+// hoy) no hay un solo tap posible: dos botones aparte para mandarlo a
+// Titular o a Suplente. El numero de camiseta y el check de DNI del
+// dia quedan siempre visibles y editables, sean cual sea el estado.
+function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onClick, onElegirTitular, onElegirSuplente, onGuardarCamiseta, onCambiarDni }) {
   const [numero, setNumero] = useState(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
 
   useEffect(() => {
     setNumero(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
   }, [jugador.numeroCamiseta])
 
-  function guardar() {
+  function guardarCamiseta() {
     const actual = jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : ''
     if (numero.trim() === actual) return
     onGuardarCamiseta(jugador.id, numero.trim())
   }
 
   return (
-    <li className="flex items-center gap-2 px-3 py-2">
-      <button
-        onClick={onClick}
-        disabled={expulsado}
-        className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-50"
-      >
-        <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
-        <span className={`min-w-0 flex-1 truncate ${esTitular ? 'font-medium text-ink' : 'text-ink-soft'}`}>
-          {esTitular ? '●' : '○'} {jugador.nombre}
-        </span>
-        {expulsado && <span className="shrink-0 font-semibold text-danger">🟥 Expulsado</span>}
-      </button>
-      <input
-        type="number"
-        inputMode="numeric"
-        value={numero}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => setNumero(e.target.value)}
-        onBlur={guardar}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.target.blur()
-        }}
-        placeholder="#"
-        title="Número de camiseta"
-        className="no-spinner w-11 shrink-0 rounded-md border border-line bg-paper px-1 py-1 text-center text-xs text-ink outline-none focus-visible:border-brand"
-      />
+    <li className="px-3 py-2">
+      <div className="flex items-center gap-2">
+        {estado === 'pool' ? (
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
+            <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
+            <span className="min-w-0 flex-1 truncate text-ink-soft">{jugador.nombre}</span>
+            {expulsado && <span className="shrink-0 font-semibold text-danger">🟥</span>}
+          </span>
+        ) : (
+          <button
+            onClick={onClick}
+            disabled={expulsado}
+            className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-50"
+          >
+            <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
+            <span className={`min-w-0 flex-1 truncate ${estado === 'titular' ? 'font-medium text-ink' : 'text-ink-soft'}`}>
+              {estado === 'titular' ? '●' : '○'} {jugador.nombre}
+            </span>
+            {expulsado && <span className="shrink-0 font-semibold text-danger">🟥 Expulsado</span>}
+          </button>
+        )}
+        <input
+          type="number"
+          inputMode="numeric"
+          value={numero}
+          onChange={(e) => setNumero(e.target.value)}
+          onBlur={guardarCamiseta}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.target.blur()
+          }}
+          placeholder="#"
+          title="Número de camiseta"
+          className="no-spinner w-10 shrink-0 rounded-md border border-line bg-paper px-1 py-1 text-center text-xs text-ink outline-none focus-visible:border-brand"
+        />
+      </div>
+      <label className="mt-1 flex items-center gap-1.5 pl-5 text-[11px] text-ink-soft">
+        <input
+          type="checkbox"
+          checked={dniConfirmado}
+          onChange={(e) => onCambiarDni(jugador.id, e.target.checked)}
+          className="h-3.5 w-3.5 shrink-0 accent-brand"
+        />
+        Trajo DNI hoy
+      </label>
+      {estado === 'pool' && (
+        <div className="mt-1.5 flex gap-1.5 pl-5">
+          <button
+            onClick={onElegirTitular}
+            className="flex-1 rounded-md border border-success/30 bg-success-soft py-1 text-[11px] font-medium text-success"
+          >
+            → Titular
+          </button>
+          <button
+            onClick={onElegirSuplente}
+            className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] font-medium text-ink-soft"
+          >
+            → Suplente
+          </button>
+        </div>
+      )}
     </li>
   )
 }
 
-// Dos listas separadas (no una sola mezclada): Titulares arriba,
-// Suplentes abajo. Cualquiera que no este en `titulares` cae
-// automaticamente en Suplentes, sin necesidad de marcarlo aparte -
-// asi que al llegar al maximo del formato (futbol 6/7/11) el resto
-// del plantel queda visible ahi.
-function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, color, abierto, onToggle, onTocarJugador, estaExpulsado, onGuardarCamiseta }) {
+// Tres listas separadas: Titulares, Suplentes y Jugadores (el resto
+// del plantel, todavia sin convocar para ESTE partido). A diferencia
+// de antes, nadie cae en Suplentes por defecto - hay que elegirlo a
+// proposito desde Jugadores, para que Suplentes refleje solo a quienes
+// se convocaron hoy y no a todo el plantel registrado en la temporada.
+function SelectorAlineacion({
+  titulo,
+  jugadores,
+  titulares,
+  suplentes,
+  dniConfirmados,
+  jugadoresPorEquipo,
+  color,
+  abierto,
+  onToggle,
+  onTocarTitular,
+  onTocarSuplente,
+  onElegirDesdePool,
+  estaExpulsado,
+  onGuardarCamiseta,
+  onCambiarDni,
+}) {
   const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
-  const listaSuplentes = jugadores.filter((j) => !titulares.includes(j.id)).sort(porNombre)
+  const listaSuplentes = jugadores.filter((j) => suplentes.includes(j.id)).sort(porNombre)
+  const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -103,10 +160,12 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
                 key={j.id}
                 indice={i + 1}
                 jugador={j}
-                esTitular
+                estado="titular"
                 expulsado={estaExpulsado(j.id)}
-                onClick={() => onTocarJugador(j, true)}
+                dniConfirmado={dniConfirmados.includes(j.id)}
+                onClick={() => onTocarTitular(j)}
                 onGuardarCamiseta={onGuardarCamiseta}
+                onCambiarDni={onCambiarDni}
               />
             ))}
             {listaTitulares.length === 0 && (
@@ -123,14 +182,39 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
                 key={j.id}
                 indice={i + 1}
                 jugador={j}
-                esTitular={false}
+                estado="suplente"
                 expulsado={estaExpulsado(j.id)}
-                onClick={() => onTocarJugador(j, false)}
+                dniConfirmado={dniConfirmados.includes(j.id)}
+                onClick={() => onTocarSuplente(j)}
                 onGuardarCamiseta={onGuardarCamiseta}
+                onCambiarDni={onCambiarDni}
               />
             ))}
             {listaSuplentes.length === 0 && (
-              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes</li>
+              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes todavía</li>
+            )}
+          </ul>
+
+          <p className="border-y border-line bg-ink-soft/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">
+            ◌ Jugadores ({listaPool.length})
+          </p>
+          <ul className="divide-y divide-line">
+            {listaPool.map((j, i) => (
+              <FilaAlineacion
+                key={j.id}
+                indice={i + 1}
+                jugador={j}
+                estado="pool"
+                expulsado={estaExpulsado(j.id)}
+                dniConfirmado={dniConfirmados.includes(j.id)}
+                onElegirTitular={() => onElegirDesdePool(j, 'titular')}
+                onElegirSuplente={() => onElegirDesdePool(j, 'suplente')}
+                onGuardarCamiseta={onGuardarCamiseta}
+                onCambiarDni={onCambiarDni}
+              />
+            ))}
+            {listaPool.length === 0 && (
+              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Ya asignaste a todo el plantel</li>
             )}
           </ul>
         </div>
@@ -205,6 +289,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [tarjetas, setTarjetas] = useState([])
   const [titularesLocal, setTitularesLocal] = useState(partido.titularesLocal || [])
   const [titularesVisitante, setTitularesVisitante] = useState(partido.titularesVisitante || [])
+  const [suplentesLocal, setSuplentesLocal] = useState(partido.suplentesLocal || [])
+  const [suplentesVisitante, setSuplentesVisitante] = useState(partido.suplentesVisitante || [])
+  const [dniConfirmadoLocal, setDniConfirmadoLocal] = useState(partido.dniConfirmadoLocal || [])
+  const [dniConfirmadoVisitante, setDniConfirmadoVisitante] = useState(partido.dniConfirmadoVisitante || [])
   const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(JUGADORES_POR_EQUIPO_DEFAULT)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
   // Si el partido ya tenia alineacion cargada (se volvio a abrir un
@@ -303,54 +391,70 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
-  async function handleToggleTitular(equipo, jugadorId, esTitular) {
+  // Mueve a un jugador a uno de los tres estados posibles para ESTE
+  // partido (titular / suplente / pool-sin decidir) - optimista en el
+  // estado local, y guarda ambos arrays en Firestore (el jugador nunca
+  // queda en dos listas a la vez: entrar a una implica salir de la
+  // otra).
+  async function moverJugadorA(equipo, jugadorId, nuevoEstado) {
     const setTitulares = equipo === 'local' ? setTitularesLocal : setTitularesVisitante
-    setTitulares((t) => (esTitular ? [...t, jugadorId] : t.filter((id) => id !== jugadorId)))
+    const setSuplentes = equipo === 'local' ? setSuplentesLocal : setSuplentesVisitante
+    setTitulares((t) => (nuevoEstado === 'titular' ? [...new Set([...t, jugadorId])] : t.filter((id) => id !== jugadorId)))
+    setSuplentes((s) => (nuevoEstado === 'suplente' ? [...new Set([...s, jugadorId])] : s.filter((id) => id !== jugadorId)))
     try {
-      await actualizarTitular(partido.id, equipo, jugadorId, esTitular)
+      await Promise.all([
+        actualizarTitular(partido.id, equipo, jugadorId, nuevoEstado === 'titular'),
+        actualizarSuplente(partido.id, equipo, jugadorId, nuevoEstado === 'suplente'),
+      ])
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo guardar la alineación.')
     }
   }
 
-  // Tocar a un titular para sacarlo no lo pasa directo a suplente: abre
-  // el selector de "por quien entra" con los suplentes disponibles de
-  // su mismo equipo, para que el cambio quede armado en un solo paso
-  // (sale uno, entra otro) en vez de dos toques sueltos.
-  function handleTocarTitular(equipo, jugador) {
-    const jugadoresEquipo = equipo === 'local' ? jugadoresLocal : jugadoresVisitante
-    const titulares = equipo === 'local' ? titularesLocal : titularesVisitante
-    const suplentes = jugadoresEquipo.filter(
-      (j) => j.id !== jugador.id && !titulares.includes(j.id) && !estaExpulsadoEnPartido(j.id)
-    )
-    if (suplentes.length === 0) {
-      handleToggleTitular(equipo, jugador.id, false)
-      return
-    }
-    setCambio({ equipo, saliente: jugador, suplentes })
-  }
-
-  // Promover un suplente a titular directo desde el desplegable de
-  // arriba (a diferencia de un cambio, esto NO baja a nadie, asi que
-  // puede pasarse del formato configurado - se avisa pero no se
-  // bloquea, por si hace falta jugar con uno de mas por algun motivo).
-  function handleTocarEnAlineacion(equipo, jugador, esTitular) {
-    if (esTitular) {
-      handleTocarTitular(equipo, jugador)
-      return
-    }
+  function confirmarSiPasaDelMaximo(equipo, jugador) {
     const titulares = equipo === 'local' ? titularesLocal : titularesVisitante
     if (titulares.length >= jugadoresPorEquipo) {
-      if (
-        !confirm(
-          `Este equipo ya tiene ${titulares.length} titulares (fútbol ${jugadoresPorEquipo}). ¿Agregar a ${jugador.nombre} igual?`
-        )
-      ) {
-        return
-      }
+      return confirm(
+        `Este equipo ya tiene ${titulares.length} titulares (fútbol ${jugadoresPorEquipo}). ¿Agregar a ${jugador.nombre} igual?`
+      )
     }
-    handleToggleTitular(equipo, jugador.id, true)
+    return true
+  }
+
+  // Tocar a un titular para sacarlo no lo pasa directo a suplente: abre
+  // el selector de "por quien entra" con los suplentes YA CONVOCADOS de
+  // su mismo equipo, para que el cambio quede armado en un solo paso
+  // (sale uno, entra otro) en vez de dos toques sueltos. Sin suplentes
+  // convocados, sale directo al banco (no hay de donde elegir entrante).
+  function handleTocarTitular(equipo, jugador) {
+    const jugadoresEquipo = equipo === 'local' ? jugadoresLocal : jugadoresVisitante
+    const suplentesIds = equipo === 'local' ? suplentesLocal : suplentesVisitante
+    const candidatos = jugadoresEquipo.filter(
+      (j) => j.id !== jugador.id && suplentesIds.includes(j.id) && !estaExpulsadoEnPartido(j.id)
+    )
+    if (candidatos.length === 0) {
+      moverJugadorA(equipo, jugador.id, 'suplente')
+      return
+    }
+    setCambio({ equipo, saliente: jugador, suplentes: candidatos })
+  }
+
+  // Tocar a un suplente lo promueve directo a titular (a diferencia de
+  // un cambio, esto NO baja a nadie, asi que puede pasarse del formato
+  // configurado - se avisa pero no se bloquea, por si hace falta jugar
+  // con uno de mas por algun motivo).
+  function handleTocarSuplente(equipo, jugador) {
+    if (!confirmarSiPasaDelMaximo(equipo, jugador)) return
+    moverJugadorA(equipo, jugador.id, 'titular')
+  }
+
+  // Desde "Jugadores" (todavia sin decidir), elegir Titular o Suplente
+  // para ESTE partido - a Suplente no tiene tope (no hay limite de
+  // convocados en la banca).
+  function handleElegirDesdePool(equipo, jugador, nuevoEstado) {
+    if (nuevoEstado === 'titular' && !confirmarSiPasaDelMaximo(equipo, jugador)) return
+    moverJugadorA(equipo, jugador.id, nuevoEstado)
   }
 
   async function handleConfirmarCambio(entranteId) {
@@ -358,14 +462,27 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     const { equipo, saliente, suplentes } = cambio
     const entrante = suplentes.find((s) => s.id === entranteId)
     setCambio(null)
-    await handleToggleTitular(equipo, saliente.id, false)
-    if (entrante) await handleToggleTitular(equipo, entrante.id, true)
+    await moverJugadorA(equipo, saliente.id, 'suplente')
+    if (entrante) await moverJugadorA(equipo, entrante.id, 'titular')
   }
 
   function handleSacarSinReemplazo() {
     if (!cambio) return
-    handleToggleTitular(cambio.equipo, cambio.saliente.id, false)
+    moverJugadorA(cambio.equipo, cambio.saliente.id, 'suplente')
     setCambio(null)
+  }
+
+  // Check manual de "trajo el DNI hoy" (aparte del dato que ya se
+  // guarda en la ficha del jugador) - ver actualizarDniConfirmado.
+  async function handleCambiarDni(equipo, jugadorId, confirmado) {
+    const setDni = equipo === 'local' ? setDniConfirmadoLocal : setDniConfirmadoVisitante
+    setDni((d) => (confirmado ? [...new Set([...d, jugadorId])] : d.filter((id) => id !== jugadorId)))
+    try {
+      await actualizarDniConfirmado(partido.id, equipo, jugadorId, confirmado)
+    } catch (err) {
+      console.error('[ControlPartido]', err)
+      setError('No se pudo guardar el check de DNI.')
+    }
   }
 
   async function handleGol(jugador, equipoId) {
@@ -481,6 +598,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       await reiniciarPartido(partido.id)
       setTitularesLocal([])
       setTitularesVisitante([])
+      setSuplentesLocal([])
+      setSuplentesVisitante([])
+      setDniConfirmadoLocal([])
+      setDniConfirmadoVisitante([])
       setUltimaAccion(null)
       await cargar()
     } catch (err) {
@@ -551,25 +672,35 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
             jugadores={jugadoresLocal}
             titulares={titularesLocal}
+            suplentes={suplentesLocal}
+            dniConfirmados={dniConfirmadoLocal}
             jugadoresPorEquipo={jugadoresPorEquipo}
             color={colorLocal}
             abierto={alineacionAbierta.local}
             onToggle={() => setAlineacionAbierta((a) => ({ ...a, local: !a.local }))}
-            onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('local', j, esTitular)}
+            onTocarTitular={(j) => handleTocarTitular('local', j)}
+            onTocarSuplente={(j) => handleTocarSuplente('local', j)}
+            onElegirDesdePool={(j, nuevoEstado) => handleElegirDesdePool('local', j, nuevoEstado)}
             estaExpulsado={estaExpulsadoEnPartido}
             onGuardarCamiseta={handleGuardarCamiseta}
+            onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('local', jugadorId, confirmado)}
           />
           <SelectorAlineacion
             titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
             jugadores={jugadoresVisitante}
             titulares={titularesVisitante}
+            suplentes={suplentesVisitante}
+            dniConfirmados={dniConfirmadoVisitante}
             jugadoresPorEquipo={jugadoresPorEquipo}
             color={colorVisitante}
             abierto={alineacionAbierta.visitante}
             onToggle={() => setAlineacionAbierta((a) => ({ ...a, visitante: !a.visitante }))}
-            onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('visitante', j, esTitular)}
+            onTocarTitular={(j) => handleTocarTitular('visitante', j)}
+            onTocarSuplente={(j) => handleTocarSuplente('visitante', j)}
+            onElegirDesdePool={(j, nuevoEstado) => handleElegirDesdePool('visitante', j, nuevoEstado)}
             estaExpulsado={estaExpulsadoEnPartido}
             onGuardarCamiseta={handleGuardarCamiseta}
+            onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('visitante', jugadorId, confirmado)}
           />
         </div>
       ) : (
