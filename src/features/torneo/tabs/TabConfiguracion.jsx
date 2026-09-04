@@ -24,10 +24,6 @@ export default function TabConfiguracion({ torneoId }) {
   const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas, jugadoresPorEquipo, equiposEliminados }
-  // Valor del input de "equipos eliminados" mientras se edita - separado
-  // de `config` para que borrar/escribir no guarde en Firestore en cada
-  // tecla, solo al confirmar (blur/Enter).
-  const [inputEquiposEliminados, setInputEquiposEliminados] = useState('0')
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
@@ -42,7 +38,6 @@ export default function TabConfiguracion({ torneoId }) {
       ])
       setEquipos(eq)
       setConfig(cfg)
-      setInputEquiposEliminados(String(cfg.equiposEliminados ?? 0))
     } catch (err) {
       console.error('[TabConfiguracion]', err)
       setError('No se pudo cargar la configuración.')
@@ -99,21 +94,13 @@ export default function TabConfiguracion({ torneoId }) {
     }
   }
 
-  function handleCambiarInputEquiposEliminados(valor) {
-    if (valor === '' || /^\d+$/.test(valor)) {
-      setInputEquiposEliminados(valor)
-    }
-  }
-
-  async function handleGuardarEquiposEliminados() {
-    const cantidad = Math.max(0, Math.min(Number(inputEquiposEliminados) || 0, equipos.length))
-    setInputEquiposEliminados(String(cantidad))
-    if (cantidad === (config?.equiposEliminados ?? 0)) return
+  async function handleCambiarEquiposEliminados(nuevaCantidad) {
+    const cantidad = Number(nuevaCantidad) || 0
+    setConfig((c) => ({ ...c, equiposEliminados: cantidad }))
     setGuardando(true)
     setError(null)
     try {
       await actualizarEquiposEliminados(torneoId, categoria, cantidad)
-      setConfig((c) => ({ ...c, equiposEliminados: cantidad }))
     } catch (err) {
       console.error('[TabConfiguracion]', err)
       setError('No se pudo guardar la cantidad de equipos eliminados.')
@@ -210,20 +197,17 @@ export default function TabConfiguracion({ torneoId }) {
                   Equipos eliminados (últimos de la tabla)
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <select
                     id="equipos-eliminados"
-                    type="number"
-                    min="0"
-                    max={equipos.length}
-                    value={inputEquiposEliminados}
+                    value={config?.equiposEliminados ?? 0}
                     disabled={!config || guardando}
-                    onChange={(e) => handleCambiarInputEquiposEliminados(e.target.value)}
-                    onBlur={handleGuardarEquiposEliminados}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.target.blur()
-                    }}
-                    className="no-spinner w-16 rounded-lg border border-line bg-paper px-2 py-1.5 text-center text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
-                  />
+                    onChange={(e) => handleCambiarEquiposEliminados(e.target.value)}
+                    className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                  >
+                    {Array.from({ length: equipos.length + 1 }, (_, n) => n).map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
                   <span className="text-sm text-ink-soft">de {equipos.length}</span>
                 </div>
               </div>
