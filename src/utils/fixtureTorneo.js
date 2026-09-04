@@ -64,16 +64,21 @@ export function calcularFechaActual(partidos) {
   return actual
 }
 
-// Fechas donde YA SE JUGO AL MENOS UN PARTIDO (no hace falta que este
-// completa entera) - se usa para el selector de fecha al cargar una
-// tarjeta (ver ModalAgregarTarjeta): si ya paso un partido de la Fecha
-// 1, tiene sentido poder cargarle una tarjeta a alguien de ESE
-// partido, aunque el resto de los partidos de esa fecha todavia no se
-// hayan jugado.
-export function calcularFechasConPartidoJugado(partidos) {
-  const fechas = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))]
+// Fechas donde el EQUIPO indicado ya jugo su partido (no hace falta
+// que el resto de la fecha este completa) - se usa para el selector
+// de fecha al cargar una tarjeta o un gol "sueltos" (ver
+// ModalAgregarTarjeta/ModalAgregarGol): sin equipoId, antes se
+// ofrecia cualquier fecha donde CUALQUIER partido de la categoria ya
+// tuviera resultado, lo que dejaba elegir una fecha en la que el
+// equipo del jugador ni siquiera habia jugado todavia, solo porque
+// algun otro partido de esa misma fecha si.
+export function calcularFechasConPartidoJugado(partidos, equipoId) {
+  const relevantes = equipoId
+    ? partidos.filter((p) => p.equipoLocalId === equipoId || p.equipoVisitanteId === equipoId)
+    : partidos
+  const fechas = [...new Set(relevantes.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))]
   return fechas
-    .filter((f) => partidos.some((p) => p.fechaNumero === f && p.golesLocal != null))
+    .filter((f) => relevantes.some((p) => p.fechaNumero === f && p.golesLocal != null))
     .sort((a, b) => a - b)
 }
 

@@ -10,20 +10,17 @@ import { CATEGORIA_TORNEO_LABELS, TIPO_TARJETA } from '../../models/torneo'
  * momento de guardar el resultado del partido en Fechas.
  */
 export default function ModalAgregarTarjeta({ torneoId, categoria, equipos, tarjetas, partidos, onCerrar, onGuardado }) {
-  // Solo se puede elegir entre fechas donde YA SE JUGO AL MENOS UN
-  // PARTIDO - no hace falta que la fecha este completa entera, ni
-  // cualquier fecha que exista en el fixture (una que todavia no tiene
-  // ningun resultado no se puede elegir).
+  // Fechas donde existe algun partido programado, sea cual sea el
+  // equipo - solo para distinguir "no hay fixture generado" de "hay
+  // fixture pero todavia nadie jugo" en los mensajes de abajo.
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
-  const fechasJugadas = calcularFechasConPartidoJugado(partidos)
-  const fechaJornadaInicial = fechasJugadas[fechasJugadas.length - 1]
 
   const [form, setForm] = useState({
     equipoId: '',
     jugadorId: '',
     tipo: TIPO_TARJETA.AMARILLA,
     fecha: formatFechaISO(new Date()),
-    fechaJornada: fechaJornadaInicial != null ? String(fechaJornadaInicial) : '',
+    fechaJornada: '',
     motivo: '',
     fechasSuspension: '1',
   })
@@ -54,6 +51,10 @@ export default function ModalAgregarTarjeta({ torneoId, categoria, equipos, tarj
   }
 
   const jugadorSeleccionado = jugadores.find((j) => j.id === form.jugadorId)
+
+  // Fechas donde el EQUIPO elegido ya jugo su partido - sin equipo
+  // todavia no hay forma de saberlo, asi que queda vacio.
+  const fechasJugadas = form.equipoId ? calcularFechasConPartidoJugado(partidos, form.equipoId) : []
 
   // Un jugador no puede tener dos tarjetas en la misma fecha ni ir
   // para atras: la siguiente tarjeta tiene que caer despues de la
@@ -191,11 +192,15 @@ export default function ModalAgregarTarjeta({ torneoId, categoria, equipos, tarj
                 tarjeta va a quedar sin fecha asociada — la suspensión, si corresponde, va a haber
                 que levantarla a mano.
               </p>
+            ) : !form.equipoId ? (
+              <p className="rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink-soft">
+                Elegí un equipo arriba para ver sus fechas ya jugadas.
+              </p>
             ) : fechasJugadas.length === 0 ? (
               <p className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
-                Todavía no se jugó ningún partido (faltan resultados por guardar en la pestaña
-                Fechas), así que por ahora no hay ninguna fecha para elegir. Esta tarjeta va a quedar
-                sin fecha asociada — la suspensión, si corresponde, va a haber que levantarla a mano.
+                Este equipo todavía no jugó ningún partido con resultado cargado (pestaña Fechas), así
+                que por ahora no hay ninguna fecha para elegir. Esta tarjeta va a quedar sin fecha
+                asociada — la suspensión, si corresponde, va a haber que levantarla a mano.
               </p>
             ) : (
               <>
@@ -219,7 +224,7 @@ export default function ModalAgregarTarjeta({ torneoId, categoria, equipos, tarj
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-ink-soft">
-                    Solo se muestran las fechas donde ya se jugó al menos un partido. Se usa para
+                    Solo se muestran las fechas donde este equipo ya jugó su partido. Se usa para
                     activar y levantar la suspensión sola en el momento justo.
                   </p>
                 )}

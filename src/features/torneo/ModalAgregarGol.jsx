@@ -9,17 +9,20 @@ import { CATEGORIA_TORNEO_LABELS } from '../../models/torneo'
  * un partido especifico - mismo criterio que ModalAgregarTarjeta.
  */
 export default function ModalAgregarGol({ torneoId, categoria, equipos, partidos, onCerrar, onGuardado }) {
-  const fechasJugadas = calcularFechasConPartidoJugado(partidos)
-
   const [form, setForm] = useState({
     equipoId: '',
     jugadorId: '',
-    fechaJornada: fechasJugadas.length > 0 ? String(fechasJugadas[fechasJugadas.length - 1]) : '',
+    fechaJornada: '',
     cantidad: '1',
   })
   const [jugadores, setJugadores] = useState([])
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
+
+  // Fechas donde el EQUIPO elegido ya jugo su partido - antes se
+  // ofrecia cualquier fecha con algun resultado en TODA la categoria,
+  // sin importar si el equipo del jugador ya habia jugado o no.
+  const fechasJugadas = form.equipoId ? calcularFechasConPartidoJugado(partidos, form.equipoId) : []
 
   useEffect(() => {
     let cancelado = false
@@ -37,7 +40,13 @@ export default function ModalAgregarGol({ torneoId, categoria, equipos, partidos
 
   function actualizar(campo, valor) {
     if (campo === 'equipoId') {
-      setForm((f) => ({ ...f, equipoId: valor, jugadorId: '' }))
+      const fechas = valor ? calcularFechasConPartidoJugado(partidos, valor) : []
+      setForm((f) => ({
+        ...f,
+        equipoId: valor,
+        jugadorId: '',
+        fechaJornada: fechas.length > 0 ? String(fechas[fechas.length - 1]) : '',
+      }))
     } else {
       setForm((f) => ({ ...f, [campo]: valor }))
     }
@@ -120,9 +129,13 @@ export default function ModalAgregarGol({ torneoId, categoria, equipos, partidos
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-ink mb-1">Fecha</label>
-              {fechasJugadas.length === 0 ? (
+              {!form.equipoId ? (
+                <p className="rounded-lg border border-line bg-surface px-2 py-2.5 text-xs text-ink-soft">
+                  Elegí un equipo.
+                </p>
+              ) : fechasJugadas.length === 0 ? (
                 <p className="rounded-lg bg-warning-soft px-2 py-2.5 text-xs text-warning">
-                  Sin fechas jugadas.
+                  Este equipo sin fechas jugadas.
                 </p>
               ) : (
                 <select
