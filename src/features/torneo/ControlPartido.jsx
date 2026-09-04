@@ -56,10 +56,11 @@ function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompl
     setNumero(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
   }, [jugador.numeroCamiseta])
 
-  function guardarCamiseta() {
+  async function guardarCamiseta() {
     const actual = jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : ''
     if (numero.trim() === actual) return
-    onGuardarCamiseta(jugador.id, numero.trim())
+    const ok = await onGuardarCamiseta(jugador.id, numero.trim())
+    if (!ok) setNumero(actual)
   }
 
   return (
@@ -489,16 +490,34 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   // El numero de camiseta con el que se registro al jugador se puede
   // corregir directo desde la alineacion (no hace falta ir hasta
   // Jugadores) - actualiza el estado local al toque (optimista) y
-  // guarda en Firestore por separado.
+  // guarda en Firestore por separado. Devuelve true/false para que la
+  // fila (ver FilaAlineacion) sepa si tiene que revertir lo que se
+  // acaba de escribir.
+  //
+  // No puede repetirse un numero DENTRO DEL MISMO EQUIPO (entre
+  // equipos distintos si, cada uno numera su plantel por su cuenta).
   async function handleGuardarCamiseta(jugadorId, valor) {
     const numero = valor === '' ? null : Number(valor)
+
+    if (numero != null) {
+      const equipoDelJugador = jugadoresLocal.some((j) => j.id === jugadorId) ? jugadoresLocal : jugadoresVisitante
+      const duplicado = equipoDelJugador.find((j) => j.id !== jugadorId && j.numeroCamiseta === numero)
+      if (duplicado) {
+        setError(`El número ${numero} ya lo tiene ${duplicado.nombre} en este equipo.`)
+        return false
+      }
+    }
+
+    setError(null)
     setJugadoresLocal((js) => js.map((j) => (j.id === jugadorId ? { ...j, numeroCamiseta: numero } : j)))
     setJugadoresVisitante((js) => js.map((j) => (j.id === jugadorId ? { ...j, numeroCamiseta: numero } : j)))
     try {
       await actualizarNumeroCamiseta(jugadorId, numero)
+      return true
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo guardar el número de camiseta.')
+      return false
     }
   }
 

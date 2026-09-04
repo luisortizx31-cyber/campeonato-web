@@ -303,6 +303,7 @@ export default function TabJugadores({ torneoId }) {
           torneoId={torneoId}
           categoria={categoria}
           equipos={equipos}
+          jugadores={jugadores}
           equipoIdInicial={equipoNuevoId || undefined}
           jugador={modal === 'nuevo' ? null : modal}
           onCerrar={() => setModal(null)}

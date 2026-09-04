@@ -18,7 +18,7 @@ import { CATEGORIA_TORNEO_LABELS } from '../../models/torneo'
  * El DNI vive en una subcoleccion privada (ver torneoJugadoresService)
  * y nunca se expone en el link publico del torneo.
  */
-export default function ModalRegistrarJugador({ torneoId, categoria, equipos, equipoIdInicial, jugador, onCerrar, onGuardado }) {
+export default function ModalRegistrarJugador({ torneoId, categoria, equipos, jugadores = [], equipoIdInicial, jugador, onCerrar, onGuardado }) {
   const esEdicion = Boolean(jugador)
   const [form, setForm] = useState({
     equipoId: jugador?.equipoId || equipoIdInicial || equipos[0]?.id || '',
@@ -105,6 +105,20 @@ export default function ModalRegistrarJugador({ torneoId, categoria, equipos, eq
         setJugadorDuplicado(existente)
         const equipoExistente = equipos.find((eq) => eq.id === existente.equipoId)?.nombre
         setError(`Ya hay un jugador inscrito con este DNI: ${existente.nombre}${equipoExistente ? ` (${equipoExistente})` : ''}.`)
+        return
+      }
+    }
+
+    // Dos jugadores del MISMO equipo no pueden compartir numero de
+    // camiseta (entre equipos distintos si, cada uno numera su
+    // plantel por su cuenta).
+    if (form.numeroCamiseta) {
+      const numero = Number(form.numeroCamiseta)
+      const duplicadoCamiseta = jugadores.find(
+        (j) => j.id !== jugador?.id && j.equipoId === form.equipoId && j.numeroCamiseta === numero
+      )
+      if (duplicadoCamiseta) {
+        setError(`El número ${numero} ya lo tiene ${duplicadoCamiseta.nombre} en este equipo.`)
         return
       }
     }
