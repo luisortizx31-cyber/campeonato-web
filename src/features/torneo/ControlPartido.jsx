@@ -83,17 +83,17 @@ function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, onC
           className="no-spinner w-10 shrink-0 rounded-md border border-line bg-paper px-1 py-1 text-center text-xs text-ink outline-none focus-visible:border-brand"
         />
       </div>
-      <label className="mt-1 flex items-center gap-1.5 pl-5 text-[11px] text-ink-soft">
-        <input
-          type="checkbox"
-          checked={dniConfirmado}
-          onChange={(e) => onCambiarDni(jugador.id, e.target.checked)}
-          className="h-3.5 w-3.5 shrink-0 accent-brand"
-        />
-        Trajo DNI hoy
-      </label>
       {estado === 'pool' && (
         <>
+          <label className="mt-1 flex items-center gap-1.5 pl-5 text-[11px] text-ink-soft">
+            <input
+              type="checkbox"
+              checked={dniConfirmado}
+              onChange={(e) => onCambiarDni(jugador.id, e.target.checked)}
+              className="h-3.5 w-3.5 shrink-0 accent-brand"
+            />
+            Trajo DNI hoy
+          </label>
           <div className="mt-1.5 flex gap-1.5 pl-5">
             <button
               onClick={onElegirTitular}
@@ -141,10 +141,16 @@ function SelectorAlineacion({
   onGuardarCamiseta,
   onCambiarDni,
 }) {
+  const [seccionAbierta, setSeccionAbierta] = useState({ titulares: true, suplentes: true, pool: true })
   const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
   const listaSuplentes = jugadores.filter((j) => suplentes.includes(j.id)).sort(porNombre)
   const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
+
+  function toggleSeccion(seccion) {
+    setSeccionAbierta((s) => ({ ...s, [seccion]: !s[seccion] }))
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
       <button onClick={onToggle} className={`flex w-full items-center justify-between gap-2 px-3 py-3 text-left ${color.bg}`}>
@@ -158,72 +164,90 @@ function SelectorAlineacion({
       </button>
       {abierto && (
         <div className="border-t border-line">
-          <p className="border-b border-line bg-ink-soft/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">
-            ● Titulares ({listaTitulares.length}/{jugadoresPorEquipo})
-          </p>
-          <ul className="divide-y divide-line">
-            {listaTitulares.map((j, i) => (
-              <FilaAlineacion
-                key={j.id}
-                indice={i + 1}
-                jugador={j}
-                estado="titular"
-                expulsado={estaExpulsado(j.id)}
-                dniConfirmado={dniConfirmados.includes(j.id)}
-                onClick={() => onTocarTitular(j)}
-                onGuardarCamiseta={onGuardarCamiseta}
-                onCambiarDni={onCambiarDni}
-              />
-            ))}
-            {listaTitulares.length === 0 && (
-              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin titulares todavía</li>
-            )}
-          </ul>
+          <button
+            onClick={() => toggleSeccion('titulares')}
+            className="flex w-full items-center justify-between gap-2 border-b border-line bg-ink-soft/15 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-ink"
+          >
+            <span>● Titulares ({listaTitulares.length}/{jugadoresPorEquipo})</span>
+            <span className={`normal-case transition-transform ${seccionAbierta.titulares ? 'rotate-180' : ''}`}>⌄</span>
+          </button>
+          {seccionAbierta.titulares && (
+            <ul className="divide-y divide-line">
+              {listaTitulares.map((j, i) => (
+                <FilaAlineacion
+                  key={j.id}
+                  indice={i + 1}
+                  jugador={j}
+                  estado="titular"
+                  expulsado={estaExpulsado(j.id)}
+                  dniConfirmado={dniConfirmados.includes(j.id)}
+                  onClick={() => onTocarTitular(j)}
+                  onGuardarCamiseta={onGuardarCamiseta}
+                  onCambiarDni={onCambiarDni}
+                />
+              ))}
+              {listaTitulares.length === 0 && (
+                <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin titulares todavía</li>
+              )}
+            </ul>
+          )}
 
-          <p className="border-y border-line bg-ink-soft/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">
-            ○ Suplentes ({listaSuplentes.length})
-          </p>
-          <ul className="divide-y divide-line">
-            {listaSuplentes.map((j, i) => (
-              <FilaAlineacion
-                key={j.id}
-                indice={i + 1}
-                jugador={j}
-                estado="suplente"
-                expulsado={estaExpulsado(j.id)}
-                dniConfirmado={dniConfirmados.includes(j.id)}
-                onClick={() => onTocarSuplente(j)}
-                onGuardarCamiseta={onGuardarCamiseta}
-                onCambiarDni={onCambiarDni}
-              />
-            ))}
-            {listaSuplentes.length === 0 && (
-              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes todavía</li>
-            )}
-          </ul>
+          <button
+            onClick={() => toggleSeccion('suplentes')}
+            className="flex w-full items-center justify-between gap-2 border-y border-line bg-ink-soft/15 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-ink"
+          >
+            <span>○ Suplentes ({listaSuplentes.length})</span>
+            <span className={`normal-case transition-transform ${seccionAbierta.suplentes ? 'rotate-180' : ''}`}>⌄</span>
+          </button>
+          {seccionAbierta.suplentes && (
+            <ul className="divide-y divide-line">
+              {listaSuplentes.map((j, i) => (
+                <FilaAlineacion
+                  key={j.id}
+                  indice={i + 1}
+                  jugador={j}
+                  estado="suplente"
+                  expulsado={estaExpulsado(j.id)}
+                  dniConfirmado={dniConfirmados.includes(j.id)}
+                  onClick={() => onTocarSuplente(j)}
+                  onGuardarCamiseta={onGuardarCamiseta}
+                  onCambiarDni={onCambiarDni}
+                />
+              ))}
+              {listaSuplentes.length === 0 && (
+                <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes todavía</li>
+              )}
+            </ul>
+          )}
 
-          <p className="border-y border-line bg-ink-soft/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">
-            ◌ Jugadores ({listaPool.length})
-          </p>
-          <ul className="divide-y divide-line">
-            {listaPool.map((j, i) => (
-              <FilaAlineacion
-                key={j.id}
-                indice={i + 1}
-                jugador={j}
-                estado="pool"
-                expulsado={estaExpulsado(j.id)}
-                dniConfirmado={dniConfirmados.includes(j.id)}
-                onElegirTitular={() => onElegirDesdePool(j, 'titular')}
-                onElegirSuplente={() => onElegirDesdePool(j, 'suplente')}
-                onGuardarCamiseta={onGuardarCamiseta}
-                onCambiarDni={onCambiarDni}
-              />
-            ))}
-            {listaPool.length === 0 && (
-              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Ya asignaste a todo el plantel</li>
-            )}
-          </ul>
+          <button
+            onClick={() => toggleSeccion('pool')}
+            className="flex w-full items-center justify-between gap-2 border-y border-line bg-ink-soft/15 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-ink"
+          >
+            <span>◌ Jugadores ({listaPool.length})</span>
+            <span className={`normal-case transition-transform ${seccionAbierta.pool ? 'rotate-180' : ''}`}>⌄</span>
+          </button>
+          {seccionAbierta.pool && (
+            <ul className="divide-y divide-line">
+              {listaPool.map((j, i) => (
+                <FilaAlineacion
+                  key={j.id}
+                  indice={i + 1}
+                  jugador={j}
+                  estado="pool"
+                  expulsado={estaExpulsado(j.id)}
+                  dniConfirmado={dniConfirmados.includes(j.id)}
+                  onElegirTitular={() => onElegirDesdePool(j, 'titular')}
+                  onElegirSuplente={() => onElegirDesdePool(j, 'suplente')}
+                  onGuardarCamiseta={onGuardarCamiseta}
+                  onCambiarDni={onCambiarDni}
+                />
+              ))}
+              {listaPool.length === 0 && (
+                <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Ya asignaste a todo el plantel</li>
+              )}
+            </ul>
+          )}
         </div>
       )}
     </div>
