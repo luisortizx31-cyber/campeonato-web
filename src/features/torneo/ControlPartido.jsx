@@ -11,6 +11,9 @@ import {
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
+import { useSwipeHorizontal } from '../../hooks/useSwipeHorizontal'
+
+const VISTAS = ['alineacion', 'cancha']
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -174,6 +177,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [vista, setVista] = useState(() =>
     (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0) ? 'cancha' : 'alineacion'
   )
+  const swipeVista = useSwipeHorizontal(VISTAS, vista, setVista)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [procesando, setProcesando] = useState(false)
@@ -487,7 +491,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
       {cargando ? (
         <p className="text-sm text-ink-soft">Cargando…</p>
-      ) : vista === 'alineacion' ? (
+      ) : (
+      <div {...swipeVista}>
+      {vista === 'alineacion' ? (
         <div className="space-y-2">
           <SelectorAlineacion
             titulo={`Alineación · ${nombreEquipo(partido.equipoLocalId)}`}
@@ -626,6 +632,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             {reiniciando ? 'Reiniciando…' : '↺ Reiniciar partido (vuelve todo a cero)'}
           </button>
         </>
+      )}
+      </div>
       )}
 
       {cambio && (
