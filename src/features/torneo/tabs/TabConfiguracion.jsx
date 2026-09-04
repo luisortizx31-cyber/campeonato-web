@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import {
   obtenerConfigCategoria,
   actualizarUmbralAmarillas,
   actualizarUmbralRojas,
   actualizarJugadoresPorEquipo,
+  actualizarEquiposEliminados,
 } from '../../../services/torneoConfigService'
 import {
   CATEGORIA_TORNEO,
@@ -13,11 +15,19 @@ import {
   OPCIONES_JUGADORES_POR_EQUIPO,
 } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
+import { useAuth } from '../../../context/AuthContext'
+import SeccionColegios from './SeccionColegios'
 
 export default function TabConfiguracion({ torneoId }) {
+  const { esSuperAdmin } = useAuth()
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
   const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
-  const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas, jugadoresPorEquipo }
+  const [equipos, setEquipos] = useState([])
+  const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas, jugadoresPorEquipo, equiposEliminados }
+  // Valor del input de "equipos eliminados" mientras se edita - separado
+  // de `config` para que borrar/escribir no guarde en Firestore en cada
+  // tecla, solo al confirmar (blur/Enter).
+  const [inputEquiposEliminados, setInputEquiposEliminados] = useState('0')
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
@@ -26,8 +36,13 @@ export default function TabConfiguracion({ torneoId }) {
     setCargando(true)
     setError(null)
     try {
-      const cfg = await obtenerConfigCategoria(torneoId, categoria)
+      const [eq, cfg] = await Promise.all([
+        listarEquiposPorCategoria(torneoId, categoria),
+        obtenerConfigCategoria(torneoId, categoria),
+      ])
+      setEquipos(eq)
       setConfig(cfg)
+      setInputEquiposEliminados(String(cfg.equiposEliminados ?? 0))
     } catch (err) {
       console.error('[TabConfiguracion]', err)
       setError('No se pudo cargar la configuración.')
@@ -79,6 +94,29 @@ export default function TabConfiguracion({ torneoId }) {
     } catch (err) {
       console.error('[TabConfiguracion]', err)
       setError('No se pudo guardar el umbral de eliminación.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  function handleCambiarInputEquiposEliminados(valor) {
+    if (valor === '' || /^\d+$/.test(valor)) {
+      setInputEquiposEliminados(valor)
+    }
+  }
+
+  async function handleGuardarEquiposEliminados() {
+    const cantidad = Math.max(0, Math.min(Number(inputEquiposEliminados) || 0, equipos.length))
+    setInputEquiposEliminados(String(cantidad))
+    if (cantidad === (config?.equiposEliminados ?? 0)) return
+    setGuardando(true)
+    setError(null)
+    try {
+      await actualizarEquiposEliminados(torneoId, categoria, cantidad)
+      setConfig((c) => ({ ...c, equiposEliminados: cantidad }))
+    } catch (err) {
+      console.error('[TabConfiguracion]', err)
+      setError('No se pudo guardar la cantidad de equipos eliminados.')
     } finally {
       setGuardando(false)
     }
@@ -145,7 +183,7 @@ export default function TabConfiguracion({ torneoId }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
               <label htmlFor="umbral-rojas" className="text-sm text-ink-soft">
                 Eliminar del campeonato al
               </label>
@@ -165,9 +203,36 @@ export default function TabConfiguracion({ torneoId }) {
                 <span className="text-sm text-ink-soft">suspensiones por roja</span>
               </div>
             </div>
+
+            {equipos.length > 0 && (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+                <label htmlFor="equipos-eliminados" className="text-sm text-ink-soft">
+                  Equipos eliminados (últimos de la tabla)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="equipos-eliminados"
+                    type="number"
+                    min="0"
+                    max={equipos.length}
+                    value={inputEquiposEliminados}
+                    disabled={!config || guardando}
+                    onChange={(e) => handleCambiarInputEquiposEliminados(e.target.value)}
+                    onBlur={handleGuardarEquiposEliminados}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.target.blur()
+                    }}
+                    className="no-spinner w-16 rounded-lg border border-line bg-paper px-2 py-1.5 text-center text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                  />
+                  <span className="text-sm text-ink-soft">de {equipos.length}</span>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {esSuperAdmin && <SeccionColegios />}
     </div>
   )
 }

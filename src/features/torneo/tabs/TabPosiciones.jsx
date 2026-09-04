@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarAjustesPorCategoria, eliminarAjustePuntos } from '../../../services/torneoAjustesService'
-import { obtenerConfigCategoria, actualizarEquiposEliminados } from '../../../services/torneoConfigService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { BotonExportarExcel } from '../../shared/BotonExportarExcel'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
@@ -15,12 +14,6 @@ export default function TabPosiciones({ torneoId }) {
   const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [ajustes, setAjustes] = useState([])
-  const [config, setConfig] = useState(null) // { equiposEliminados }
-  // Valor del input de "equipos eliminados" mientras se edita - separado
-  // de `config` para que borrar/escribir no guarde en Firestore ni
-  // refresque la tabla en cada tecla, solo al confirmar (blur/Enter).
-  const [inputEquiposEliminados, setInputEquiposEliminados] = useState('0')
-  const [guardandoConfig, setGuardandoConfig] = useState(false)
   const [filasExport, setFilasExport] = useState([])
   const [refreshKey, setRefreshKey] = useState(0)
   const [modal, setModal] = useState(false)
@@ -28,7 +21,7 @@ export default function TabPosiciones({ torneoId }) {
   const [errorAccion, setErrorAccion] = useState(null)
 
   async function cargarAuxiliares() {
-    const [eq, aj, cfg] = await Promise.all([
+    const [eq, aj] = await Promise.all([
       listarEquiposPorCategoria(torneoId, categoria),
       // Coleccion nueva - si su regla de Firestore todavia no esta
       // desplegada, que el resto de la pestaña siga andando igual.
@@ -36,52 +29,14 @@ export default function TabPosiciones({ torneoId }) {
         console.error('[TabPosiciones] listarAjustesPorCategoria', err)
         return []
       }),
-      obtenerConfigCategoria(torneoId, categoria),
     ])
     setEquipos(eq)
     setAjustes(aj)
-    setConfig(cfg)
   }
 
   useEffect(() => {
     cargarAuxiliares()
   }, [torneoId, categoria, refreshKey])
-
-  // Sincroniza el input con lo que hay guardado cada vez que se trae
-  // la config de nuevo (cambio de categoria, o despues de guardar) -
-  // nunca mientras el usuario esta escribiendo, porque eso no dispara
-  // un refetch (ver handleGuardarEquiposEliminados).
-  useEffect(() => {
-    setInputEquiposEliminados(String(config?.equiposEliminados ?? 0))
-  }, [config])
-
-  function handleCambiarEquiposEliminados(valor) {
-    if (valor === '' || /^\d+$/.test(valor)) {
-      setInputEquiposEliminados(valor)
-    }
-  }
-
-  async function handleGuardarEquiposEliminados() {
-    const cantidad = Math.max(0, Math.min(Number(inputEquiposEliminados) || 0, equipos.length))
-    setInputEquiposEliminados(String(cantidad))
-    if (cantidad === (config?.equiposEliminados ?? 0)) return
-    setGuardandoConfig(true)
-    setErrorAccion(null)
-    try {
-      await actualizarEquiposEliminados(torneoId, categoria, cantidad)
-      setConfig((c) => ({ ...c, equiposEliminados: cantidad }))
-      // TablaPosicionesCategoria trae su propia copia de la config (la
-      // comparte con la pagina publica) - sin esto, la zona de
-      // eliminacion que se ve en la tabla de abajo quedaba desactualizada
-      // hasta recargar la pagina.
-      setRefreshKey((k) => k + 1)
-    } catch (err) {
-      console.error('[TabPosiciones]', err)
-      setErrorAccion('No se pudo guardar la cantidad de equipos eliminados.')
-    } finally {
-      setGuardandoConfig(false)
-    }
-  }
 
   function nombreEquipo(id) {
     return equipos.find((e) => e.id === id)?.nombre || '—'
@@ -119,31 +74,6 @@ export default function TabPosiciones({ torneoId }) {
       </div>
 
       <div {...swipeCategoria}>
-      {equipos.length > 0 && (
-        <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-          <label htmlFor="equipos-eliminados" className="text-sm text-ink-soft">
-            Equipos eliminados (últimos de la tabla)
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              id="equipos-eliminados"
-              type="number"
-              min="0"
-              max={equipos.length}
-              value={inputEquiposEliminados}
-              disabled={!config || guardandoConfig}
-              onChange={(e) => handleCambiarEquiposEliminados(e.target.value)}
-              onBlur={handleGuardarEquiposEliminados}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.target.blur()
-              }}
-              className="no-spinner w-16 rounded-lg border border-line bg-paper px-2 py-1.5 text-center text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
-            />
-            <span className="text-sm text-ink-soft">de {equipos.length}</span>
-          </div>
-        </div>
-      )}
-
       <div className="mb-4 flex justify-end gap-2">
         <BotonExportarExcel
           nombreArchivo={`posiciones-${categoria}`}

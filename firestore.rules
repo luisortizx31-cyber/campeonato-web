@@ -64,6 +64,18 @@ service cloud.firestore {
       allow update: if esMaestroDe(torneoId);
     }
 
+    // /colegios/{torneoId}: correo y contraseña de acceso de cada
+    // colegio dado de alta desde Configuracion (ver
+    // superadminService.crearColegio) - a diferencia de /torneos de
+    // arriba, esto NUNCA es de lectura publica porque guarda la
+    // contraseña en texto plano, para que el superAdmin se la pueda
+    // volver a mostrar al cliente si la pierde.
+    match /colegios/{torneoId} {
+      allow get, list: if esSuperAdmin();
+      allow create: if esSuperAdmin();
+      allow update, delete: if false;
+    }
+
     // ---------------------------------------------------------------
     // Modulo "Campeonato" (multi-tenant). Lectura PUBLICA sin login en
     // todas estas colecciones - hay un link compartible por torneo

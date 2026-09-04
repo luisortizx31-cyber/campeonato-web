@@ -1,6 +1,6 @@
 import { initializeApp, deleteApp } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, serverTimestamp } from 'firebase/firestore'
 import { db, firebaseConfig } from '../config/firebase'
 
 // Da de alta un colegio/torneo (tenant) nuevo desde el panel, sin
@@ -37,5 +37,23 @@ export async function crearColegio({ torneoId, nombreColegio, email, password })
   await setDoc(doc(db, 'usuarios', uid), { role: 'master', torneoId: idLimpio })
   await setDoc(doc(db, 'torneos', idLimpio), { nombre: nombreColegio.trim() })
 
+  // /colegios guarda el correo y la contraseña para poder mostrarselos
+  // de nuevo al superAdmin mas adelante (ver listarColegios) - a
+  // diferencia de /torneos, esta coleccion NUNCA es de lectura publica
+  // (ver firestore.rules), porque queda la contrasena en texto plano.
+  await setDoc(doc(db, 'colegios', idLimpio), {
+    torneoId: idLimpio,
+    nombre: nombreColegio.trim(),
+    email,
+    password,
+    uid,
+    creadoEn: serverTimestamp(),
+  })
+
   return { uid, torneoId: idLimpio }
+}
+
+export async function listarColegios() {
+  const snap = await getDocs(query(collection(db, 'colegios'), orderBy('creadoEn', 'desc')))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }

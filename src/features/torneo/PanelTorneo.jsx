@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { logout } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import TabEquipos from './tabs/TabEquipos'
@@ -23,7 +22,7 @@ const TABS = [
 ]
 
 export default function PanelTorneo() {
-  const { torneoId, esSuperAdmin } = useAuth()
+  const { torneoId } = useAuth()
   const [tabActiva, setTabActiva] = useState('equipos')
   const [linkCopiado, setLinkCopiado] = useState(false)
 
@@ -49,14 +48,6 @@ export default function PanelTorneo() {
           <h1 className="text-lg font-semibold text-ink">{tab.label}</h1>
         </div>
         <div className="flex shrink-0 gap-2">
-          {esSuperAdmin && (
-            <Link
-              to="/admin"
-              className="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-soft active:scale-95 transition-transform"
-            >
-              + Colegio
-            </Link>
-          )}
           <button
             onClick={copiarLinkPublico}
             title="Copiar link público"
