@@ -24,6 +24,7 @@ export default function ModalRegistrarJugador({ torneoId, categoria, equipos, ju
     equipoId: jugador?.equipoId || equipoIdInicial || equipos[0]?.id || '',
     nombre: jugador?.nombre || '',
     numeroCamiseta: jugador?.numeroCamiseta || '',
+    esJale: jugador?.esJale || false,
     dni: '',
     telefono: '',
   })
@@ -228,6 +229,16 @@ export default function ModalRegistrarJugador({ torneoId, categoria, equipos, ju
             required={false}
             inputMode="numeric"
           />
+
+          <label className="mb-4 flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={form.esJale}
+              onChange={(e) => actualizar('esJale', e.target.checked)}
+              className="h-4 w-4 shrink-0 accent-brand"
+            />
+            Es jale (no es de esta promoción/equipo)
+          </label>
 
           {error && (
             <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>

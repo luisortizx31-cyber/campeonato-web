@@ -23,6 +23,11 @@ function FilaJugadorAdmin({ jugador, datosVisible, onVerDatos, onEditar, onElimi
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">
             {jugador.nombre} {jugador.numeroCamiseta && <span className="text-ink-soft">#{jugador.numeroCamiseta}</span>}
+            {jugador.esJale && (
+              <span className="ml-1 rounded-full bg-warning-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-warning">
+                JALE
+              </span>
+            )}
           </p>
           {jugador.eliminado ? (
             <span className="mt-1 inline-block rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">

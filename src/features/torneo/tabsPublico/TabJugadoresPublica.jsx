@@ -117,6 +117,11 @@ export default function TabJugadoresPublica({ torneoId }) {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-ink">
                     {j.nombre} {j.numeroCamiseta && <span className="text-ink-soft">#{j.numeroCamiseta}</span>}
+                    {j.esJale && (
+                      <span className="ml-1 rounded-full bg-warning-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-warning">
+                        JALE
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-ink-soft">{nombreEquipo(j.equipoId)}</p>
                 </div>
@@ -157,6 +162,11 @@ export default function TabJugadoresPublica({ torneoId }) {
                         <li key={j.id} className="flex items-center justify-between gap-2 px-4 py-3">
                           <p className="truncate text-sm font-medium text-ink">
                             {j.nombre} {j.numeroCamiseta && <span className="text-ink-soft">#{j.numeroCamiseta}</span>}
+                            {j.esJale && (
+                              <span className="ml-1 rounded-full bg-warning-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-warning">
+                                JALE
+                              </span>
+                            )}
                           </p>
                           <EstadoJugador jugador={j} />
                         </li>

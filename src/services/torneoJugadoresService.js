@@ -26,7 +26,7 @@ import { db } from '../config/firebase'
 // del jugador padre) porque las reglas de seguridad necesitan poder
 // filtrar la collection group query de /privado (ver
 // buscarJugadorPorDni) por tenant sin tener que resolver el padre.
-export async function registrarJugador({ torneoId, equipoId, categoria, nombre, numeroCamiseta, dni, telefono }) {
+export async function registrarJugador({ torneoId, equipoId, categoria, nombre, numeroCamiseta, dni, telefono, esJale }) {
   const jugadorRef = doc(collection(db, 'torneo_jugadores'))
   const batch = writeBatch(db)
 
@@ -36,6 +36,11 @@ export async function registrarJugador({ torneoId, equipoId, categoria, nombre, 
     categoria,
     nombre: nombre.trim(),
     numeroCamiseta: numeroCamiseta || null,
+    // "Jale": jugador que no es de la promo/equipo (se sumo de
+    // afuera) - solo informativo, no bloquea ni afecta nada del
+    // sistema, es para que se sepa a simple vista quien es de la
+    // promo y quien no.
+    esJale: Boolean(esJale),
     amarillasAcumuladas: 0,
     rojasAcumuladas: 0,
     suspendido: false,
@@ -104,11 +109,12 @@ export async function listarJugadoresPorCategoria(torneoId, categoria) {
 // El equipo solo puede cambiar dentro de la misma categoria (el
 // formulario filtra el selector de equipo por la categoria ya fijada
 // del jugador), asi que "categoria" nunca se toca aca.
-export async function actualizarJugador(jugadorId, { equipoId, nombre, numeroCamiseta }) {
+export async function actualizarJugador(jugadorId, { equipoId, nombre, numeroCamiseta, esJale }) {
   await updateDoc(doc(db, 'torneo_jugadores', jugadorId), {
     equipoId,
     nombre: nombre.trim(),
     numeroCamiseta: numeroCamiseta || null,
+    esJale: Boolean(esJale),
   })
 }
 
