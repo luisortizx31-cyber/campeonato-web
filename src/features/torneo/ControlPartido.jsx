@@ -344,14 +344,14 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, on
         <button
           onClick={onAmarilla}
           disabled={procesando}
-          className="flex-1 rounded-md border border-warning/30 bg-warning-soft py-1 text-[11px] disabled:opacity-50"
+          className="flex-1 rounded-md border-2 border-warning bg-warning/25 py-1 text-[11px] disabled:opacity-50"
         >
           🟨
         </button>
         <button
           onClick={onRoja}
           disabled={procesando}
-          className="flex-1 rounded-md border border-danger/30 bg-danger-soft py-1 text-[11px] disabled:opacity-50"
+          className="flex-1 rounded-md border-2 border-danger bg-danger/25 py-1 text-[11px] disabled:opacity-50"
         >
           🟥
         </button>
