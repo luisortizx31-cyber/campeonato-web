@@ -717,7 +717,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('local', jugadorId, confirmado)}
           />
 
-          <div className="my-1 h-1.5 rounded-full bg-ink-soft/30" />
+          <div className="my-1 h-1.5 rounded-full bg-black" />
 
           <SelectorAlineacion
             titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
