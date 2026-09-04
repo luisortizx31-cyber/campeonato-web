@@ -33,6 +33,7 @@ export default function SeccionColegios() {
   const [guardandoEdicion, setGuardandoEdicion] = useState(false)
   const [errorEdicion, setErrorEdicion] = useState(null)
   const [alternando, setAlternando] = useState(null) // torneoId cuyo estado se esta cambiando
+  const [linkCopiado, setLinkCopiado] = useState(null) // torneoId cuyo link se acaba de copiar
 
   async function cargar() {
     setCargando(true)
@@ -111,6 +112,17 @@ export default function SeccionColegios() {
       setErrorEdicion(err.message || 'No se pudieron guardar los cambios.')
     } finally {
       setGuardandoEdicion(false)
+    }
+  }
+
+  async function handleCopiarLink(torneoId) {
+    const url = `${window.location.origin}/campeonato/${torneoId}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopiado(torneoId)
+      setTimeout(() => setLinkCopiado((actual) => (actual === torneoId ? null : actual)), 2000)
+    } catch (err) {
+      console.error('[SeccionColegios] No se pudo copiar el link:', err)
     }
   }
 
@@ -303,7 +315,14 @@ export default function SeccionColegios() {
                     <li><span className="text-ink-soft">Contraseña:</span> <span className="text-ink">{c.password}</span></li>
                     <li className="break-all">
                       <span className="text-ink-soft">Link:</span>{' '}
-                      <span className="text-ink">{window.location.origin}/campeonato/{c.torneoId}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarLink(c.torneoId)}
+                        title="Copiar link"
+                        className="text-ink underline decoration-dotted underline-offset-2"
+                      >
+                        {window.location.origin}/campeonato/{c.torneoId} {linkCopiado === c.torneoId ? '✓' : '🔗'}
+                      </button>
                     </li>
                   </ul>
                 </div>
