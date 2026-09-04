@@ -829,7 +829,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               >
                 {nombreEquipo(partido.equipoLocalId)} ({enCanchaLocal.length})
               </div>
-              <ul className="divide-y divide-line">
+              <ul className="divide-y-2 divide-ink-soft/20">
                 {enCanchaLocal.map((j) => (
                   <FilaAccion
                     key={j.id}
@@ -856,7 +856,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
               >
                 {nombreEquipo(partido.equipoVisitanteId)} ({enCanchaVisitante.length})
               </div>
-              <ul className="divide-y divide-line">
+              <ul className="divide-y-2 divide-ink-soft/20">
                 {enCanchaVisitante.map((j) => (
                   <FilaAccion
                     key={j.id}
