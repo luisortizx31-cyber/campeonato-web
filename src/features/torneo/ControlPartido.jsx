@@ -51,8 +51,8 @@ function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompl
   }
 
   return (
-    <li className="px-3 py-2">
-      <div className="flex items-center gap-2">
+    <li className="px-2.5 py-1">
+      <div className="flex items-center gap-1.5">
         {estado === 'pool' ? (
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
             <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
@@ -87,12 +87,12 @@ function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompl
           }}
           placeholder="#"
           title="Número de camiseta"
-          className="no-spinner w-10 shrink-0 rounded-md border border-line bg-paper px-1 py-1 text-center text-xs text-ink outline-none focus-visible:border-brand"
+          className="no-spinner w-9 shrink-0 rounded-md border border-line bg-paper px-1 py-0.5 text-center text-xs text-ink outline-none focus-visible:border-brand"
         />
       </div>
       {estado === 'pool' && (
         <>
-          <label className="mt-1 flex items-center gap-1.5 pl-5 text-[11px] text-ink-soft">
+          <label className="mt-0.5 flex items-center gap-1.5 pl-5 text-[11px] text-ink-soft">
             <input
               type="checkbox"
               checked={dniConfirmado}
@@ -101,26 +101,26 @@ function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompl
             />
             Trajo DNI hoy
           </label>
-          <div className="mt-1.5 flex gap-1.5 pl-5">
+          <div className="mt-1 flex gap-1.5 pl-5">
             <button
               onClick={onElegirTitular}
               disabled={!dniConfirmado || titularesCompletos}
-              className="flex-1 rounded-md border border-success/30 bg-success-soft py-1 text-[11px] font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex-1 rounded-md border border-success/30 bg-success-soft py-0.5 text-[11px] font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
             >
               → Titular
             </button>
             <button
               onClick={onElegirSuplente}
               disabled={!dniConfirmado}
-              className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] font-medium text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex-1 rounded-md border border-line bg-surface py-0.5 text-[11px] font-medium text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
             >
               → Suplente
             </button>
           </div>
           {!dniConfirmado ? (
-            <p className="mt-1 pl-5 text-[10px] text-ink-soft">Marcá que trajo el DNI para poder convocarlo.</p>
+            <p className="mt-0.5 pl-5 text-[10px] text-ink-soft">Marcá que trajo el DNI para poder convocarlo.</p>
           ) : titularesCompletos ? (
-            <p className="mt-1 pl-5 text-[10px] text-ink-soft">Ya se llegó al máximo de titulares - solo puede ir a Suplente.</p>
+            <p className="mt-0.5 pl-5 text-[10px] text-ink-soft">Ya se llegó al máximo de titulares - solo puede ir a Suplente.</p>
           ) : null}
         </>
       )}
@@ -169,7 +169,7 @@ function SelectorAlineacion({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-      <button onClick={onToggle} className={`flex w-full items-center justify-between gap-2 px-3 py-3 text-left ${color.bg}`}>
+      <button onClick={onToggle} className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${color.bg}`}>
         <span className={`truncate text-sm font-extrabold ${color.text}`}>{titulo}</span>
         <span className="flex shrink-0 items-center gap-2 text-[11px]">
           <span className={completo ? 'font-bold text-success' : `font-semibold ${color.text}`}>
@@ -182,7 +182,7 @@ function SelectorAlineacion({
         <div className="border-t border-line">
           <button
             onClick={() => toggleSeccion('pool')}
-            className="flex w-full items-center justify-between gap-2 border-b border-line bg-ink-soft/15 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-ink"
+            className="flex w-full items-center justify-between gap-2 border-b border-line bg-ink-soft/15 px-2.5 py-1 text-left text-xs font-bold uppercase tracking-wide text-ink"
           >
             <span>◌ Jugadores ({listaPool.length})</span>
             <span className={`normal-case transition-transform ${seccionAbierta.pool ? 'rotate-180' : ''}`}>⌄</span>
@@ -204,14 +204,14 @@ function SelectorAlineacion({
                 />
               ))}
               {listaPool.length === 0 && (
-                <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Ya asignaste a todo el plantel</li>
+                <li className="px-3 py-1.5 text-center text-[11px] text-ink-soft">Ya asignaste a todo el plantel</li>
               )}
             </ul>
           )}
 
           <button
             onClick={() => toggleSeccion('titulares')}
-            className="flex w-full items-center justify-between gap-2 border-y border-line bg-ink-soft/15 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-ink"
+            className="flex w-full items-center justify-between gap-2 border-y border-line bg-ink-soft/15 px-2.5 py-1 text-left text-xs font-bold uppercase tracking-wide text-ink"
           >
             <span>● Titulares ({listaTitulares.length}/{jugadoresPorEquipo})</span>
             <span className={`normal-case transition-transform ${seccionAbierta.titulares ? 'rotate-180' : ''}`}>⌄</span>
@@ -231,14 +231,14 @@ function SelectorAlineacion({
                 />
               ))}
               {listaTitulares.length === 0 && (
-                <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin titulares todavía</li>
+                <li className="px-3 py-1.5 text-center text-[11px] text-ink-soft">Sin titulares todavía</li>
               )}
             </ul>
           )}
 
           <button
             onClick={() => toggleSeccion('suplentes')}
-            className="flex w-full items-center justify-between gap-2 border-y border-line bg-ink-soft/15 px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-ink"
+            className="flex w-full items-center justify-between gap-2 border-y border-line bg-ink-soft/15 px-2.5 py-1 text-left text-xs font-bold uppercase tracking-wide text-ink"
           >
             <span>○ Suplentes ({listaSuplentes.length})</span>
             <span className={`normal-case transition-transform ${seccionAbierta.suplentes ? 'rotate-180' : ''}`}>⌄</span>
@@ -259,7 +259,7 @@ function SelectorAlineacion({
                 />
               ))}
               {listaSuplentes.length === 0 && (
-                <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes todavía</li>
+                <li className="px-3 py-1.5 text-center text-[11px] text-ink-soft">Sin suplentes todavía</li>
               )}
             </ul>
           )}
@@ -268,7 +268,7 @@ function SelectorAlineacion({
             <>
               <button
                 onClick={() => toggleSeccion('expulsados')}
-                className="flex w-full items-center justify-between gap-2 border-t border-line bg-danger-soft px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-danger"
+                className="flex w-full items-center justify-between gap-2 border-t border-line bg-danger-soft px-2.5 py-1 text-left text-xs font-bold uppercase tracking-wide text-danger"
               >
                 <span>🟥 Expulsados ({listaExpulsados.length})</span>
                 <span className={`normal-case transition-transform ${seccionAbierta.expulsados ? 'rotate-180' : ''}`}>⌄</span>
