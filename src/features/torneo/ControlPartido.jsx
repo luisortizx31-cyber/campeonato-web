@@ -745,7 +745,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       ) : (
       <div {...swipeVista}>
       {vista === 'alineacion' ? (
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border-2 border-white/10 bg-brand-dark p-2">
+        <div className="space-y-2">
           <SelectorAlineacion
             titulo={nombreEquipo(partido.equipoLocalId)}
             jugadores={jugadoresLocal}
