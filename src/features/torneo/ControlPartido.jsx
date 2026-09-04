@@ -795,6 +795,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onGuardarCamiseta={handleGuardarCamiseta}
             onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('local', jugadorId, confirmado)}
           />
+
+          <div className="my-1 h-1.5 rounded-full bg-black" />
+
           <SelectorAlineacion
             titulo={nombreEquipo(partido.equipoVisitanteId)}
             jugadores={jugadoresVisitante}
