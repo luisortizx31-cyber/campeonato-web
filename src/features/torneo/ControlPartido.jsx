@@ -48,19 +48,19 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
   const completo = titulares.length >= jugadoresPorEquipo
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-      <button onClick={onToggle} className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left">
-        <span className={`truncate text-xs font-bold ${color.text}`}>{titulo}</span>
+      <button onClick={onToggle} className={`flex w-full items-center justify-between gap-2 px-3 py-3 text-left ${color.bg}`}>
+        <span className={`truncate text-sm font-extrabold ${color.text}`}>{titulo}</span>
         <span className="flex shrink-0 items-center gap-2 text-[11px]">
-          <span className={completo ? 'font-semibold text-success' : 'text-ink-soft'}>
+          <span className={completo ? 'font-bold text-success' : `font-semibold ${color.text}`}>
             {titulares.length}/{jugadoresPorEquipo} titulares
           </span>
-          <span className={`text-ink-soft transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
+          <span className={`${color.text} transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
         </span>
       </button>
       {abierto && (
         <div className="border-t border-line">
-          <p className="bg-paper px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
-            Titulares ({listaTitulares.length}/{jugadoresPorEquipo})
+          <p className="border-b border-line bg-ink-soft/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">
+            ● Titulares ({listaTitulares.length}/{jugadoresPorEquipo})
           </p>
           <ul className="divide-y divide-line">
             {listaTitulares.map((j) => (
@@ -77,8 +77,8 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
             )}
           </ul>
 
-          <p className="border-t border-line bg-paper px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
-            Suplentes ({listaSuplentes.length})
+          <p className="border-y border-line bg-ink-soft/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-ink">
+            ○ Suplentes ({listaSuplentes.length})
           </p>
           <ul className="divide-y divide-line">
             {listaSuplentes.map((j) => (
