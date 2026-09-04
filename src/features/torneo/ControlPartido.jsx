@@ -12,15 +12,8 @@ import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 
-// Titulares primero (orden alfabetico entre ellos), suplentes despues
-// - se usa en el desplegable de alineacion de arriba.
-function ordenarPorTitular(jugadores, titulares) {
-  return [...jugadores].sort((a, b) => {
-    const aTit = titulares.includes(a.id) ? 0 : 1
-    const bTit = titulares.includes(b.id) ? 0 : 1
-    if (aTit !== bTit) return aTit - bTit
-    return a.nombre.localeCompare(b.nombre)
-  })
+function porNombre(a, b) {
+  return a.nombre.localeCompare(b.nombre)
 }
 
 // Fila del desplegable de ALINEACION (arriba): muestra a todo el
@@ -44,8 +37,14 @@ function FilaAlineacion({ jugador, esTitular, expulsado, onClick }) {
   )
 }
 
+// Dos listas separadas (no una sola mezclada): Titulares arriba,
+// Suplentes abajo. Cualquiera que no este en `titulares` cae
+// automaticamente en Suplentes, sin necesidad de marcarlo aparte -
+// asi que al llegar al maximo del formato (futbol 6/7/11) el resto
+// del plantel queda visible ahi.
 function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, color, abierto, onToggle, onTocarJugador, estaExpulsado }) {
-  const ordenados = ordenarPorTitular(jugadores, titulares)
+  const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
+  const listaSuplentes = jugadores.filter((j) => !titulares.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -59,23 +58,43 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
         </span>
       </button>
       {abierto && (
-        <ul className="divide-y divide-line border-t border-line">
-          {ordenados.map((j) => {
-            const esTitular = titulares.includes(j.id)
-            return (
+        <div className="border-t border-line">
+          <p className="bg-paper px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+            Titulares ({listaTitulares.length}/{jugadoresPorEquipo})
+          </p>
+          <ul className="divide-y divide-line">
+            {listaTitulares.map((j) => (
               <FilaAlineacion
                 key={j.id}
                 jugador={j}
-                esTitular={esTitular}
+                esTitular
                 expulsado={estaExpulsado(j.id)}
-                onClick={() => onTocarJugador(j, esTitular)}
+                onClick={() => onTocarJugador(j, true)}
               />
-            )
-          })}
-          {ordenados.length === 0 && (
-            <li className="px-3 py-3 text-center text-[11px] text-ink-soft">Sin jugadores</li>
-          )}
-        </ul>
+            ))}
+            {listaTitulares.length === 0 && (
+              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin titulares todavía</li>
+            )}
+          </ul>
+
+          <p className="border-t border-line bg-paper px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+            Suplentes ({listaSuplentes.length})
+          </p>
+          <ul className="divide-y divide-line">
+            {listaSuplentes.map((j) => (
+              <FilaAlineacion
+                key={j.id}
+                jugador={j}
+                esTitular={false}
+                expulsado={estaExpulsado(j.id)}
+                onClick={() => onTocarJugador(j, false)}
+              />
+            ))}
+            {listaSuplentes.length === 0 && (
+              <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes</li>
+            )}
+          </ul>
+        </div>
       )}
     </div>
   )
