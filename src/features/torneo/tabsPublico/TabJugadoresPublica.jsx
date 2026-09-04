@@ -3,6 +3,8 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
+import { colorEquipo } from '../../../utils/colorEquipo'
+import { EscudoEquipo } from '../../shared/EscudoEquipo'
 
 function EstadoJugador({ jugador }) {
   if (jugador.eliminado) {
@@ -130,20 +132,24 @@ export default function TabJugadoresPublica({ torneoId }) {
           {equipos.map((eq) => {
             const jugadoresEquipo = jugadores.filter((j) => j.equipoId === eq.id)
             const abierto = expandidos.includes(eq.id)
+            const color = colorEquipo(eq.nombre)
             return (
               <li key={eq.id} className="overflow-hidden rounded-2xl border border-line bg-surface">
                 <button
                   onClick={() => toggleExpandido(eq.id)}
-                  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left ${color.bg}`}
                 >
-                  <span className="font-semibold text-ink">{eq.nombre}</span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs text-ink-soft">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <EscudoEquipo nombre={eq.nombre} />
+                    <span className={`truncate font-bold ${color.text}`}>{eq.nombre}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs font-medium text-ink-soft">
                     {jugadoresEquipo.length} jugador{jugadoresEquipo.length === 1 ? '' : 'es'}
                     <span className={`transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
                   </span>
                 </button>
                 {abierto && (
-                  <ul className="divide-y divide-line border-t border-line">
+                  <ul className="divide-y divide-line border-t border-line bg-paper">
                     {jugadoresEquipo.length === 0 ? (
                       <li className="px-4 py-3 text-center text-xs text-ink-soft">Sin jugadores todavía.</li>
                     ) : (

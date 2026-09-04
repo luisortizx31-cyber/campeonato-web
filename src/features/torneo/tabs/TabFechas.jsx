@@ -11,11 +11,11 @@ import {
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { calcularNumeroFechas, calcularLegPartido } from '../../../utils/fixtureTorneo'
-import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
 import ControlPartido from '../ControlPartido'
+import { EscudoEquipo } from '../../shared/EscudoEquipo'
 
 /**
  * Genera el fixture "todos contra todos" de una categoria (una vez
@@ -600,15 +600,6 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
         />
       )}
     </div>
-  )
-}
-
-function EscudoEquipo({ nombre }) {
-  const color = colorEquipo(nombre)
-  return (
-    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color.bg} ${color.text}`}>
-      {inicialEquipo(nombre)}
-    </span>
   )
 }
 
