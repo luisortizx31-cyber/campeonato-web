@@ -26,23 +26,17 @@ service cloud.firestore {
     }
 
     // Un superAdmin puede deshabilitar un colegio sin borrar sus datos
-    // (ver SeccionColegios / /torneos/{torneoId}.suspendido) - esMaestro()
-    // se apoya en esto para que, una vez deshabilitado, el propio
-    // Maestro pierda TODOS los permisos de escritura de una sola vez
-    // (todas las reglas de abajo dependen de esMaestro()/esMaestroDe()).
-    // El exists() de arranque es obligatorio: get() sobre un doc que no
-    // existe ABORTA toda la evaluacion de la regla (no devuelve
-    // null/false), asi que sin este chequeo cualquier torneoId sin su
-    // doc /torneos - por lo que sea - tira "Missing or insufficient
-    // permissions" en TODAS las escrituras del Maestro, no solo en el
-    // caso puntual que se queria bloquear.
-    function torneoSuspendido(torneoId) {
-      return exists(/databases/$(database)/documents/torneos/$(torneoId))
-        && get(/databases/$(database)/documents/torneos/$(torneoId)).data.suspendido == true;
-    }
-
+    // (ver SeccionColegios / /torneos/{torneoId}.suspendido). Eso se
+    // corta enteramente del lado de la app (ProtectedRoute bloquea el
+    // panel, PaginaPublicaTorneo bloquea el link publico) y a
+    // proposito NO se repite aca: un get() extra por escritura sobre
+    // /torneos/{torneoId} termino rompiendo, de mas de una forma
+    // distinta, TODAS las escrituras del Maestro (crear jugadores,
+    // guardar config, cargar goles, etc) - no vale la pena la
+    // complejidad para una capa de defensa extra que ademas no es lo
+    // que se pidio.
     function esMaestro() {
-      return estaAutenticado() && rolDe(request.auth.uid) == 'master' && !torneoSuspendido(perfilDe(request.auth.uid).torneoId);
+      return estaAutenticado() && rolDe(request.auth.uid) == 'master';
     }
 
     function esMaestroDe(torneoId) {
@@ -74,10 +68,8 @@ service cloud.firestore {
     // no tiene login. El alta la hace un superAdmin junto con el doc
     // de /usuarios de arriba.
     // El update lo puede hacer el propio Maestro (edita el nombre de
-    // su colegio) O el superAdmin (deshabilita/habilita, o corrige el
-    // nombre desde Configuracion) - esMaestroDe() sola no alcanza
-    // porque, una vez suspendido, esMaestro() da false y nadie mas
-    // podria revertirlo.
+    // su colegio) O el superAdmin (deshabilita/habilita el campo
+    // "suspendido", o corrige el nombre desde Configuracion).
     match /torneos/{torneoId} {
       allow get: if true;
       allow create: if esSuperAdmin();
@@ -148,18 +140,8 @@ service cloud.firestore {
     // los /privado de otros tenants aunque el codigo cliente no ponga
     // un where(torneoId) (la query de buscarJugadorPorDni solo filtra
     // por dni, esta regla es la que de verdad aisla por tenant).
-    //
-    // A proposito NO usa esMaestro() (que ahora hace un get() extra
-    // para chequear suspendido): en una query "list", el costo de
-    // get()/exists() de la regla se multiplica por cada documento que
-    // devuelve la query (varios jugadores pueden compartir DNI vacio en
-    // pruebas), y el limite de Firestore es 20 por request - con
-    // suficientes jugadores esto rompia la busqueda entera con
-    // "Missing or insufficient permissions". La suspension ya queda
-    // cubierta igual en las reglas de escritura (esMaestro()) de abajo,
-    // que al ser de un solo documento no tienen este problema.
     match /{path=**}/privado/{docId} {
-      allow get, list: if estaAutenticado() && rolDe(request.auth.uid) == 'master' && resource.data.torneoId == miTorneoId();
+      allow get, list: if esMaestro() && resource.data.torneoId == miTorneoId();
     }
 
     match /torneo_partidos/{partidoId} {
