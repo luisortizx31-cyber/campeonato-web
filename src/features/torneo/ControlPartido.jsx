@@ -26,15 +26,18 @@ function porNombre(a, b) {
 }
 
 // Fila del desplegable de ALINEACION (arriba): numerada 1..n dentro de
-// cada lista (Titulares/Suplentes/Jugadores) para poder referirse a
-// "el 3 de suplentes" de un vistazo. En Titulares/Suplentes, tocar el
-// nombre saca a ese jugador de su estado actual (decidido por el
-// padre via `onClick` - swap si es titular, promocion directa si es
-// suplente). En Jugadores (estado="pool", todavia sin decidir si juega
-// hoy) no hay un solo tap posible: dos botones aparte para mandarlo a
-// Titular o a Suplente. El numero de camiseta y el check de DNI del
-// dia quedan siempre visibles y editables, sean cual sea el estado.
-function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, titularesCompletos, onClick, onElegirTitular, onElegirSuplente, onGuardarCamiseta, onCambiarDni }) {
+// cada lista (Jugadores/Titulares/Suplentes/Expulsados) para poder
+// referirse a "el 3 de suplentes" de un vistazo. En Titulares/
+// Suplentes, tocar el nombre saca a ese jugador de su estado actual
+// (decidido por el padre via `onClick` - swap si es titular,
+// promocion directa si es suplente). En Jugadores (estado="pool",
+// todavia sin decidir si juega hoy) no hay un solo tap posible: dos
+// botones aparte para mandarlo a Titular o a Suplente. Un expulsado
+// (estado="expulsado") ya no tiene ninguna accion posible - solo
+// muestra el motivo, aparte de Titulares/Suplentes para no mezclarlo
+// con quienes siguen en juego. El numero de camiseta queda siempre
+// visible y editable, sea cual sea el estado.
+function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompletos, motivoExpulsion, onClick, onElegirTitular, onElegirSuplente, onGuardarCamiseta, onCambiarDni }) {
   const [numero, setNumero] = useState(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
 
   useEffect(() => {
@@ -54,19 +57,23 @@ function FilaAlineacion({ indice, jugador, estado, expulsado, dniConfirmado, tit
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
             <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
             <span className="min-w-0 flex-1 truncate text-ink-soft">{jugador.nombre}</span>
-            {expulsado && <span className="shrink-0 font-semibold text-danger">🟥</span>}
+          </span>
+        ) : estado === 'expulsado' ? (
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
+            <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
+            <span className="min-w-0 flex-1 truncate font-medium text-danger">🟥 {jugador.nombre}</span>
+            <span className="shrink-0 text-[10px] font-semibold text-danger">{motivoExpulsion}</span>
           </span>
         ) : (
           <button
             onClick={onClick}
-            disabled={expulsado || (estado === 'suplente' && titularesCompletos)}
+            disabled={estado === 'suplente' && titularesCompletos}
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-50"
           >
             <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
             <span className={`min-w-0 flex-1 truncate ${estado === 'titular' ? 'font-medium text-ink' : 'text-ink-soft'}`}>
               {estado === 'titular' ? '●' : '○'} {jugador.nombre}
             </span>
-            {expulsado && <span className="shrink-0 font-semibold text-danger">🟥 Expulsado</span>}
           </button>
         )}
         <input
@@ -140,13 +147,20 @@ function SelectorAlineacion({
   onTocarSuplente,
   onElegirDesdePool,
   estaExpulsado,
+  motivoExpulsion,
   onGuardarCamiseta,
   onCambiarDni,
 }) {
-  const [seccionAbierta, setSeccionAbierta] = useState({ titulares: true, suplentes: true, pool: true })
-  const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
-  const listaSuplentes = jugadores.filter((j) => suplentes.includes(j.id)).sort(porNombre)
+  const [seccionAbierta, setSeccionAbierta] = useState({ titulares: true, suplentes: true, pool: true, expulsados: true })
+  // Un expulsado (roja o 2da amarilla) sale de Titulares/Suplentes y
+  // pasa a su propia seccion aparte - ya no tiene ninguna accion
+  // posible, mezclarlo con quienes siguen en juego solo confunde.
+  const listaTitulares = jugadores.filter((j) => titulares.includes(j.id) && !estaExpulsado(j.id)).sort(porNombre)
+  const listaSuplentes = jugadores.filter((j) => suplentes.includes(j.id) && !estaExpulsado(j.id)).sort(porNombre)
   const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
+  const listaExpulsados = jugadores
+    .filter((j) => (titulares.includes(j.id) || suplentes.includes(j.id)) && estaExpulsado(j.id))
+    .sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
 
   function toggleSeccion(seccion) {
@@ -181,7 +195,6 @@ function SelectorAlineacion({
                   indice={i + 1}
                   jugador={j}
                   estado="pool"
-                  expulsado={estaExpulsado(j.id)}
                   dniConfirmado={dniConfirmados.includes(j.id)}
                   titularesCompletos={completo}
                   onElegirTitular={() => onElegirDesdePool(j, 'titular')}
@@ -211,7 +224,6 @@ function SelectorAlineacion({
                   indice={i + 1}
                   jugador={j}
                   estado="titular"
-                  expulsado={estaExpulsado(j.id)}
                   dniConfirmado={dniConfirmados.includes(j.id)}
                   onClick={() => onTocarTitular(j)}
                   onGuardarCamiseta={onGuardarCamiseta}
@@ -239,7 +251,6 @@ function SelectorAlineacion({
                   indice={i + 1}
                   jugador={j}
                   estado="suplente"
-                  expulsado={estaExpulsado(j.id)}
                   dniConfirmado={dniConfirmados.includes(j.id)}
                   titularesCompletos={completo}
                   onClick={() => onTocarSuplente(j)}
@@ -251,6 +262,32 @@ function SelectorAlineacion({
                 <li className="px-3 py-2 text-center text-[11px] text-ink-soft">Sin suplentes todavía</li>
               )}
             </ul>
+          )}
+
+          {listaExpulsados.length > 0 && (
+            <>
+              <button
+                onClick={() => toggleSeccion('expulsados')}
+                className="flex w-full items-center justify-between gap-2 border-t border-line bg-danger-soft px-3 py-1.5 text-left text-xs font-bold uppercase tracking-wide text-danger"
+              >
+                <span>🟥 Expulsados ({listaExpulsados.length})</span>
+                <span className={`normal-case transition-transform ${seccionAbierta.expulsados ? 'rotate-180' : ''}`}>⌄</span>
+              </button>
+              {seccionAbierta.expulsados && (
+                <ul className="divide-y divide-line">
+                  {listaExpulsados.map((j, i) => (
+                    <FilaAlineacion
+                      key={j.id}
+                      indice={i + 1}
+                      jugador={j}
+                      estado="expulsado"
+                      motivoExpulsion={motivoExpulsion(j.id)}
+                      onGuardarCamiseta={onGuardarCamiseta}
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
       )}
@@ -400,6 +437,11 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     const amarillas = cartas.filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length
     const roja = cartas.some((t) => t.tipo === TIPO_TARJETA.ROJA)
     return roja || amarillas >= 2
+  }
+
+  function motivoExpulsionEnPartido(jugadorId) {
+    const roja = tarjetasDe(jugadorId).some((t) => t.tipo === TIPO_TARJETA.ROJA)
+    return roja ? 'Roja directa' : '2 amarillas'
   }
 
   const expulsadosLocal = jugadoresLocal.filter((j) => estaExpulsadoEnPartido(j.id))
@@ -718,6 +760,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onTocarSuplente={(j) => handleTocarSuplente('local', j)}
             onElegirDesdePool={(j, nuevoEstado) => handleElegirDesdePool('local', j, nuevoEstado)}
             estaExpulsado={estaExpulsadoEnPartido}
+            motivoExpulsion={motivoExpulsionEnPartido}
             onGuardarCamiseta={handleGuardarCamiseta}
             onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('local', jugadorId, confirmado)}
           />
@@ -735,6 +778,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onTocarSuplente={(j) => handleTocarSuplente('visitante', j)}
             onElegirDesdePool={(j, nuevoEstado) => handleElegirDesdePool('visitante', j, nuevoEstado)}
             estaExpulsado={estaExpulsadoEnPartido}
+            motivoExpulsion={motivoExpulsionEnPartido}
             onGuardarCamiseta={handleGuardarCamiseta}
             onCambiarDni={(jugadorId, confirmado) => handleCambiarDni('visitante', jugadorId, confirmado)}
           />
