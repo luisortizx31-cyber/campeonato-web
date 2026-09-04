@@ -112,6 +112,16 @@ export async function actualizarJugador(jugadorId, { equipoId, nombre, numeroCam
   })
 }
 
+// Edicion rapida del numero de camiseta desde el selector de
+// alineacion de ControlPartido - a diferencia de actualizarJugador
+// (que tambien pide equipoId/nombre, pensado para el modal completo
+// de Jugadores), esta no toca nada mas.
+export async function actualizarNumeroCamiseta(jugadorId, numeroCamiseta) {
+  await updateDoc(doc(db, 'torneo_jugadores', jugadorId), {
+    numeroCamiseta: numeroCamiseta === '' || numeroCamiseta == null ? null : Number(numeroCamiseta),
+  })
+}
+
 export async function obtenerDatosPrivadosJugador(jugadorId) {
   const snap = await getDoc(doc(db, 'torneo_jugadores', jugadorId, 'privado', 'datos'))
   if (!snap.exists()) return { dni: null, telefono: null }

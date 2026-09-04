@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listarJugadoresPorEquipo } from '../../services/torneoJugadoresService'
+import { listarJugadoresPorEquipo, actualizarNumeroCamiseta } from '../../services/torneoJugadoresService'
 import { actualizarTitular, registrarResultadoPartido, reiniciarPartido } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
@@ -20,22 +20,54 @@ function porNombre(a, b) {
 }
 
 // Fila del desplegable de ALINEACION (arriba): muestra a todo el
-// plantel del equipo, titulares primero. Tocar el nombre alterna
-// titular/suplente (o abre el selector de reemplazo si ya era
-// titular, decidido por el padre via `onClick`).
-function FilaAlineacion({ jugador, esTitular, expulsado, onClick }) {
+// plantel del equipo, titulares primero, numerados 1..n dentro de
+// cada lista (Titulares/Suplentes) para poder referirse a "el 3 de
+// suplentes" de un vistazo. Tocar el nombre alterna titular/suplente
+// (o abre el selector de reemplazo si ya era titular, decidido por el
+// padre via `onClick`). El numero de camiseta se edita ahi mismo -
+// input aparte del boton del nombre (no puede ir adentro, un <input>
+// no es valido dentro de un <button>), con stopPropagation para que
+// tocarlo no dispare el toggle de titular/suplente.
+function FilaAlineacion({ indice, jugador, esTitular, expulsado, onClick, onGuardarCamiseta }) {
+  const [numero, setNumero] = useState(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
+
+  useEffect(() => {
+    setNumero(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
+  }, [jugador.numeroCamiseta])
+
+  function guardar() {
+    const actual = jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : ''
+    if (numero.trim() === actual) return
+    onGuardarCamiseta(jugador.id, numero.trim())
+  }
+
   return (
-    <li>
+    <li className="flex items-center gap-2 px-3 py-2">
       <button
         onClick={onClick}
         disabled={expulsado}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs disabled:opacity-50"
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-50"
       >
-        <span className={esTitular ? 'font-medium text-ink' : 'text-ink-soft'}>
+        <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
+        <span className={`min-w-0 flex-1 truncate ${esTitular ? 'font-medium text-ink' : 'text-ink-soft'}`}>
           {esTitular ? '●' : '○'} {jugador.nombre}
         </span>
         {expulsado && <span className="shrink-0 font-semibold text-danger">🟥 Expulsado</span>}
       </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        value={numero}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => setNumero(e.target.value)}
+        onBlur={guardar}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.target.blur()
+        }}
+        placeholder="#"
+        title="Número de camiseta"
+        className="no-spinner w-11 shrink-0 rounded-md border border-line bg-paper px-1 py-1 text-center text-xs text-ink outline-none focus-visible:border-brand"
+      />
     </li>
   )
 }
@@ -45,7 +77,7 @@ function FilaAlineacion({ jugador, esTitular, expulsado, onClick }) {
 // automaticamente en Suplentes, sin necesidad de marcarlo aparte -
 // asi que al llegar al maximo del formato (futbol 6/7/11) el resto
 // del plantel queda visible ahi.
-function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, color, abierto, onToggle, onTocarJugador, estaExpulsado }) {
+function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, color, abierto, onToggle, onTocarJugador, estaExpulsado, onGuardarCamiseta }) {
   const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
   const listaSuplentes = jugadores.filter((j) => !titulares.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
@@ -66,13 +98,15 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
             ● Titulares ({listaTitulares.length}/{jugadoresPorEquipo})
           </p>
           <ul className="divide-y divide-line">
-            {listaTitulares.map((j) => (
+            {listaTitulares.map((j, i) => (
               <FilaAlineacion
                 key={j.id}
+                indice={i + 1}
                 jugador={j}
                 esTitular
                 expulsado={estaExpulsado(j.id)}
                 onClick={() => onTocarJugador(j, true)}
+                onGuardarCamiseta={onGuardarCamiseta}
               />
             ))}
             {listaTitulares.length === 0 && (
@@ -84,13 +118,15 @@ function SelectorAlineacion({ titulo, jugadores, titulares, jugadoresPorEquipo, 
             ○ Suplentes ({listaSuplentes.length})
           </p>
           <ul className="divide-y divide-line">
-            {listaSuplentes.map((j) => (
+            {listaSuplentes.map((j, i) => (
               <FilaAlineacion
                 key={j.id}
+                indice={i + 1}
                 jugador={j}
                 esTitular={false}
                 expulsado={estaExpulsado(j.id)}
                 onClick={() => onTocarJugador(j, false)}
+                onGuardarCamiseta={onGuardarCamiseta}
               />
             ))}
             {listaSuplentes.length === 0 && (
@@ -250,6 +286,22 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const enCanchaVisitante = jugadoresVisitante.filter(
     (j) => titularesVisitante.includes(j.id) && !estaExpulsadoEnPartido(j.id)
   )
+
+  // El numero de camiseta con el que se registro al jugador se puede
+  // corregir directo desde la alineacion (no hace falta ir hasta
+  // Jugadores) - actualiza el estado local al toque (optimista) y
+  // guarda en Firestore por separado.
+  async function handleGuardarCamiseta(jugadorId, valor) {
+    const numero = valor === '' ? null : Number(valor)
+    setJugadoresLocal((js) => js.map((j) => (j.id === jugadorId ? { ...j, numeroCamiseta: numero } : j)))
+    setJugadoresVisitante((js) => js.map((j) => (j.id === jugadorId ? { ...j, numeroCamiseta: numero } : j)))
+    try {
+      await actualizarNumeroCamiseta(jugadorId, numero)
+    } catch (err) {
+      console.error('[ControlPartido]', err)
+      setError('No se pudo guardar el número de camiseta.')
+    }
+  }
 
   async function handleToggleTitular(equipo, jugadorId, esTitular) {
     const setTitulares = equipo === 'local' ? setTitularesLocal : setTitularesVisitante
@@ -505,6 +557,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onToggle={() => setAlineacionAbierta((a) => ({ ...a, local: !a.local }))}
             onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('local', j, esTitular)}
             estaExpulsado={estaExpulsadoEnPartido}
+            onGuardarCamiseta={handleGuardarCamiseta}
           />
           <SelectorAlineacion
             titulo={`Alineación · ${nombreEquipo(partido.equipoVisitanteId)}`}
@@ -516,6 +569,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             onToggle={() => setAlineacionAbierta((a) => ({ ...a, visitante: !a.visitante }))}
             onTocarJugador={(j, esTitular) => handleTocarEnAlineacion('visitante', j, esTitular)}
             estaExpulsado={estaExpulsadoEnPartido}
+            onGuardarCamiseta={handleGuardarCamiseta}
           />
         </div>
       ) : (
