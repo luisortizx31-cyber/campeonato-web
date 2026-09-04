@@ -27,6 +27,7 @@ export default function PaginaPublicaTorneo() {
   const [basesUrl, setBasesUrl] = useState(null)
   const [nombreTorneo, setNombreTorneo] = useState(null)
   const [torneoNoEncontrado, setTorneoNoEncontrado] = useState(false)
+  const [torneoSuspendido, setTorneoSuspendido] = useState(false)
 
   useEffect(() => {
     let cancelado = false
@@ -35,6 +36,13 @@ export default function PaginaPublicaTorneo() {
         if (cancelado) return
         if (!t) {
           setTorneoNoEncontrado(true)
+          return
+        }
+        // El superAdmin puede deshabilitar un colegio desde
+        // Configuracion (ver SeccionColegios) - corta el acceso tanto
+        // al panel admin como a esta pagina publica, sin borrar datos.
+        if (t.suspendido) {
+          setTorneoSuspendido(true)
           return
         }
         setNombreTorneo(t.nombre || null)
@@ -60,6 +68,14 @@ export default function PaginaPublicaTorneo() {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 text-center text-ink-soft">
         Este link de campeonato no existe o ya no está disponible.
+      </div>
+    )
+  }
+
+  if (torneoSuspendido) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 text-center text-ink-soft">
+        Este campeonato está deshabilitado temporalmente.
       </div>
     )
   }

@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { suscribirseAEstadoAuth, obtenerPerfilUsuario } from '../services/authService'
+import { obtenerTorneo } from '../services/torneosService'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [usuarioAuth, setUsuarioAuth] = useState(null)
   const [perfil, setPerfil] = useState(null)
+  const [torneoSuspendido, setTorneoSuspendido] = useState(false)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
 
@@ -16,6 +18,7 @@ export function AuthProvider({ children }) {
 
       if (!user) {
         setPerfil(null)
+        setTorneoSuspendido(false)
         setCargando(false)
         return
       }
@@ -23,6 +26,16 @@ export function AuthProvider({ children }) {
       try {
         const perfilUsuario = await obtenerPerfilUsuario(user.uid)
         setPerfil(perfilUsuario)
+        // El superAdmin puede deshabilitar el acceso de un colegio sin
+        // borrar sus datos (ver TabConfiguracion -> SeccionColegios) -
+        // el flag vive en /torneos/{torneoId}, no en el propio perfil,
+        // asi que hace falta esta lectura aparte.
+        if (perfilUsuario.torneoId) {
+          const torneo = await obtenerTorneo(perfilUsuario.torneoId)
+          setTorneoSuspendido(torneo?.suspendido === true)
+        } else {
+          setTorneoSuspendido(false)
+        }
       } catch (err) {
         // Si el usuario existe en Auth pero no tiene documento en
         // /usuarios, es un estado inconsistente - lo tratamos como
@@ -46,8 +59,11 @@ export function AuthProvider({ children }) {
     // vez de manejarlo por su cuenta, para que sea imposible operar
     // sobre el torneo equivocado.
     torneoId: perfil?.torneoId ?? null,
-    // Puede dar de alta colegios/torneos nuevos desde /admin - ver
-    // models/roles.js.
+    // Deshabilitado por un superAdmin (ver SeccionColegios) - bloquea
+    // el panel admin ademas de la pagina publica, sin borrar datos.
+    torneoSuspendido,
+    // Puede dar de alta colegios/torneos nuevos y deshabilitarlos
+    // desde Configuracion - ver models/roles.js.
     esSuperAdmin: perfil?.superAdmin === true,
     cargando,
     error,

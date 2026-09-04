@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'
  * barrera.
  */
 export function ProtectedRoute({ children }) {
-  const { cargando, estaAutenticado, torneoId } = useAuth()
+  const { cargando, estaAutenticado, torneoId, torneoSuspendido, esSuperAdmin } = useAuth()
 
   if (cargando) {
     return (
@@ -30,6 +30,17 @@ export function ProtectedRoute({ children }) {
     return (
       <div className="flex min-h-screen items-center justify-center px-6 text-center text-ink-soft">
         Tu cuenta no tiene un torneo asignado. Contacta al administrador.
+      </div>
+    )
+  }
+
+  // El superAdmin nunca queda bloqueado por esto, aunque su propio
+  // torneo este deshabilitado - asi nunca se puede autoexcluir por
+  // error (ver TabConfiguracion -> SeccionColegios).
+  if (torneoSuspendido && !esSuperAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 text-center text-ink-soft">
+        Este colegio está deshabilitado temporalmente. Contacta al administrador del sistema.
       </div>
     )
   }

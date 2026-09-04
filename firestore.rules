@@ -18,15 +18,24 @@ service cloud.firestore {
       return perfilDe(uid).role;
     }
 
-    function esMaestro() {
-      return estaAutenticado() && rolDe(request.auth.uid) == 'master';
-    }
-
     // A que torneo (tenant) pertenece el usuario logueado - todo dato
     // de un colegio queda marcado con este mismo torneoId, y esta
     // funcion es la que impide que un colegio toque los datos de otro.
     function miTorneoId() {
       return perfilDe(request.auth.uid).torneoId;
+    }
+
+    // Un superAdmin puede deshabilitar un colegio sin borrar sus datos
+    // (ver SeccionColegios / /torneos/{torneoId}.suspendido) - esMaestro()
+    // se apoya en esto para que, una vez deshabilitado, el propio
+    // Maestro pierda TODOS los permisos de escritura de una sola vez
+    // (todas las reglas de abajo dependen de esMaestro()/esMaestroDe()).
+    function torneoSuspendido(torneoId) {
+      return get(/databases/$(database)/documents/torneos/$(torneoId)).data.suspendido == true;
+    }
+
+    function esMaestro() {
+      return estaAutenticado() && rolDe(request.auth.uid) == 'master' && !torneoSuspendido(perfilDe(request.auth.uid).torneoId);
     }
 
     function esMaestroDe(torneoId) {
@@ -57,11 +66,16 @@ service cloud.firestore {
     // la pagina publica). Lectura publica porque la pagina /campeonato
     // no tiene login. El alta la hace un superAdmin junto con el doc
     // de /usuarios de arriba.
+    // El update lo puede hacer el propio Maestro (edita el nombre de
+    // su colegio) O el superAdmin (deshabilita/habilita, o corrige el
+    // nombre desde Configuracion) - esMaestroDe() sola no alcanza
+    // porque, una vez suspendido, esMaestro() da false y nadie mas
+    // podria revertirlo.
     match /torneos/{torneoId} {
       allow get: if true;
       allow create: if esSuperAdmin();
       allow list, delete: if false;
-      allow update: if esMaestroDe(torneoId);
+      allow update: if esMaestroDe(torneoId) || esSuperAdmin();
     }
 
     // /colegios/{torneoId}: correo y contraseña de acceso de cada
@@ -69,11 +83,12 @@ service cloud.firestore {
     // superadminService.crearColegio) - a diferencia de /torneos de
     // arriba, esto NUNCA es de lectura publica porque guarda la
     // contraseña en texto plano, para que el superAdmin se la pueda
-    // volver a mostrar al cliente si la pierde.
+    // volver a mostrar al cliente si la pierde. El update es para
+    // editar esos datos o mirrorear el flag "suspendido" desde ahi.
     match /colegios/{torneoId} {
       allow get, list: if esSuperAdmin();
-      allow create: if esSuperAdmin();
-      allow update, delete: if false;
+      allow create, update: if esSuperAdmin();
+      allow delete: if false;
     }
 
     // ---------------------------------------------------------------
