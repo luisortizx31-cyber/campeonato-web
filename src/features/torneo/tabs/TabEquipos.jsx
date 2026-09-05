@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria, eliminarEquipo } from '../../../services/torneoEquiposService'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import ModalCrearEquipo from '../ModalCrearEquipo'
 import { migrarDesdeProyectoViejo } from '../../../dev/migrarDesdeProyectoViejo'
 
-export default function TabEquipos({ torneoId }) {
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+export default function TabEquipos({ torneoId, categoriasActivas }) {
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
   const [equipos, setEquipos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
@@ -75,19 +76,7 @@ export default function TabEquipos({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div className="mb-4 rounded-xl border border-warning/30 bg-warning-soft p-3">
         <p className="mb-2 text-xs text-warning">

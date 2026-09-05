@@ -3,12 +3,12 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { listarPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
 import { listarGolesPorCategoria, eliminarGol } from '../../../services/torneoGolesService'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { BotonExportarExcel } from '../../shared/BotonExportarExcel'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaGoleadoresCategoria from '../TablaGoleadoresCategoria'
 import ModalAgregarGol from '../ModalAgregarGol'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 // Fila de un gol dentro del historial - se repite tanto agrupada por
@@ -41,10 +41,10 @@ function FilaGol({ gol, nombreJugador, nombreEquipo, mostrarFecha, onEliminar, e
   )
 }
 
-export default function TabGoleadores({ torneoId }) {
+export default function TabGoleadores({ torneoId, categoriasActivas }) {
   const tablaRef = useRef(null)
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
-  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
+  const swipeCategoria = useSwipeHorizontal(categoriasActivas, categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
   const [jugadores, setJugadores] = useState([])
@@ -128,19 +128,7 @@ export default function TabGoleadores({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
       <div className="mb-4 flex justify-end gap-2">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { obtenerConfigTorneo } from '../../services/torneoConfigService'
 import { obtenerTorneo } from '../../services/torneosService'
+import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
 import TabPosicionesPublica from './tabsPublico/TabPosicionesPublica'
 import TabFechasPublica from './tabsPublico/TabFechasPublica'
 import TabGoleadoresPublica from './tabsPublico/TabGoleadoresPublica'
@@ -25,6 +26,7 @@ export default function PaginaPublicaTorneo() {
   const { torneoId } = useParams()
   const [tabActiva, setTabActiva] = useState('posiciones')
   const [basesUrl, setBasesUrl] = useState(null)
+  const [categoriasActivas, setCategoriasActivas] = useState(CATEGORIAS_ACTIVAS_DEFAULT)
   const [nombreTorneo, setNombreTorneo] = useState(null)
   const [torneoNoEncontrado, setTorneoNoEncontrado] = useState(false)
   const [torneoSuspendido, setTorneoSuspendido] = useState(false)
@@ -57,7 +59,10 @@ export default function PaginaPublicaTorneo() {
 
   useEffect(() => {
     obtenerConfigTorneo(torneoId)
-      .then((c) => setBasesUrl(c.basesUrl))
+      .then((c) => {
+        setBasesUrl(c.basesUrl)
+        setCategoriasActivas(c.categoriasActivas)
+      })
       .catch((err) => console.error('[PaginaPublicaTorneo]', err))
   }, [torneoId])
 
@@ -118,7 +123,7 @@ export default function PaginaPublicaTorneo() {
       </nav>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
-        <Componente torneoId={torneoId} />
+        <Componente torneoId={torneoId} categoriasActivas={categoriasActivas} />
       </main>
     </div>
   )

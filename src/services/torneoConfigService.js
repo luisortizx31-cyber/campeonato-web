@@ -1,7 +1,12 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../config/firebase'
-import { UMBRAL_SUSPENSION_AMARILLAS_DEFAULT, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../models/torneo'
+import {
+  UMBRAL_SUSPENSION_AMARILLAS_DEFAULT,
+  JUGADORES_POR_EQUIPO_DEFAULT,
+  DIFERENCIA_WALKOVER_DEFAULT,
+  CATEGORIAS_ACTIVAS_DEFAULT,
+} from '../models/torneo'
 
 const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024
 
@@ -45,9 +50,26 @@ export async function subirBases(torneoId, file) {
 export async function obtenerConfigTorneo(torneoId) {
   const snap = await getDoc(doc(db, 'torneo_config', idConfigGeneral(torneoId)))
   if (!snap.exists()) {
-    return { basesUrl: null, basesNombreArchivo: null, basesSubidoEn: null }
+    return { basesUrl: null, basesNombreArchivo: null, basesSubidoEn: null, categoriasActivas: CATEGORIAS_ACTIVAS_DEFAULT }
   }
-  return snap.data()
+  const data = snap.data()
+  return { ...data, categoriasActivas: data.categoriasActivas || CATEGORIAS_ACTIVAS_DEFAULT }
+}
+
+// Categorias que este torneo realmente usa (subconjunto de
+// CATEGORIAS_TORNEO_DISPONIBLES, ver models/torneo) - el resto de la
+// app (panel admin y pagina publica) solo ofrece un selector para
+// estas. Es una decision de todo el torneo, no por categoria, por eso
+// vive en el doc "general" junto a basesUrl.
+export async function actualizarCategoriasActivas(torneoId, categorias) {
+  if (!Array.isArray(categorias) || categorias.length === 0) {
+    throw new Error('Debe quedar seleccionada al menos una categoría.')
+  }
+  await setDoc(
+    doc(db, 'torneo_config', idConfigGeneral(torneoId)),
+    { torneoId, categoriasActivas: categorias },
+    { merge: true }
+  )
 }
 
 // Umbrales de disciplina guardados por torneo+categoria - separado del

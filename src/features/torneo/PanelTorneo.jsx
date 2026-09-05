@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { logout } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
+import { obtenerConfigTorneo } from '../../services/torneoConfigService'
+import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
 import TabEquipos from './tabs/TabEquipos'
 import TabFechas from './tabs/TabFechas'
 import TabPosiciones from './tabs/TabPosiciones'
@@ -41,6 +43,24 @@ export default function PanelTorneo() {
     }
   })
   const [linkCopiado, setLinkCopiado] = useState(false)
+
+  // Arranca en el default (no null) para que los tabs se monten igual
+  // de rapido que hoy - si el torneo tiene otra config guardada, se
+  // actualiza un instante despues y el selector de categoria de cada
+  // tab se autocorrige solo (ver SelectorCategoria).
+  const [categoriasActivas, setCategoriasActivas] = useState(CATEGORIAS_ACTIVAS_DEFAULT)
+
+  useEffect(() => {
+    let cancelado = false
+    obtenerConfigTorneo(torneoId)
+      .then((c) => {
+        if (!cancelado) setCategoriasActivas(c.categoriasActivas)
+      })
+      .catch((err) => console.error('[PanelTorneo] obtenerConfigTorneo', err))
+    return () => {
+      cancelado = true
+    }
+  }, [torneoId])
 
   useEffect(() => {
     try {
@@ -119,7 +139,12 @@ export default function PanelTorneo() {
       </nav>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
-        <Componente torneoId={torneoId} onIrAPosiciones={() => setTabActiva('posiciones')} />
+        <Componente
+          torneoId={torneoId}
+          categoriasActivas={categoriasActivas}
+          onIrAPosiciones={() => setTabActiva('posiciones')}
+          onCategoriasActualizadas={setCategoriasActivas}
+        />
       </main>
     </div>
   )

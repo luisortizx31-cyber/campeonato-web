@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarAjustesPorCategoria, eliminarAjustePuntos } from '../../../services/torneoAjustesService'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { BotonExportarExcel } from '../../shared/BotonExportarExcel'
 import { BotonDescargarTabla } from '../../shared/BotonDescargarTabla'
 import TablaPosicionesCategoria from '../TablaPosicionesCategoria'
 import ModalAjustarPuntos from '../ModalAjustarPuntos'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
-export default function TabPosiciones({ torneoId }) {
+export default function TabPosiciones({ torneoId, categoriasActivas }) {
   const tablaRef = useRef(null)
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
-  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
+  const swipeCategoria = useSwipeHorizontal(categoriasActivas, categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [ajustes, setAjustes] = useState([])
   const [filasExport, setFilasExport] = useState([])
@@ -59,19 +59,7 @@ export default function TabPosiciones({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
       <div className="mb-4 flex justify-end gap-2">

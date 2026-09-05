@@ -11,11 +11,12 @@ import {
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { calcularNumeroFechas, calcularLegPartido } from '../../../utils/fixtureTorneo'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
 import ControlPartido from '../ControlPartido'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 
 /**
  * Genera el fixture "todos contra todos" de una categoria (una vez
@@ -38,13 +39,13 @@ import { EscudoEquipo } from '../../shared/EscudoEquipo'
 const STORAGE_CATEGORIA = 'campeonato_fechas_categoria'
 const STORAGE_PARTIDO_CONTROL_ID = 'campeonato_fechas_partidoControlId'
 
-export default function TabFechas({ torneoId, onIrAPosiciones }) {
+export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones }) {
   const [categoria, setCategoria] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(STORAGE_CATEGORIA)
-      return Object.values(CATEGORIA_TORNEO).includes(guardada) ? guardada : CATEGORIA_TORNEO.MASTER
+      return categoriasActivas.includes(guardada) ? guardada : categoriasActivas[0]
     } catch {
-      return CATEGORIA_TORNEO.MASTER
+      return categoriasActivas[0]
     }
   })
   const [equipos, setEquipos] = useState([])
@@ -393,19 +394,7 @@ export default function TabFechas({ torneoId, onIrAPosiciones }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}
       {error && <p className="text-sm text-danger">{error}</p>}

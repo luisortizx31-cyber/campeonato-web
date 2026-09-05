@@ -4,12 +4,38 @@
 export const CATEGORIA_TORNEO = {
   MASTER: 'master',
   LIBRE: 'libre',
+  INFANTIL: 'infantil',
+  SUB8: 'sub8',
+  SUB10: 'sub10',
+  SUB12: 'sub12',
+  SUB15: 'sub15',
+  SUB17: 'sub17',
 }
 
 export const CATEGORIA_TORNEO_LABELS = {
   [CATEGORIA_TORNEO.MASTER]: 'Master',
   [CATEGORIA_TORNEO.LIBRE]: 'Libre',
+  [CATEGORIA_TORNEO.INFANTIL]: 'Infantil',
+  [CATEGORIA_TORNEO.SUB8]: 'Sub-8',
+  [CATEGORIA_TORNEO.SUB10]: 'Sub-10',
+  [CATEGORIA_TORNEO.SUB12]: 'Sub-12',
+  [CATEGORIA_TORNEO.SUB15]: 'Sub-15',
+  [CATEGORIA_TORNEO.SUB17]: 'Sub-17',
 }
+
+// Lista completa de categorias que existen en el sistema, en el orden
+// fijo en que se muestran (ver TabConfiguracion, seccion "Categorias
+// del campeonato"). Cada torneo elige un subconjunto de esta lista
+// (ver categoriasActivas en torneoConfigService) - el resto de la app
+// nunca itera sobre esta constante directamente, solo sobre las
+// activas de cada torneo.
+export const CATEGORIAS_TORNEO_DISPONIBLES = Object.values(CATEGORIA_TORNEO)
+
+// Categorias activas por defecto para torneos creados antes de esta
+// funcionalidad (que todavia no tienen categoriasActivas guardado en
+// torneo_config) - preserva el comportamiento de siempre, sin
+// necesidad de migrar datos.
+export const CATEGORIAS_ACTIVAS_DEFAULT = [CATEGORIA_TORNEO.MASTER, CATEGORIA_TORNEO.LIBRE]
 
 export const TIPO_TARJETA = {
   AMARILLA: 'amarilla',

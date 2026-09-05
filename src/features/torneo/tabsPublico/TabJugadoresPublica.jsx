@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 
 function EstadoJugador({ jugador }) {
   if (jugador.eliminado) {
@@ -32,9 +32,9 @@ function EstadoJugador({ jugador }) {
 // secciones plegables (cerradas de entrada). Al escribir algo en el
 // buscador se pasa a una lista plana con coincidencias de cualquier
 // equipo, para no obligar a abrir seccion por seccion.
-export default function TabJugadoresPublica({ torneoId }) {
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
-  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
+export default function TabJugadoresPublica({ torneoId, categoriasActivas }) {
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
+  const swipeCategoria = useSwipeHorizontal(categoriasActivas, categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [jugadores, setJugadores] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -76,19 +76,7 @@ export default function TabJugadoresPublica({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
       <input

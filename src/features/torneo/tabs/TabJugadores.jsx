@@ -10,7 +10,7 @@ import { construirLinkWhatsapp } from '../../../utils/whatsapp'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { WhatsappIcon } from '../../shared/WhatsappIcon'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import ModalRegistrarJugador from '../ModalRegistrarJugador'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
@@ -89,9 +89,9 @@ function FilaJugadorAdmin({ jugador, datosVisible, onVerDatos, onEditar, onElimi
   )
 }
 
-export default function TabJugadores({ torneoId }) {
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
-  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
+export default function TabJugadores({ torneoId, categoriasActivas }) {
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
+  const swipeCategoria = useSwipeHorizontal(categoriasActivas, categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [jugadores, setJugadores] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -182,19 +182,7 @@ export default function TabJugadores({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
       <div className="mb-4 flex justify-end">

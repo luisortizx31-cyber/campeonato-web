@@ -9,10 +9,11 @@ import {
   actualizarMinimoJugadoresCancha,
   actualizarDiferenciaWalkover,
   actualizarMaximoJugadoresInscritos,
+  actualizarCategoriasActivas,
 } from '../../../services/torneoConfigService'
 import {
-  CATEGORIA_TORNEO,
   CATEGORIA_TORNEO_LABELS,
+  CATEGORIAS_TORNEO_DISPONIBLES,
   OPCIONES_UMBRAL_AMARILLAS,
   OPCIONES_UMBRAL_ROJAS,
   OPCIONES_JUGADORES_POR_EQUIPO,
@@ -21,6 +22,7 @@ import {
 } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { useAuth } from '../../../context/AuthContext'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import SeccionColegios from './SeccionColegios'
 
 // Agrupa varios ajustes relacionados bajo un mismo titulo (una sola
@@ -49,15 +51,17 @@ function FilaConfig({ htmlFor, label, children }) {
   )
 }
 
-export default function TabConfiguracion({ torneoId }) {
+export default function TabConfiguracion({ torneoId, categoriasActivas, onCategoriasActualizadas }) {
   const { esSuperAdmin } = useAuth()
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
-  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
+  const swipeCategoria = useSwipeHorizontal(categoriasActivas, categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas, jugadoresPorEquipo, equiposEliminados, minimoJugadoresCancha, diferenciaWalkover, maximoJugadoresInscritos }
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
+  const [guardandoCategorias, setGuardandoCategorias] = useState(false)
+  const [errorCategorias, setErrorCategorias] = useState(null)
 
   async function cargar() {
     setCargando(true)
@@ -184,21 +188,33 @@ export default function TabConfiguracion({ torneoId }) {
     }
   }
 
+  // Nunca se puede dejar la lista de categorias activas vacia - el
+  // checkbox de la ultima activa queda deshabilitado (ver JSX). No hay
+  // aviso de confirmacion al desmarcar una categoria con datos: nada
+  // se borra, solo deja de ofrecerse en los selectores hasta que se
+  // vuelva a marcar.
+  async function handleToggleCategoria(c) {
+    const yaActiva = categoriasActivas.includes(c)
+    if (yaActiva && categoriasActivas.length === 1) return
+    const nuevaLista = yaActiva
+      ? categoriasActivas.filter((x) => x !== c)
+      : CATEGORIAS_TORNEO_DISPONIBLES.filter((x) => x === c || categoriasActivas.includes(x))
+    setGuardandoCategorias(true)
+    setErrorCategorias(null)
+    try {
+      await actualizarCategoriasActivas(torneoId, nuevaLista)
+      onCategoriasActualizadas?.(nuevaLista)
+    } catch (err) {
+      console.error('[TabConfiguracion] actualizarCategoriasActivas', err)
+      setErrorCategorias(err.message || 'No se pudo guardar la selección de categorías.')
+    } finally {
+      setGuardandoCategorias(false)
+    }
+  }
+
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
         {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}
@@ -332,6 +348,39 @@ export default function TabConfiguracion({ torneoId }) {
           </>
         )}
       </div>
+
+      <SeccionConfig icono="🏷️" titulo="Categorías del campeonato">
+        <div className="flex flex-wrap gap-2 px-4 py-3">
+          {CATEGORIAS_TORNEO_DISPONIBLES.map((c) => {
+            const activa = categoriasActivas.includes(c)
+            const esUltimaActiva = activa && categoriasActivas.length === 1
+            return (
+              <label
+                key={c}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  activa ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-soft'
+                } ${esUltimaActiva || guardandoCategorias ? 'opacity-60' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={activa}
+                  disabled={esUltimaActiva || guardandoCategorias}
+                  onChange={() => handleToggleCategoria(c)}
+                  className="accent-brand"
+                />
+                {CATEGORIA_TORNEO_LABELS[c]}
+              </label>
+            )
+          })}
+        </div>
+        {errorCategorias && (
+          <p className="px-4 py-2.5 text-xs text-danger">{errorCategorias}</p>
+        )}
+        <p className="px-4 py-2.5 text-xs text-ink-soft">
+          Solo las categorías marcadas acá aparecen para elegir en el resto del panel y en la página
+          pública. Debe quedar al menos una activa.
+        </p>
+      </SeccionConfig>
 
       {esSuperAdmin && <SeccionColegios />}
     </div>

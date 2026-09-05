@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarPartidosPorCategoria, actualizarReclamo } from '../../../services/torneoPartidosService'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { colorEquipo } from '../../../utils/colorEquipo'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 // Fila de un reclamo dentro de una fecha - el texto se carga/edita
@@ -38,9 +38,9 @@ function FilaReclamo({ partido, nombreEquipo, onQuitar, quitando }) {
 // Vista de solo lectura (mas "Quitar") de los reclamos anotados por
 // partido - el texto en si se carga desde ControlPartido (Cancha),
 // aca se agrupan por fecha para poder revisarlos todos juntos.
-export default function TabReclamos({ torneoId }) {
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
-  const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
+export default function TabReclamos({ torneoId, categoriasActivas }) {
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
+  const swipeCategoria = useSwipeHorizontal(categoriasActivas, categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -101,19 +101,7 @@ export default function TabReclamos({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
         {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}

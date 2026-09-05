@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { listarPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido } from '../../../utils/fixtureTorneo'
-import { CATEGORIA_TORNEO, CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
+import { SelectorCategoria } from '../../shared/SelectorCategoria'
 
 // Solo lectura: muestra los cruces y resultados por fecha del
 // fixture. A diferencia de TabFechas (panel admin), no tiene ningun
 // control para cargar/editar/generar nada - los jugadores y delegados
 // solo pueden mirar.
-export default function TabFechasPublica({ torneoId }) {
-  const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
+export default function TabFechasPublica({ torneoId, categoriasActivas }) {
+  const [categoria, setCategoria] = useState(() => categoriasActivas[0])
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
   const [fechaSeleccionada, setFechaSeleccionada] = useState(null)
@@ -76,19 +76,7 @@ export default function TabFechasPublica({ torneoId }) {
 
   return (
     <div>
-      <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
-        {Object.values(CATEGORIA_TORNEO).map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategoria(c)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              categoria === c ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
-            }`}
-          >
-            {CATEGORIA_TORNEO_LABELS[c]}
-          </button>
-        ))}
-      </div>
+      <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}
 
