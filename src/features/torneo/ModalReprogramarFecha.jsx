@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { reprogramarFecha } from '../../services/torneoPartidosService'
-import { timestampADatetimeLocal } from '../../utils/fixtureTorneo'
+import { SelectorFechaHora } from '../shared/SelectorFechaHora'
 
 /**
  * Reprograma una Fecha completa (ej. se suspendio por lluvia). Corre
@@ -9,7 +9,7 @@ import { timestampADatetimeLocal } from '../../utils/fixtureTorneo'
  * que hace el calculo real. Los partidos ya jugados no se tocan.
  */
 export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero, fechaReferencia, onCerrar, onGuardado }) {
-  const [valor, setValor] = useState(() => timestampADatetimeLocal(fechaReferencia))
+  const [valor, setValor] = useState(fechaReferencia || null)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -22,7 +22,7 @@ export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero
     setEnviando(true)
     setError(null)
     try {
-      await reprogramarFecha(torneoId, categoria, fechaNumero, new Date(valor))
+      await reprogramarFecha(torneoId, categoria, fechaNumero, valor)
       onGuardado()
     } catch (err) {
       console.error('[ModalReprogramarFecha]', err)
@@ -43,13 +43,7 @@ export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero
         <form onSubmit={handleSubmit} className="p-5">
           <div className="mb-3">
             <label className="block text-sm font-medium text-ink mb-1">Nueva fecha y hora</label>
-            <input
-              type="datetime-local"
-              required
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink outline-none focus-visible:border-brand"
-            />
+            <SelectorFechaHora value={valor} onChange={setValor} disabled={enviando} />
           </div>
 
           <p className="mb-4 text-xs text-ink-soft">

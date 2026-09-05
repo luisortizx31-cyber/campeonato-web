@@ -93,17 +93,6 @@ export function formatearFechaProgramada(timestamp) {
   return `${dia} · ${hora}`
 }
 
-// Convierte un Timestamp de Firestore (o un Date de JS, para cuando
-// se calcula una fecha de referencia antes de guardarla) al formato
-// que espera un <input type="datetime-local">. '' si no hay fecha,
-// para que el input quede vacio en vez de tirar error.
-export function timestampADatetimeLocal(timestamp) {
-  if (!timestamp) return ''
-  const fecha = timestamp.toDate ? timestamp.toDate() : timestamp
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`
-}
-
 function parEquipos(partido) {
   return [partido.equipoLocalId, partido.equipoVisitanteId].sort().join('|')
 }

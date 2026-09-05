@@ -11,7 +11,7 @@ import {
   eliminarPartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
-import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, timestampADatetimeLocal } from '../../../utils/fixtureTorneo'
+import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
@@ -19,6 +19,7 @@ import ModalReprogramarFecha from '../ModalReprogramarFecha'
 import ControlPartido from '../ControlPartido'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
+import { SelectorFechaHora } from '../../shared/SelectorFechaHora'
 
 /**
  * Genera el fixture "todos contra todos" de una categoria (una vez
@@ -710,18 +711,18 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
 
 function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl }) {
   const [editandoHorario, setEditandoHorario] = useState(false)
-  const [horarioDraft, setHorarioDraft] = useState('')
+  const [horarioDraft, setHorarioDraft] = useState(null) // Date | null
   const [guardandoHorario, setGuardandoHorario] = useState(false)
 
   function abrirEdicionHorario() {
-    setHorarioDraft(timestampADatetimeLocal(partido.fecha))
+    setHorarioDraft(partido.fecha ? partido.fecha.toDate() : null)
     setEditandoHorario(true)
   }
 
   async function guardarHorario() {
     setGuardandoHorario(true)
     try {
-      await onGuardarHorario(partido.id, horarioDraft ? new Date(horarioDraft) : null)
+      await onGuardarHorario(partido.id, horarioDraft)
       setEditandoHorario(false)
     } catch {
       // el error ya lo muestra el padre (errorGuardar) - se queda en modo edicion
@@ -805,27 +806,24 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
 
       <div className="px-3 pb-1">
         {editandoHorario ? (
-          <div className="flex items-center gap-1.5">
-            <input
-              type="datetime-local"
-              value={horarioDraft}
-              onChange={(e) => setHorarioDraft(e.target.value)}
-              className="flex-1 rounded-lg border border-line bg-paper px-2 py-1 text-xs text-ink outline-none focus-visible:border-brand"
-            />
-            <button
-              onClick={guardarHorario}
-              disabled={guardandoHorario}
-              className="shrink-0 rounded-lg bg-brand px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
-            >
-              {guardandoHorario ? '…' : 'Guardar'}
-            </button>
-            <button
-              onClick={() => setEditandoHorario(false)}
-              disabled={guardandoHorario}
-              className="shrink-0 rounded-lg border border-line px-2 py-1 text-[11px] text-ink-soft disabled:opacity-50"
-            >
-              Cancelar
-            </button>
+          <div className="space-y-1.5">
+            <SelectorFechaHora value={horarioDraft} onChange={setHorarioDraft} disabled={guardandoHorario} />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={guardarHorario}
+                disabled={guardandoHorario}
+                className="shrink-0 rounded-lg bg-brand px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
+              >
+                {guardandoHorario ? '…' : 'Guardar'}
+              </button>
+              <button
+                onClick={() => setEditandoHorario(false)}
+                disabled={guardandoHorario}
+                className="shrink-0 rounded-lg border border-line px-2 py-1 text-[11px] text-ink-soft disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         ) : (
           <button
