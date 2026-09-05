@@ -571,7 +571,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     onClick={() => setModalReprogramar(true)}
                     className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
                   >
-                    📅 Reprogramar fecha
+                    📅 Programar fecha
                   </button>
                 </div>
               </div>
