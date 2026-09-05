@@ -15,6 +15,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { generarRondas } from '../utils/fixtureTorneo'
+import { listarGolesPorPartido, eliminarGol } from './torneoGolesService'
+import { listarTarjetasPorPartido, eliminarTarjeta } from './torneoTarjetasService'
 
 // Los partidos del fixture generado no tienen `fecha` real (no hay
 // calendario en la app), asi que se ordenan por fechaNumero cuando
@@ -192,6 +194,27 @@ export async function reiniciarPartido(partidoId) {
     golesLocalEnVivo: null,
     golesVisitanteEnVivo: null,
   })
+}
+
+// Reinicio completo de UN partido puntual: borra sus goles y tarjetas
+// (revirtiendo el efecto de las que ya estaban procesadas, ver
+// eliminarTarjeta) y vuelve el resultado a Pendiente - la alineacion
+// (titulares, suplentes, DNI confirmado) no se toca. La usan tanto
+// ControlPartido ("↺ Reiniciar goles y tarjetas") como el icono de
+// reiniciar de cada partido en Fechas, para no duplicar esta logica
+// (que involucra revertir contadores de tarjetas) en dos lugares.
+export async function reiniciarPartidoCompleto(partidoId) {
+  const [goles, tarjetas] = await Promise.all([
+    listarGolesPorPartido(partidoId),
+    listarTarjetasPorPartido(partidoId),
+  ])
+  for (const g of goles) {
+    await eliminarGol(g.id)
+  }
+  for (const t of tarjetas) {
+    await eliminarTarjeta(t.id)
+  }
+  await reiniciarPartido(partidoId)
 }
 
 // Reclamo/protesta que un equipo (o el propio Maestro) quiere dejar

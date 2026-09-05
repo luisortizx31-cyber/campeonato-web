@@ -7,6 +7,7 @@ import {
   reiniciarResultadosTodasLasFechas,
   reiniciarTemporadaCompleta,
   registrarResultadoPartido,
+  reiniciarPartidoCompleto,
   eliminarPartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
@@ -77,6 +78,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [modalAgregar, setModalAgregar] = useState(false)
 
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
+  const [reiniciandoPartido, setReiniciandoPartido] = useState(null)
 
   const [partidoControl, setPartidoControl] = useState(null)
   const restauroPartidoControl = useRef(false)
@@ -318,6 +320,32 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
       setErrorGuardar(err.message || 'No se pudo eliminar el partido.')
     } finally {
       setEliminandoPartido(null)
+    }
+  }
+
+  // Reinicio de UN solo partido (icono ↺ en la fila) - borra sus
+  // goles y tarjetas y vuelve su resultado a Pendiente, sin tocar el
+  // resto de la fecha ni la alineación. Misma logica que el boton
+  // "↺ Reiniciar goles y tarjetas" de Control de Partido (ver
+  // torneoPartidosService.reiniciarPartidoCompleto), para no tener
+  // que entrar a Control solo para corregir un partido puntual.
+  async function handleReiniciarPartidoIndividual(partido) {
+    if (
+      !confirm(
+        '¿Reiniciar este partido? Se borran los goles y las tarjetas cargados, y el resultado vuelve a Pendiente. La alineación no se toca.\n\nEsta acción no se puede deshacer.'
+      )
+    )
+      return
+    setReiniciandoPartido(partido.id)
+    setErrorGuardar(null)
+    try {
+      await reiniciarPartidoCompleto(partido.id)
+      await cargar()
+    } catch (err) {
+      console.error('[TabFechas]', err)
+      setErrorGuardar(err.message || 'No se pudo reiniciar el partido.')
+    } finally {
+      setReiniciandoPartido(null)
     }
   }
 
@@ -566,6 +594,8 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     guardando={guardandoPartido === p.id}
                     onEliminar={handleEliminarPartido}
                     eliminando={eliminandoPartido === p.id}
+                    onReiniciar={handleReiniciarPartidoIndividual}
+                    reiniciando={reiniciandoPartido === p.id}
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={setPartidoControl}
                   />
@@ -585,6 +615,8 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     onChange={actualizarResultadoForm}
                     onEliminar={handleEliminarPartido}
                     eliminando={eliminandoPartido === p.id}
+                    onReiniciar={handleReiniciarPartidoIndividual}
+                    reiniciando={reiniciandoPartido === p.id}
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={setPartidoControl}
                   />
@@ -656,7 +688,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, nombreEquipo, onAbrirControl }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, nombreEquipo, onAbrirControl }) {
   const jugado = partido.golesLocal != null
   // "En vivo": ya se armo la alineacion (se abrio Control de Partido)
   // pero todavia no se finalizo - el marcador que se ve viene de
@@ -712,6 +744,14 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
             📋 Control
           </button>
         )}
+        <button
+          onClick={() => onReiniciar(partido)}
+          disabled={reiniciando}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-ink-soft/60 transition-colors hover:bg-warning-soft hover:text-warning disabled:opacity-50"
+          title="Reiniciar goles y tarjetas de este partido"
+        >
+          {reiniciando ? '…' : '↺'}
+        </button>
         <button
           onClick={() => onEliminar(partido)}
           disabled={eliminando}

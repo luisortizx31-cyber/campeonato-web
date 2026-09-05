@@ -6,7 +6,7 @@ import {
   actualizarDniConfirmado,
   actualizarReclamo,
   registrarResultadoPartido,
-  reiniciarPartido,
+  reiniciarPartidoCompleto,
   actualizarMarcadorEnVivo,
 } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
@@ -828,13 +828,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setReiniciando(true)
     setError(null)
     try {
-      for (const g of goles) {
-        await eliminarGol(g.id)
-      }
-      for (const t of tarjetas) {
-        await eliminarTarjeta(t.id)
-      }
-      await reiniciarPartido(partido.id)
+      await reiniciarPartidoCompleto(partido.id)
       setUltimaAccion(null)
       await cargar()
     } catch (err) {
