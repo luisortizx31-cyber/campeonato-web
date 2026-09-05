@@ -492,6 +492,20 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const expulsadosLocal = jugadoresLocal.filter((j) => estaExpulsadoEnPartido(j.id))
   const expulsadosVisitante = jugadoresVisitante.filter((j) => estaExpulsadoEnPartido(j.id))
 
+  // Amonestados con amarilla EN ESTE PARTIDO que todavia no llegaron a
+  // la expulsion (los que ya tienen 2 aparecen en "Expulsados" arriba,
+  // no hace falta duplicarlos aca).
+  const amarillasLocal = jugadoresLocal.filter(
+    (j) => !estaExpulsadoEnPartido(j.id) && tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)
+  )
+  const amarillasVisitante = jugadoresVisitante.filter(
+    (j) => !estaExpulsadoEnPartido(j.id) && tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)
+  )
+
+  // Goleadores del partido, para el resumen de la pestaña Cancha.
+  const goleadoresLocal = jugadoresLocal.filter((j) => golesDe(j.id) > 0)
+  const goleadoresVisitante = jugadoresVisitante.filter((j) => golesDe(j.id) > 0)
+
   // Quienes estan jugando AHORA en la cancha: titulares que no fueron
   // expulsados (un expulsado desaparece de la cancha, queda solo en
   // "Expulsados" - ver mas abajo).
@@ -1035,6 +1049,50 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                     </li>
                   )
                 })}
+              </ul>
+            </div>
+          )}
+
+          {(amarillasLocal.length > 0 || amarillasVisitante.length > 0) && (
+            <div className="mb-3 overflow-hidden rounded-2xl border border-warning/30 bg-warning-soft">
+              <p className="border-b border-warning/20 px-3 py-1.5 text-xs font-semibold text-warning">
+                🟨 Amarillas
+              </p>
+              <ul className="divide-y divide-warning/20">
+                {[
+                  ...amarillasLocal.map((j) => ({ jugador: j, equipoId: partido.equipoLocalId })),
+                  ...amarillasVisitante.map((j) => ({ jugador: j, equipoId: partido.equipoVisitanteId })),
+                ].map(({ jugador: j, equipoId }) => (
+                  <li key={j.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
+                    <div className="min-w-0">
+                      <p className="truncate text-ink">{j.nombre}</p>
+                      <p className="truncate text-[10px] text-ink-soft">{nombreEquipo(equipoId)}</p>
+                    </div>
+                    <span className="shrink-0 text-warning">1 amarilla</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {(goleadoresLocal.length > 0 || goleadoresVisitante.length > 0) && (
+            <div className="mb-3 overflow-hidden rounded-2xl border border-brand/30 bg-brand-soft">
+              <p className="border-b border-brand/20 px-3 py-1.5 text-xs font-semibold text-brand">
+                ⚽ Goleadores
+              </p>
+              <ul className="divide-y divide-brand/20">
+                {[
+                  ...goleadoresLocal.map((j) => ({ jugador: j, equipoId: partido.equipoLocalId })),
+                  ...goleadoresVisitante.map((j) => ({ jugador: j, equipoId: partido.equipoVisitanteId })),
+                ].map(({ jugador: j, equipoId }) => (
+                  <li key={j.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">
+                    <div className="min-w-0">
+                      <p className="truncate text-ink">{j.nombre}</p>
+                      <p className="truncate text-[10px] text-ink-soft">{nombreEquipo(equipoId)}</p>
+                    </div>
+                    <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
