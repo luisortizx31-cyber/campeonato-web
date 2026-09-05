@@ -3,7 +3,6 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import {
   listarPartidosPorCategoria,
   generarFixture,
-  reiniciarResultadosFecha,
   reiniciarResultadosTodasLasFechas,
   reiniciarTemporadaCompleta,
   registrarResultadoPartido,
@@ -65,9 +64,6 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [formResultados, setFormResultados] = useState({})
   const [guardandoPartido, setGuardandoPartido] = useState(null)
   const [errorGuardar, setErrorGuardar] = useState(null)
-
-  const [reiniciandoResultadosFecha, setReiniciandoResultadosFecha] = useState(false)
-  const [errorReiniciarResultadosFecha, setErrorReiniciarResultadosFecha] = useState(null)
 
   const [reiniciandoResultadosTodas, setReiniciandoResultadosTodas] = useState(false)
   const [errorReiniciarResultadosTodas, setErrorReiniciarResultadosTodas] = useState(null)
@@ -193,27 +189,8 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     }
   }
 
-  // Vuelve a "Pendiente" los partidos de la fecha que se esta viendo,
-  // sin borrar el fixture - sirve para corregir una fecha entera
-  // cargada mal.
-  async function handleReiniciarResultadosFecha() {
-    if (fechaSeleccionada == null) return
-    if (!confirm(`¿Reiniciar los resultados de la Fecha ${fechaSeleccionada}? Los partidos quedan pendientes de nuevo (no se borra el fixture ni las tarjetas).`)) return
-    setReiniciandoResultadosFecha(true)
-    setErrorReiniciarResultadosFecha(null)
-    try {
-      await reiniciarResultadosFecha(torneoId, categoria, fechaSeleccionada)
-      await cargar()
-    } catch (err) {
-      console.error('[TabFechas]', err)
-      setErrorReiniciarResultadosFecha(err.message || 'No se pudieron reiniciar los resultados de la fecha.')
-    } finally {
-      setReiniciandoResultadosFecha(false)
-    }
-  }
-
-  // Igual que handleReiniciarResultadosFecha pero para todas las
-  // fechas de la categoria a la vez.
+  // Igual que el reinicio individual por partido (ver ↺ en cada fila)
+  // pero para todas las fechas de la categoria a la vez.
   async function handleReiniciarResultadosTodas() {
     const confirmacion = confirm(
       `¿Reiniciar los resultados de TODAS las fechas de ${CATEGORIA_TORNEO_LABELS[categoria]}?\n\n` +
@@ -595,20 +572,9 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                   >
                     📅 Reprogramar fecha
                   </button>
-                  <button
-                    onClick={handleReiniciarResultadosFecha}
-                    disabled={reiniciandoResultadosFecha || !partidosDeFecha.some((p) => p.golesLocal != null)}
-                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-warning/30 hover:text-warning disabled:opacity-50"
-                  >
-                    {reiniciandoResultadosFecha ? '…' : `Reiniciar resultados (Fecha ${fechaSeleccionada})`}
-                  </button>
                 </div>
               </div>
             </>
-          )}
-
-          {errorReiniciarResultadosFecha && (
-            <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorReiniciarResultadosFecha}</p>
           )}
 
           {errorGuardar && (
