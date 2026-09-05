@@ -93,6 +93,19 @@ export function formatearFechaProgramada(timestamp) {
   return `${dia} · ${hora}`
 }
 
+// Orden de los partidos DENTRO de una misma Fecha (ver TabFechas y
+// TabFechasPublica): primero los que todavia no se jugaron (de menor
+// a mayor hora programada, los sin horario al final), y recien
+// despues los ya jugados - un partido jugado con un horario temprano
+// (ej. 12:00 a.m. por defecto) no debe aparecer mezclado arriba de
+// los pendientes, ya se jugo y no hace falta seguir viendolo primero.
+export function compararPartidosPorHorario(a, b) {
+  const aJugado = a.golesLocal != null
+  const bJugado = b.golesLocal != null
+  if (aJugado !== bJugado) return aJugado ? 1 : -1
+  return (a.fecha?.toMillis?.() ?? Infinity) - (b.fecha?.toMillis?.() ?? Infinity)
+}
+
 function parEquipos(partido) {
   return [partido.equipoLocalId, partido.equipoVisitanteId].sort().join('|')
 }

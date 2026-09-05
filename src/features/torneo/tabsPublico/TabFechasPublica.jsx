@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, formatearFechaProgramada } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -75,11 +75,11 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
 
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
-  // De menor a mayor hora programada - los que todavia no tienen
-  // horario puesto quedan al final (mismo criterio que TabFechas admin).
+  // Pendientes de menor a mayor hora programada primero, los ya
+  // jugados al final (mismo criterio que TabFechas admin).
   const partidosDeFecha = partidos
     .filter((p) => p.fechaNumero === fechaSeleccionada)
-    .sort((a, b) => (a.fecha?.toMillis?.() ?? Infinity) - (b.fecha?.toMillis?.() ?? Infinity))
+    .sort(compararPartidosPorHorario)
 
   function fechaCompleta(f) {
     return partidos.filter((p) => p.fechaNumero === f).every((p) => p.golesLocal != null)

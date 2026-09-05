@@ -11,7 +11,7 @@ import {
   eliminarPartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
-import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada } from '../../../utils/fixtureTorneo'
+import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
@@ -359,11 +359,11 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const hayFixture = fechasDisponibles.length > 0
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
-  // De menor a mayor hora programada - los que todavia no tienen
-  // horario puesto (p.fecha == null) quedan al final.
+  // Pendientes de menor a mayor hora programada primero, los ya
+  // jugados al final (ver compararPartidosPorHorario).
   const partidosDeFecha = partidos
     .filter((p) => p.fechaNumero === fechaSeleccionada)
-    .sort((a, b) => (a.fecha?.toMillis?.() ?? Infinity) - (b.fecha?.toMillis?.() ?? Infinity))
+    .sort(compararPartidosPorHorario)
   // Fecha de referencia para prellenar ModalReprogramarFecha - la mas
   // temprana entre los partidos no jugados de la fecha seleccionada
   // (si ninguno tiene horario puesto todavia, queda null y el modal
