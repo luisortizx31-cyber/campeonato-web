@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, formatearFechaProgramada, formatearFechaCompacta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -21,6 +21,14 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
   // siempre recibe la version mas actualizada del array ya suscripto
   // en vivo mas abajo, en vez de una copia que se queda vieja.
   const [partidoAbiertoId, setPartidoAbiertoId] = useState(null)
+  // Se actualiza solo (cada 1 min) para que la pastilla de una Fecha
+  // empiece a parpadear apenas se llega a su horario, sin necesidad de
+  // que algun dato del partido cambie mientras tanto (ver horaLlegada).
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
 
   const barraFechasRef = useRef(null)
   useEffect(() => {
@@ -61,7 +69,11 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
       setFechaSeleccionada((actual) => {
         if (fechas.length === 0) return null
         if (actual && fechas.includes(actual)) return actual
-        return fechas[fechas.length - 1]
+        // Al entrar a la pestaña (o la primera vez), arranca en la
+        // fecha actual que todavia esta por jugarse - no en la ultima
+        // del fixture (mismo criterio que TabFechas admin).
+        const pendiente = fechas.find((f) => ps.some((p) => p.fechaNumero === f && p.golesLocal == null))
+        return pendiente ?? fechas[0]
       })
 
       partidosListos = true
@@ -115,6 +127,14 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     return conFecha.sort((a, b) => a.fecha.toMillis() - b.fecha.toMillis())[0].fecha
   }
 
+  // Ya se llego (o paso) el horario de esta Fecha y todavia no esta
+  // completa - la pastilla parpadea para llamar la atencion (ver
+  // animate-pulse mas abajo). `ahora` se actualiza solo cada minuto.
+  function horaLlegada(f) {
+    const horario = horarioMasBajoDe(f)
+    return horario != null && horario.toMillis() <= ahora && !fechaCompleta(f)
+  }
+
   function fechaLeg(f) {
     const partidosF = partidos.filter((p) => p.fechaNumero === f)
     if (partidosF.length === 0) return null
@@ -163,28 +183,31 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
               const empezada = !completa && fechaEmpezada(f)
               const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
               const horarioMasBajo = horarioMasBajoDe(f)
+              const enHora = horaLlegada(f)
               return (
                 <div key={f} className="flex shrink-0 items-stretch gap-1.5">
                   {esPrimeraVuelta && <span className="w-px shrink-0 bg-line" />}
-                  <div className="flex shrink-0 flex-col items-center gap-1">
+                  <div className="flex shrink-0 flex-col items-center gap-0.5">
                     <button
                       data-fecha={f}
                       onClick={() => setFechaSeleccionada(f)}
                       className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                        enHora ? 'animate-pulse' : ''
+                      } ${
                         fechaSeleccionada === f
                           ? 'border-brand bg-brand text-white'
                           : completa
                             ? 'border-danger/30 bg-danger-soft text-danger'
                             : empezada
                               ? 'border-warning/30 bg-warning-soft text-warning'
-                              : 'border-line bg-surface text-ink-soft'
+                              : 'border-success/30 bg-success-soft text-success'
                       }`}
                     >
                       Fecha {f}{completa ? ' ✓' : ''}
                     </button>
                     {horarioMasBajo && (
                       <p className="whitespace-nowrap rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                        🗓 {formatearFechaProgramada(horarioMasBajo)}
+                        🗓 {formatearFechaCompacta(horarioMasBajo)}
                       </p>
                     )}
                   </div>

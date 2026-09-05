@@ -93,6 +93,17 @@ export function formatearFechaProgramada(timestamp) {
   return `${dia} · ${hora}`
 }
 
+// Version mas compacta (sin el dia de la semana) para la etiqueta
+// chica debajo de cada pastilla "Fecha N" en el selector de
+// TabFechasPublica, que tiene mucho menos espacio horizontal que la
+// tarjeta del partido.
+export function formatearFechaCompacta(timestamp) {
+  const fecha = timestamp.toDate()
+  const dia = fecha.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })
+  const hora = fecha.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' })
+  return `${dia} · ${hora}`
+}
+
 // Orden de los partidos DENTRO de una misma Fecha (ver TabFechas y
 // TabFechasPublica): primero los que todavia no se jugaron (de menor
 // a mayor hora programada, los sin horario al final), y recien
