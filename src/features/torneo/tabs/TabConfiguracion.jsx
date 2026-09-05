@@ -221,7 +221,7 @@ export default function TabConfiguracion({ torneoId }) {
                 </select>
               </FilaConfig>
 
-              <FilaConfig htmlFor="minimo-jugadores-cancha" label="Dar walkover al bajar de">
+              <FilaConfig htmlFor="minimo-jugadores-cancha" label="Dar walkover con menos de">
                 <select
                   id="minimo-jugadores-cancha"
                   value={config?.minimoJugadoresCancha ?? ''}
