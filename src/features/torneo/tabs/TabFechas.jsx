@@ -346,7 +346,9 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   }
 
   function fechaEmpezada(f) {
-    return partidos.filter((p) => p.fechaNumero === f).some((p) => p.golesLocal != null)
+    return partidos
+      .filter((p) => p.fechaNumero === f)
+      .some((p) => p.golesLocal != null || p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
   }
 
   // Si una fecha es toda "vuelta" (revancha de una fecha anterior),
@@ -382,7 +384,10 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
           categoria={categoria}
           partido={partidoControl}
           nombreEquipo={nombreEquipo}
-          onVolver={() => setPartidoControl(null)}
+          onVolver={async () => {
+            setPartidoControl(null)
+            await cargar()
+          }}
           onFinalizado={async () => {
             setPartidoControl(null)
             await cargar()
@@ -652,9 +657,16 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
 }
 
 function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, nombreEquipo, onAbrirControl }) {
-  const golesLocal = form?.golesLocal ?? partido.golesLocal ?? ''
-  const golesVisitante = form?.golesVisitante ?? partido.golesVisitante ?? ''
   const jugado = partido.golesLocal != null
+  // "En vivo": ya se armo la alineacion (se abrio Control de Partido)
+  // pero todavia no se finalizo - el marcador que se ve viene de
+  // golesLocalEnVivo/golesVisitanteEnVivo, que ControlPartido
+  // actualiza solo cada vez que cambia un gol (ver
+  // torneoPartidosService.actualizarMarcadorEnVivo). Prefill del
+  // input con ese valor para no tener que retipearlo al finalizar.
+  const enVivo = !jugado && (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0)
+  const golesLocal = form?.golesLocal ?? partido.golesLocal ?? (enVivo ? partido.golesLocalEnVivo ?? 0 : '')
+  const golesVisitante = form?.golesVisitante ?? partido.golesVisitante ?? (enVivo ? partido.golesVisitanteEnVivo ?? 0 : '')
   const ganoLocal = jugado && partido.golesLocal > partido.golesVisitante
   const ganoVisitante = jugado && partido.golesVisitante > partido.golesLocal
   const nombreLocal = nombreEquipo(partido.equipoLocalId)
@@ -674,6 +686,10 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         ) : jugado ? (
           <span className="flex items-center gap-1 text-[11px] font-medium text-success">
             <span className="h-1.5 w-1.5 rounded-full bg-success" /> Jugado
+          </span>
+        ) : enVivo ? (
+          <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" /> En vivo
           </span>
         ) : (
           <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">
@@ -723,7 +739,7 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
             value={golesLocal}
             onChange={(e) => onChange(partido.id, 'golesLocal', e.target.value)}
             className={`money w-12 shrink-0 rounded-lg border py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand ${
-              jugado ? 'border-success/30 bg-success-soft' : 'border-line bg-paper'
+              jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-paper'
             }`}
           />
         </div>
@@ -743,7 +759,7 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
             value={golesVisitante}
             onChange={(e) => onChange(partido.id, 'golesVisitante', e.target.value)}
             className={`money w-12 shrink-0 rounded-lg border py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand ${
-              jugado ? 'border-success/30 bg-success-soft' : 'border-line bg-paper'
+              jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-paper'
             }`}
           />
         </div>

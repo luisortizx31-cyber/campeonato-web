@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
-import { listarPartidosPorCategoria } from '../../../services/torneoPartidosService'
+import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido } from '../../../utils/fixtureTorneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
@@ -24,28 +24,48 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }, [fechaSeleccionada])
 
+  // Los partidos se siguen en vivo (onSnapshot) en vez de traerse una
+  // sola vez - asi el marcador en vivo que carga ControlPartido (ver
+  // torneoPartidosService.actualizarMarcadorEnVivo) se actualiza solo
+  // en esta pantalla, sin que quien esta mirando tenga que refrescar.
   useEffect(() => {
     let cancelado = false
+    let equiposListos = false
+    let partidosListos = false
     setCargando(true)
-    Promise.all([listarEquiposPorCategoria(torneoId, categoria), listarPartidosPorCategoria(torneoId, categoria)])
-      .then(([eq, ps]) => {
-        if (cancelado) return
-        setEquipos(eq)
-        setPartidos(ps)
 
-        const fechas = [...new Set(ps.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
-        setFechaSeleccionada((actual) => {
-          if (fechas.length === 0) return null
-          if (actual && fechas.includes(actual)) return actual
-          return fechas[fechas.length - 1]
-        })
+    function intentarTerminarCarga() {
+      if (equiposListos && partidosListos && !cancelado) setCargando(false)
+    }
+
+    listarEquiposPorCategoria(torneoId, categoria)
+      .then((eq) => {
+        if (!cancelado) setEquipos(eq)
       })
       .catch((err) => console.error('[TabFechasPublica]', err))
       .finally(() => {
-        if (!cancelado) setCargando(false)
+        equiposListos = true
+        intentarTerminarCarga()
       })
+
+    const desuscribir = suscribirPartidosPorCategoria(torneoId, categoria, (ps) => {
+      if (cancelado) return
+      setPartidos(ps)
+
+      const fechas = [...new Set(ps.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
+      setFechaSeleccionada((actual) => {
+        if (fechas.length === 0) return null
+        if (actual && fechas.includes(actual)) return actual
+        return fechas[fechas.length - 1]
+      })
+
+      partidosListos = true
+      intentarTerminarCarga()
+    })
+
     return () => {
       cancelado = true
+      desuscribir()
     }
   }, [torneoId, categoria])
 
@@ -62,7 +82,9 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
   }
 
   function fechaEmpezada(f) {
-    return partidos.filter((p) => p.fechaNumero === f).some((p) => p.golesLocal != null)
+    return partidos
+      .filter((p) => p.fechaNumero === f)
+      .some((p) => p.golesLocal != null || p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
   }
 
   function fechaLeg(f) {
@@ -126,6 +148,7 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
           <ul className="space-y-2.5" {...swipeFecha}>
             {partidosDeFecha.map((p) => {
               const jugado = p.golesLocal != null && p.golesVisitante != null
+              const enVivo = !jugado && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
               const leg = calcularLegPartido(p, partidos)
               const ganoLocal = jugado && p.golesLocal > p.golesVisitante
               const ganoVisitante = jugado && p.golesVisitante > p.golesLocal
@@ -137,13 +160,17 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                 <li
                   key={p.id}
                   className={`overflow-hidden rounded-2xl border border-l-4 bg-surface shadow-sm ${
-                    jugado ? 'border-line border-l-success' : 'border-dashed border-line border-l-line'
+                    jugado ? 'border-line border-l-success' : enVivo ? 'border-danger/30 border-l-danger' : 'border-dashed border-line border-l-line'
                   }`}
                 >
                   <div className="flex items-center gap-2 px-4 pt-3 pb-1">
                     {jugado ? (
                       <span className="flex items-center gap-1 text-[11px] font-medium text-success">
                         <span className="h-1.5 w-1.5 rounded-full bg-success" /> Jugado
+                      </span>
+                    ) : enVivo ? (
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" /> En vivo
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">
@@ -174,10 +201,10 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       </span>
                       <span
                         className={`money w-10 shrink-0 rounded-lg py-1.5 text-center text-base font-bold text-ink ${
-                          jugado ? 'bg-success-soft' : 'bg-paper text-ink-soft'
+                          jugado ? 'bg-success-soft' : enVivo ? 'bg-danger-soft' : 'bg-paper text-ink-soft'
                         }`}
                       >
-                        {jugado ? p.golesLocal : '–'}
+                        {jugado ? p.golesLocal : enVivo ? p.golesLocalEnVivo ?? 0 : '–'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -195,10 +222,10 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       </span>
                       <span
                         className={`money w-10 shrink-0 rounded-lg py-1.5 text-center text-base font-bold text-ink ${
-                          jugado ? 'bg-success-soft' : 'bg-paper text-ink-soft'
+                          jugado ? 'bg-success-soft' : enVivo ? 'bg-danger-soft' : 'bg-paper text-ink-soft'
                         }`}
                       >
-                        {jugado ? p.golesVisitante : '–'}
+                        {jugado ? p.golesVisitante : enVivo ? p.golesVisitanteEnVivo ?? 0 : '–'}
                       </span>
                     </div>
                   </div>

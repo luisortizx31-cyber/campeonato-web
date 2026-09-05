@@ -6,6 +6,7 @@ import {
   deleteDoc,
   writeBatch,
   getDocs,
+  onSnapshot,
   query,
   where,
   serverTimestamp,
@@ -15,6 +16,20 @@ import {
 import { db } from '../config/firebase'
 import { generarRondas } from '../utils/fixtureTorneo'
 
+// Los partidos del fixture generado no tienen `fecha` real (no hay
+// calendario en la app), asi que se ordenan por fechaNumero cuando
+// `fecha` no alcanza para desempatar. Se usa tanto en la lectura unica
+// (listarPartidosPorCategoria) como en la suscripcion en vivo
+// (suscribirPartidosPorCategoria) para que ambas queden ordenadas igual.
+function ordenarPartidos(partidos) {
+  return [...partidos].sort((a, b) => {
+    const fechaA = a.fecha?.toMillis?.() || 0
+    const fechaB = b.fecha?.toMillis?.() || 0
+    if (fechaA !== fechaB) return fechaB - fechaA
+    return (b.fechaNumero || 0) - (a.fechaNumero || 0)
+  })
+}
+
 export async function listarPartidosPorCategoria(torneoId, categoria) {
   const q = query(
     collection(db, 'torneo_partidos'),
@@ -22,17 +37,24 @@ export async function listarPartidosPorCategoria(torneoId, categoria) {
     where('categoria', '==', categoria)
   )
   const snap = await getDocs(q)
-  const partidos = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-  // Los partidos del fixture generado no tienen `fecha` real (no hay
-  // calendario en la app), asi que se ordenan por fechaNumero cuando
-  // `fecha` no alcanza para desempatar.
-  partidos.sort((a, b) => {
-    const fechaA = a.fecha?.toMillis?.() || 0
-    const fechaB = b.fecha?.toMillis?.() || 0
-    if (fechaA !== fechaB) return fechaB - fechaA
-    return (b.fechaNumero || 0) - (a.fechaNumero || 0)
+  return ordenarPartidos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+}
+
+// Igual que listarPartidosPorCategoria pero en tiempo real - la usa la
+// pagina publica (ver TabFechasPublica) para que el marcador en vivo
+// (ver actualizarMarcadorEnVivo) se actualice solo en la pantalla de
+// quien esta mirando, sin que tenga que refrescar. Devuelve la funcion
+// para cancelar la suscripcion (llamarla al desmontar/cambiar de
+// categoria).
+export function suscribirPartidosPorCategoria(torneoId, categoria, onCambio) {
+  const q = query(
+    collection(db, 'torneo_partidos'),
+    where('torneoId', '==', torneoId),
+    where('categoria', '==', categoria)
+  )
+  return onSnapshot(q, (snap) => {
+    onCambio(ordenarPartidos(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   })
-  return partidos
 }
 
 // Genera el fixture completo "todos contra todos" de una categoria
@@ -137,6 +159,21 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
     golesLocal: Number(golesLocal),
     golesVisitante: Number(golesVisitante),
+    golesLocalEnVivo: null,
+    golesVisitanteEnVivo: null,
+  })
+}
+
+// Marcador "en vivo" (parcial, mientras el partido todavia no se
+// finaliza) - lo llama ControlPartido cada vez que cambia un gol,
+// asi Fechas y la pagina publica pueden mostrar el resultado sin
+// esperar a "Finalizar partido". No cuenta para nada mas (tabla de
+// posiciones, goleadores): eso sigue dependiendo solo de
+// golesLocal/golesVisitante, los definitivos.
+export async function actualizarMarcadorEnVivo(partidoId, { golesLocal, golesVisitante }) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    golesLocalEnVivo: golesLocal,
+    golesVisitanteEnVivo: golesVisitante,
   })
 }
 
@@ -152,6 +189,8 @@ export async function reiniciarPartido(partidoId) {
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
     golesLocal: null,
     golesVisitante: null,
+    golesLocalEnVivo: null,
+    golesVisitanteEnVivo: null,
   })
 }
 

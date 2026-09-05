@@ -7,6 +7,7 @@ import {
   actualizarReclamo,
   registrarResultadoPartido,
   reiniciarPartido,
+  actualizarMarcadorEnVivo,
 } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
@@ -465,6 +466,18 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const golesVisitanteCount = goles
     .filter((g) => g.equipoId === partido.equipoVisitanteId)
     .reduce((s, g) => s + (g.cantidad || 0), 0)
+
+  // Cada vez que cambia un gol (cargado o deshecho), refleja el
+  // marcador parcial en el propio doc del partido - asi Fechas y la
+  // pagina publica pueden mostrarlo "en vivo" sin esperar a
+  // "Finalizar partido" (ver torneoPartidosService.actualizarMarcadorEnVivo).
+  useEffect(() => {
+    if (cargando) return
+    actualizarMarcadorEnVivo(partido.id, { golesLocal: golesLocalCount, golesVisitante: golesVisitanteCount }).catch(
+      (err) => console.error('[ControlPartido] actualizarMarcadorEnVivo', err)
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [golesLocalCount, golesVisitanteCount, cargando])
 
   function golesDe(jugadorId) {
     return goles.filter((g) => g.jugadorId === jugadorId).reduce((s, g) => s + (g.cantidad || 0), 0)
