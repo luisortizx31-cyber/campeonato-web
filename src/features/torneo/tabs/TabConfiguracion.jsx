@@ -23,12 +23,38 @@ import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { useAuth } from '../../../context/AuthContext'
 import SeccionColegios from './SeccionColegios'
 
+// Agrupa varios ajustes relacionados bajo un mismo titulo (una sola
+// tarjeta con separadores adentro) en vez de una fila suelta con su
+// propio borde por cada ajuste - mismo dato, mucho mas facil de
+// escanear de un vistazo.
+function SeccionConfig({ icono, titulo, children }) {
+  return (
+    <div className="mb-3 overflow-hidden rounded-2xl border border-line bg-surface">
+      <p className="border-b border-line bg-ink-soft/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
+        {icono} {titulo}
+      </p>
+      <div className="divide-y divide-line">{children}</div>
+    </div>
+  )
+}
+
+function FilaConfig({ htmlFor, label, children }) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-4 py-3">
+      <label htmlFor={htmlFor} className="text-sm text-ink-soft">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">{children}</div>
+    </div>
+  )
+}
+
 export default function TabConfiguracion({ torneoId }) {
   const { esSuperAdmin } = useAuth()
   const [categoria, setCategoria] = useState(CATEGORIA_TORNEO.MASTER)
   const swipeCategoria = useSwipeHorizontal(Object.values(CATEGORIA_TORNEO), categoria, setCategoria)
   const [equipos, setEquipos] = useState([])
-  const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas, jugadoresPorEquipo, equiposEliminados }
+  const [config, setConfig] = useState(null) // { umbralAmarillas, umbralRojas, jugadoresPorEquipo, equiposEliminados, minimoJugadoresCancha, diferenciaWalkover, maximoJugadoresInscritos }
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState(null)
@@ -180,11 +206,8 @@ export default function TabConfiguracion({ torneoId }) {
 
         {!cargando && (
           <>
-            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-              <label htmlFor="jugadores-por-equipo" className="text-sm text-ink-soft">
-                Formato del partido
-              </label>
-              <div className="flex items-center gap-2">
+            <SeccionConfig icono="⚽" titulo="Formato del partido">
+              <FilaConfig htmlFor="jugadores-por-equipo" label="Jugadores por equipo">
                 <select
                   id="jugadores-por-equipo"
                   value={config?.jugadoresPorEquipo ?? ''}
@@ -196,14 +219,9 @@ export default function TabConfiguracion({ torneoId }) {
                     <option key={n} value={n}>Fútbol {n}</option>
                   ))}
                 </select>
-              </div>
-            </div>
+              </FilaConfig>
 
-            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-              <label htmlFor="minimo-jugadores-cancha" className="text-sm text-ink-soft">
-                Dar walkover al bajar de
-              </label>
-              <div className="flex items-center gap-2">
+              <FilaConfig htmlFor="minimo-jugadores-cancha" label="Dar walkover al bajar de">
                 <select
                   id="minimo-jugadores-cancha"
                   value={config?.minimoJugadoresCancha ?? ''}
@@ -216,15 +234,10 @@ export default function TabConfiguracion({ torneoId }) {
                     <option key={n} value={n}>{n}</option>
                   ))}
                 </select>
-                <span className="text-sm text-ink-soft">jugadores en cancha</span>
-              </div>
-            </div>
+                <span className="text-sm text-ink-soft">jug. en cancha</span>
+              </FilaConfig>
 
-            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-              <label htmlFor="diferencia-walkover" className="text-sm text-ink-soft">
-                Marcador del walkover
-              </label>
-              <div className="flex items-center gap-2">
+              <FilaConfig htmlFor="diferencia-walkover" label="Marcador del walkover">
                 <select
                   id="diferencia-walkover"
                   value={config?.diferenciaWalkover ?? ''}
@@ -236,21 +249,19 @@ export default function TabConfiguracion({ torneoId }) {
                     <option key={n} value={n}>{n}-0</option>
                   ))}
                 </select>
-              </div>
-            </div>
-            {config?.minimoJugadoresCancha != null && (
-              <p className="mb-2.5 -mt-1 text-xs text-ink-soft">
-                Si un equipo queda con menos de {config.minimoJugadoresCancha} jugadores en cancha (por
-                expulsiones), Control de Partido va a avisar que se puede cerrar el partido {config.diferenciaWalkover}-0
-                a favor del otro equipo.
-              </p>
-            )}
+              </FilaConfig>
 
-            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-              <label htmlFor="umbral-amarillas" className="text-sm text-ink-soft">
-                Suspender al llegar a
-              </label>
-              <div className="flex items-center gap-2">
+              {config?.minimoJugadoresCancha != null && (
+                <p className="px-4 py-2.5 text-xs text-ink-soft">
+                  Si un equipo queda con menos de {config.minimoJugadoresCancha} jugadores en cancha
+                  (por expulsiones), Control de Partido va a avisar que se puede cerrar el partido{' '}
+                  {config.diferenciaWalkover}-0 a favor del otro equipo.
+                </p>
+              )}
+            </SeccionConfig>
+
+            <SeccionConfig icono="🟨" titulo="Tarjetas y disciplina">
+              <FilaConfig htmlFor="umbral-amarillas" label="Suspender al llegar a">
                 <select
                   id="umbral-amarillas"
                   value={config?.umbralAmarillas ?? ''}
@@ -263,14 +274,9 @@ export default function TabConfiguracion({ torneoId }) {
                   ))}
                 </select>
                 <span className="text-sm text-ink-soft">amarillas</span>
-              </div>
-            </div>
+              </FilaConfig>
 
-            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-              <label htmlFor="umbral-rojas" className="text-sm text-ink-soft">
-                Eliminar del campeonato al
-              </label>
-              <div className="flex items-center gap-2">
+              <FilaConfig htmlFor="umbral-rojas" label="Eliminar del campeonato al">
                 <select
                   id="umbral-rojas"
                   value={config?.umbralRojas ?? ''}
@@ -284,36 +290,11 @@ export default function TabConfiguracion({ torneoId }) {
                   ))}
                 </select>
                 <span className="text-sm text-ink-soft">suspensiones por roja</span>
-              </div>
-            </div>
+              </FilaConfig>
+            </SeccionConfig>
 
-            {equipos.length > 0 && (
-              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-                <label htmlFor="equipos-eliminados" className="text-sm text-ink-soft">
-                  Equipos eliminados (últimos de la tabla)
-                </label>
-                <div className="flex items-center gap-2">
-                  <select
-                    id="equipos-eliminados"
-                    value={config?.equiposEliminados ?? 0}
-                    disabled={!config || guardando}
-                    onChange={(e) => handleCambiarEquiposEliminados(e.target.value)}
-                    className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
-                  >
-                    {Array.from({ length: equipos.length + 1 }, (_, n) => n).map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                  <span className="text-sm text-ink-soft">de {equipos.length}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
-              <label htmlFor="maximo-jugadores-inscritos" className="text-sm text-ink-soft">
-                Máximo de jugadores inscritos
-              </label>
-              <div className="flex items-center gap-2">
+            <SeccionConfig icono="👥" titulo="Plantel">
+              <FilaConfig htmlFor="maximo-jugadores-inscritos" label="Máximo de jugadores inscritos">
                 <select
                   id="maximo-jugadores-inscritos"
                   value={config?.maximoJugadoresInscritos ?? ''}
@@ -327,8 +308,27 @@ export default function TabConfiguracion({ torneoId }) {
                   ))}
                 </select>
                 <span className="text-sm text-ink-soft">por equipo</span>
-              </div>
-            </div>
+              </FilaConfig>
+            </SeccionConfig>
+
+            {equipos.length > 0 && (
+              <SeccionConfig icono="📊" titulo="Tabla de posiciones">
+                <FilaConfig htmlFor="equipos-eliminados" label="Equipos eliminados (últimos de la tabla)">
+                  <select
+                    id="equipos-eliminados"
+                    value={config?.equiposEliminados ?? 0}
+                    disabled={!config || guardando}
+                    onChange={(e) => handleCambiarEquiposEliminados(e.target.value)}
+                    className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                  >
+                    {Array.from({ length: equipos.length + 1 }, (_, n) => n).map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-ink-soft">de {equipos.length}</span>
+                </FilaConfig>
+              </SeccionConfig>
+            )}
           </>
         )}
       </div>
