@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, formatearFechaProgramada } from '../../../utils/fixtureTorneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -75,7 +75,11 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
 
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
-  const partidosDeFecha = partidos.filter((p) => p.fechaNumero === fechaSeleccionada)
+  // De menor a mayor hora programada - los que todavia no tienen
+  // horario puesto quedan al final (mismo criterio que TabFechas admin).
+  const partidosDeFecha = partidos
+    .filter((p) => p.fechaNumero === fechaSeleccionada)
+    .sort((a, b) => (a.fecha?.toMillis?.() ?? Infinity) - (b.fecha?.toMillis?.() ?? Infinity))
 
   function fechaCompleta(f) {
     return partidos.filter((p) => p.fechaNumero === f).every((p) => p.golesLocal != null)
@@ -184,6 +188,12 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold">↩ Vuelta</span>
                     )}
                   </div>
+
+                  {!jugado && p.fecha && (
+                    <p className="px-4 pb-1 text-[11px] font-medium text-ink-soft">
+                      🗓 {formatearFechaProgramada(p.fecha)}
+                    </p>
+                  )}
 
                   <div className="space-y-1.5 px-4 pb-3 pt-1">
                     <div className="flex items-center gap-2">

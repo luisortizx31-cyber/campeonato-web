@@ -8,13 +8,15 @@ import {
   reiniciarTemporadaCompleta,
   registrarResultadoPartido,
   reiniciarPartidoCompleto,
+  actualizarFechaProgramada,
   eliminarPartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
-import { calcularNumeroFechas, calcularLegPartido } from '../../../utils/fixtureTorneo'
+import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, timestampADatetimeLocal } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
+import ModalReprogramarFecha from '../ModalReprogramarFecha'
 import ControlPartido from '../ControlPartido'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -76,6 +78,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [guardandoTodos, setGuardandoTodos] = useState(false)
 
   const [modalAgregar, setModalAgregar] = useState(false)
+  const [modalReprogramar, setModalReprogramar] = useState(false)
 
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
   const [reiniciandoPartido, setReiniciandoPartido] = useState(null)
@@ -349,6 +352,22 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     }
   }
 
+  // Dia/hora programado de UN partido (icono 🗓 en la fila) - ver
+  // torneoPartidosService.actualizarFechaProgramada. Re-tira el error
+  // para que FilaPartido sepa que fallo y se quede en modo edicion en
+  // vez de cerrarlo como si hubiera guardado bien.
+  async function handleGuardarFechaProgramada(partidoId, fechaHora) {
+    setErrorGuardar(null)
+    try {
+      await actualizarFechaProgramada(partidoId, fechaHora)
+      await cargar()
+    } catch (err) {
+      console.error('[TabFechas]', err)
+      setErrorGuardar(err.message || 'No se pudo guardar el horario.')
+      throw err
+    }
+  }
+
   async function handlePartidoAgregado(fechaNumero) {
     setModalAgregar(false)
     await cargar()
@@ -362,7 +381,20 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const hayFixture = fechasDisponibles.length > 0
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
-  const partidosDeFecha = partidos.filter((p) => p.fechaNumero === fechaSeleccionada)
+  // De menor a mayor hora programada - los que todavia no tienen
+  // horario puesto (p.fecha == null) quedan al final.
+  const partidosDeFecha = partidos
+    .filter((p) => p.fechaNumero === fechaSeleccionada)
+    .sort((a, b) => (a.fecha?.toMillis?.() ?? Infinity) - (b.fecha?.toMillis?.() ?? Infinity))
+  // Fecha de referencia para prellenar ModalReprogramarFecha - la mas
+  // temprana entre los partidos no jugados de la fecha seleccionada
+  // (si ninguno tiene horario puesto todavia, queda null y el modal
+  // arranca vacio).
+  const fechaReferenciaSeleccionada = (() => {
+    const conFecha = partidosDeFecha.filter((p) => p.golesLocal == null && p.fecha)
+    if (conFecha.length === 0) return null
+    return new Date(Math.min(...conFecha.map((p) => p.fecha.toMillis())))
+  })()
   const partidosPendientes = partidosDeFecha.filter((p) => {
     const valores = formResultados[p.id]
     return valores && valores.golesLocal !== undefined && valores.golesLocal !== '' &&
@@ -558,6 +590,12 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     + Agregar partido
                   </button>
                   <button
+                    onClick={() => setModalReprogramar(true)}
+                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
+                  >
+                    📅 Reprogramar fecha
+                  </button>
+                  <button
                     onClick={handleReiniciarResultadosFecha}
                     disabled={reiniciandoResultadosFecha || !partidosDeFecha.some((p) => p.golesLocal != null)}
                     className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-warning/30 hover:text-warning disabled:opacity-50"
@@ -596,6 +634,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     eliminando={eliminandoPartido === p.id}
                     onReiniciar={handleReiniciarPartidoIndividual}
                     reiniciando={reiniciandoPartido === p.id}
+                    onGuardarHorario={handleGuardarFechaProgramada}
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={setPartidoControl}
                   />
@@ -617,6 +656,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     eliminando={eliminandoPartido === p.id}
                     onReiniciar={handleReiniciarPartidoIndividual}
                     reiniciando={reiniciandoPartido === p.id}
+                    onGuardarHorario={handleGuardarFechaProgramada}
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={setPartidoControl}
                   />
@@ -684,11 +724,46 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
           onGuardado={handlePartidoAgregado}
         />
       )}
+
+      {modalReprogramar && (
+        <ModalReprogramarFecha
+          torneoId={torneoId}
+          categoria={categoria}
+          fechaNumero={fechaSeleccionada}
+          fechaReferencia={fechaReferenciaSeleccionada}
+          onCerrar={() => setModalReprogramar(false)}
+          onGuardado={async () => {
+            setModalReprogramar(false)
+            await cargar()
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, nombreEquipo, onAbrirControl }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl }) {
+  const [editandoHorario, setEditandoHorario] = useState(false)
+  const [horarioDraft, setHorarioDraft] = useState('')
+  const [guardandoHorario, setGuardandoHorario] = useState(false)
+
+  function abrirEdicionHorario() {
+    setHorarioDraft(timestampADatetimeLocal(partido.fecha))
+    setEditandoHorario(true)
+  }
+
+  async function guardarHorario() {
+    setGuardandoHorario(true)
+    try {
+      await onGuardarHorario(partido.id, horarioDraft ? new Date(horarioDraft) : null)
+      setEditandoHorario(false)
+    } catch {
+      // el error ya lo muestra el padre (errorGuardar) - se queda en modo edicion
+    } finally {
+      setGuardandoHorario(false)
+    }
+  }
+
   const jugado = partido.golesLocal != null
   // "En vivo": ya se armo la alineacion (se abrio Control de Partido)
   // pero todavia no se finalizo - el marcador que se ve viene de
@@ -760,6 +835,40 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         >
           {eliminando ? '…' : '×'}
         </button>
+      </div>
+
+      <div className="px-3 pb-1">
+        {editandoHorario ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              type="datetime-local"
+              value={horarioDraft}
+              onChange={(e) => setHorarioDraft(e.target.value)}
+              className="flex-1 rounded-lg border border-line bg-paper px-2 py-1 text-xs text-ink outline-none focus-visible:border-brand"
+            />
+            <button
+              onClick={guardarHorario}
+              disabled={guardandoHorario}
+              className="shrink-0 rounded-lg bg-brand px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
+            >
+              {guardandoHorario ? '…' : 'Guardar'}
+            </button>
+            <button
+              onClick={() => setEditandoHorario(false)}
+              disabled={guardandoHorario}
+              className="shrink-0 rounded-lg border border-line px-2 py-1 text-[11px] text-ink-soft disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={abrirEdicionHorario}
+            className={`text-[11px] font-medium ${partido.fecha ? 'text-ink-soft' : 'text-brand'}`}
+          >
+            {partido.fecha ? `🗓 ${formatearFechaProgramada(partido.fecha)}` : '+ Programar horario'}
+          </button>
+        )}
       </div>
 
       <div className="space-y-1.5 px-3 pb-3 pt-1">

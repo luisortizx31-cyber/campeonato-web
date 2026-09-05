@@ -217,6 +217,50 @@ export async function reiniciarPartidoCompleto(partidoId) {
   await reiniciarPartido(partidoId)
 }
 
+// Dia/hora programado de UN partido puntual - reutiliza el campo
+// `fecha` que ya existia en el doc (Timestamp, hasta ahora siempre
+// null: generarFixture/agregarPartidoManual nunca lo llenaban).
+// `fechaHora` es un Date de JS (Firestore lo convierte solo a
+// Timestamp al escribir) o null para borrar la programacion.
+export async function actualizarFechaProgramada(partidoId, fechaHora) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), { fecha: fechaHora })
+}
+
+// Reprograma una Fecha completa (por suspension, ej. lluvia) y corre
+// TODAS las fechas siguientes que ya tenian dia puesto la misma
+// cantidad de dias/horas - el calendario pendiente se desplaza entero
+// por igual, no se "encadena" al dia que tenia anotado la siguiente
+// fecha (eso dejaria los espacios entre fechas desparejos). Si la
+// Fecha que se reprograma no tenia ningun dia puesto todavia, no hay
+// de donde calcular un desplazamiento: se le asigna la nueva fecha y
+// no se toca ninguna otra. Solo mueve partidos NO jugados - uno ya
+// jugado conserva su fecha real como registro historico.
+export async function reprogramarFecha(torneoId, categoria, fechaNumero, nuevaFechaBase) {
+  const partidos = await listarPartidosPorCategoria(torneoId, categoria)
+  const noJugados = partidos.filter((p) => p.golesLocal == null)
+  const deLaFecha = noJugados.filter((p) => p.fechaNumero === fechaNumero && p.fecha)
+
+  const batch = writeBatch(db)
+
+  if (deLaFecha.length === 0) {
+    noJugados
+      .filter((p) => p.fechaNumero === fechaNumero)
+      .forEach((p) => batch.update(doc(db, 'torneo_partidos', p.id), { fecha: nuevaFechaBase }))
+    await batch.commit()
+    return
+  }
+
+  const fechaViejaMs = Math.min(...deLaFecha.map((p) => p.fecha.toMillis()))
+  const deltaMs = nuevaFechaBase.getTime() - fechaViejaMs
+
+  noJugados
+    .filter((p) => p.fechaNumero >= fechaNumero && p.fecha)
+    .forEach((p) => batch.update(doc(db, 'torneo_partidos', p.id), {
+      fecha: new Date(p.fecha.toMillis() + deltaMs),
+    }))
+  await batch.commit()
+}
+
 // Reclamo/protesta que un equipo (o el propio Maestro) quiere dejar
 // asentado sobre un partido puntual - texto libre, no dispara ninguna
 // logica del sistema (no suspende, no cambia el resultado). Se guarda

@@ -82,6 +82,28 @@ export function calcularFechasConPartidoJugado(partidos, equipoId) {
     .sort((a, b) => a - b)
 }
 
+// Formato corto para mostrar el dia/hora programado de un partido
+// (campo `fecha`, ver torneoPartidosService.actualizarFechaProgramada)
+// tanto en el panel admin como en la pagina publica - un solo lugar
+// para no repetir el formato en los dos.
+export function formatearFechaProgramada(timestamp) {
+  const fecha = timestamp.toDate()
+  const dia = fecha.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
+  const hora = fecha.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' })
+  return `${dia} · ${hora}`
+}
+
+// Convierte un Timestamp de Firestore (o un Date de JS, para cuando
+// se calcula una fecha de referencia antes de guardarla) al formato
+// que espera un <input type="datetime-local">. '' si no hay fecha,
+// para que el input quede vacio en vez de tirar error.
+export function timestampADatetimeLocal(timestamp) {
+  if (!timestamp) return ''
+  const fecha = timestamp.toDate ? timestamp.toDate() : timestamp
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${fecha.getFullYear()}-${pad(fecha.getMonth() + 1)}-${pad(fecha.getDate())}T${pad(fecha.getHours())}:${pad(fecha.getMinutes())}`
+}
+
 function parEquipos(partido) {
   return [partido.equipoLocalId, partido.equipoVisitanteId].sort().join('|')
 }
