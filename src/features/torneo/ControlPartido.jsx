@@ -16,7 +16,7 @@ import {
   eliminarTarjeta,
 } from '../../services/torneoTarjetasService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
-import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT } from '../../models/torneo'
+import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { useSwipeHorizontal } from '../../hooks/useSwipeHorizontal'
 
@@ -70,7 +70,7 @@ function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompl
         {estado === 'pool' ? (
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
             <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
-            <span className="min-w-0 flex-1 truncate text-ink-soft">{jugador.nombre}</span>
+            <span className="min-w-0 flex-1 truncate font-bold text-ink">{jugador.nombre}</span>
           </span>
         ) : estado === 'expulsado' ? (
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
@@ -184,7 +184,7 @@ function SelectorAlineacion({
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
       <button onClick={onToggle} className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left ${color.bg}`}>
-        <span className={`truncate text-sm font-extrabold ${color.text}`}>{titulo}</span>
+        <span className={`truncate text-lg font-extrabold uppercase ${color.text}`}>{titulo}</span>
         <span className="flex shrink-0 items-center gap-2 text-[11px]">
           <span className={completo ? 'font-bold text-success' : `font-semibold ${color.text}`}>
             {titulares.length}/{jugadoresPorEquipo} titulares
@@ -383,6 +383,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [dniConfirmadoLocal, setDniConfirmadoLocal] = useState(partido.dniConfirmadoLocal || [])
   const [dniConfirmadoVisitante, setDniConfirmadoVisitante] = useState(partido.dniConfirmadoVisitante || [])
   const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(JUGADORES_POR_EQUIPO_DEFAULT)
+  const [minimoJugadoresCancha, setMinimoJugadoresCancha] = useState(null)
+  const [diferenciaWalkover, setDiferenciaWalkover] = useState(DIFERENCIA_WALKOVER_DEFAULT)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
   // Que pestaña (Alineación/Cancha) se ve para ESTE partido puntual -
   // se guarda en sessionStorage para que un refresh de pagina no
@@ -442,6 +444,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setGoles(gs)
       setTarjetas(ts)
       setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
+      setMinimoJugadoresCancha(cfg.minimoJugadoresCancha)
+      setDiferenciaWalkover(cfg.diferenciaWalkover)
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo cargar la información del partido.')
@@ -495,6 +499,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const enCanchaVisitante = jugadoresVisitante.filter(
     (j) => titularesVisitante.includes(j.id) && !estaExpulsadoEnPartido(j.id)
   )
+
+  // Walkover: si un equipo se queda con MENOS jugadores en cancha que
+  // el minimo configurado (ver Configuracion), se puede cerrar el
+  // partido dandole vencedor al otro con el marcador fijo configurado
+  // - ver handleFinalizarPorAbandono. null en minimoJugadoresCancha
+  // significa que la regla no aplica.
+  const abandonoLocal = minimoJugadoresCancha != null && enCanchaLocal.length < minimoJugadoresCancha
+  const abandonoVisitante = minimoJugadoresCancha != null && enCanchaVisitante.length < minimoJugadoresCancha
 
   // El numero de camiseta con el que se registro al jugador se puede
   // corregir directo desde la alineacion (no hace falta ir hasta
@@ -728,6 +740,35 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     }
   }
 
+  // Cierra el partido por walkover: le da vencedor al equipo que NO
+  // se quedo corto de jugadores, con el marcador FIJO configurado
+  // (ej. 3-0) - no se suma a los goles que llevaba metidos, es el
+  // resultado final tal cual, igual que un walkover real.
+  async function handleFinalizarPorAbandono(equipoAbandona) {
+    const nombreAbandona = nombreEquipo(equipoAbandona === 'local' ? partido.equipoLocalId : partido.equipoVisitanteId)
+    const nombreGana = nombreEquipo(equipoAbandona === 'local' ? partido.equipoVisitanteId : partido.equipoLocalId)
+    if (
+      !confirm(
+        `${nombreAbandona} se quedó con menos del mínimo de jugadores en cancha. ¿Cerrar el partido con ${nombreGana} ganando ${diferenciaWalkover}-0 por walkover?\n\nEsta acción no se puede deshacer.`
+      )
+    )
+      return
+    setFinalizando(true)
+    setError(null)
+    try {
+      await finalizarTarjetasPartido({ torneoId, categoria, partidoId: partido.id, fechaNumero: partido.fechaNumero })
+      await registrarResultadoPartido(partido.id, {
+        golesLocal: equipoAbandona === 'local' ? 0 : diferenciaWalkover,
+        golesVisitante: equipoAbandona === 'visitante' ? 0 : diferenciaWalkover,
+      })
+      onFinalizado()
+    } catch (err) {
+      console.error('[ControlPartido]', err)
+      setError(err.message || 'No se pudo finalizar el partido.')
+      setFinalizando(false)
+    }
+  }
+
   async function handleFinalizar() {
     if (!confirm(`¿Finalizar el partido con marcador ${golesLocalCount} - ${golesVisitanteCount}?`)) return
     setFinalizando(true)
@@ -875,6 +916,41 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         </div>
       ) : (
         <>
+          {(abandonoLocal || abandonoVisitante) && (
+            <div className="mb-3 space-y-2">
+              {abandonoLocal && (
+                <div className="rounded-2xl border border-danger bg-danger px-4 py-3 text-white">
+                  <p className="text-sm font-semibold">
+                    ⚠️ {nombreEquipo(partido.equipoLocalId)} se quedó con {enCanchaLocal.length} jugador
+                    {enCanchaLocal.length === 1 ? '' : 'es'} en cancha (mínimo {minimoJugadoresCancha}).
+                  </p>
+                  <button
+                    onClick={() => handleFinalizarPorAbandono('local')}
+                    disabled={finalizando || reiniciando}
+                    className="mt-2 w-full rounded-lg bg-white py-2 text-sm font-medium text-danger disabled:opacity-50"
+                  >
+                    Cerrar por walkover ({diferenciaWalkover}-0 para {nombreEquipo(partido.equipoVisitanteId)})
+                  </button>
+                </div>
+              )}
+              {abandonoVisitante && (
+                <div className="rounded-2xl border border-danger bg-danger px-4 py-3 text-white">
+                  <p className="text-sm font-semibold">
+                    ⚠️ {nombreEquipo(partido.equipoVisitanteId)} se quedó con {enCanchaVisitante.length} jugador
+                    {enCanchaVisitante.length === 1 ? '' : 'es'} en cancha (mínimo {minimoJugadoresCancha}).
+                  </p>
+                  <button
+                    onClick={() => handleFinalizarPorAbandono('visitante')}
+                    disabled={finalizando || reiniciando}
+                    className="mt-2 w-full rounded-lg bg-white py-2 text-sm font-medium text-danger disabled:opacity-50"
+                  >
+                    Cerrar por walkover ({diferenciaWalkover}-0 para {nombreEquipo(partido.equipoLocalId)})
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Fondo verde tipo cancha, con las dos alineaciones separadas
               por una linea central - no es un campo tactico con
               posiciones reales, es un agrupamiento visual simple. Solo

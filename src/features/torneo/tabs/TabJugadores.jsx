@@ -5,6 +5,7 @@ import {
   eliminarJugador,
   obtenerDatosPrivadosJugador,
 } from '../../../services/torneoJugadoresService'
+import { obtenerConfigCategoria } from '../../../services/torneoConfigService'
 import { construirLinkWhatsapp } from '../../../utils/whatsapp'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { WhatsappIcon } from '../../shared/WhatsappIcon'
@@ -102,17 +103,20 @@ export default function TabJugadores({ torneoId }) {
   const [eliminando, setEliminando] = useState(null)
   const [errorAccion, setErrorAccion] = useState(null)
   const [datosVisibles, setDatosVisibles] = useState({}) // { [jugadorId]: 'cargando' | { dni, telefono } | 'error' }
+  const [maximoJugadoresInscritos, setMaximoJugadoresInscritos] = useState(null)
 
   async function cargar() {
     setCargando(true)
     setError(null)
     try {
-      const [eq, js] = await Promise.all([
+      const [eq, js, cfg] = await Promise.all([
         listarEquiposPorCategoria(torneoId, categoria),
         listarJugadoresPorCategoria(torneoId, categoria),
+        obtenerConfigCategoria(torneoId, categoria),
       ])
       setEquipos(eq)
       setJugadores(js)
+      setMaximoJugadoresInscritos(cfg.maximoJugadoresInscritos)
     } catch (err) {
       console.error('[TabJugadores]', err)
       setError('No se pudieron cargar los jugadores.')
@@ -309,6 +313,7 @@ export default function TabJugadores({ torneoId }) {
           categoria={categoria}
           equipos={equipos}
           jugadores={jugadores}
+          maximoJugadoresInscritos={maximoJugadoresInscritos}
           equipoIdInicial={equipoNuevoId || undefined}
           jugador={modal === 'nuevo' ? null : modal}
           onCerrar={() => setModal(null)}

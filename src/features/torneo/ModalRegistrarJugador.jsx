@@ -18,7 +18,7 @@ import { CATEGORIA_TORNEO_LABELS } from '../../models/torneo'
  * El DNI vive en una subcoleccion privada (ver torneoJugadoresService)
  * y nunca se expone en el link publico del torneo.
  */
-export default function ModalRegistrarJugador({ torneoId, categoria, equipos, jugadores = [], equipoIdInicial, jugador, onCerrar, onGuardado }) {
+export default function ModalRegistrarJugador({ torneoId, categoria, equipos, jugadores = [], maximoJugadoresInscritos = null, equipoIdInicial, jugador, onCerrar, onGuardado }) {
   const esEdicion = Boolean(jugador)
   const [form, setForm] = useState({
     equipoId: jugador?.equipoId || equipoIdInicial || equipos[0]?.id || '',
@@ -120,6 +120,19 @@ export default function ModalRegistrarJugador({ torneoId, categoria, equipos, ju
       )
       if (duplicadoCamiseta) {
         setError(`El número ${numero} ya lo tiene ${duplicadoCamiseta.nombre} en este equipo.`)
+        return
+      }
+    }
+
+    // Tope de jugadores ACTIVOS por equipo (ver Configuracion) - se
+    // excluye al propio jugador que se esta editando, para no contarlo
+    // dos veces si no cambio de equipo.
+    if (maximoJugadoresInscritos) {
+      const inscritosEquipo = jugadores.filter(
+        (j) => j.id !== jugador?.id && j.equipoId === form.equipoId && !j.eliminado
+      ).length
+      if (inscritosEquipo >= maximoJugadoresInscritos) {
+        setError(`Este equipo ya tiene el máximo de ${maximoJugadoresInscritos} jugadores inscritos.`)
         return
       }
     }

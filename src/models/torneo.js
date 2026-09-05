@@ -53,3 +53,22 @@ export const OPCIONES_UMBRAL_ROJAS = [1, 2, 3, 4]
 // partido puntual hay que jugar con menos (lesiones, etc).
 export const JUGADORES_POR_EQUIPO_DEFAULT = 11
 export const OPCIONES_JUGADORES_POR_EQUIPO = [6, 7, 11]
+
+// Diferencia de gol con la que se cierra un partido por "walkover"
+// (abandono): si un equipo se queda con menos jugadores en cancha que
+// el minimo configurado (ver minimoJugadoresCancha en
+// torneoConfigService y el aviso en ControlPartido), se le da
+// vencedor al otro con este marcador fijo (ej. 3-0) - no se suma a
+// los goles ya metidos, es el resultado final tal cual, igual que un
+// walkover real. null en minimoJugadoresCancha significa "no aplica
+// esta regla" (comportamiento por defecto, ningun partido se corta
+// solo).
+export const DIFERENCIA_WALKOVER_DEFAULT = 3
+export const OPCIONES_DIFERENCIA_WALKOVER = [1, 2, 3, 4, 5]
+
+// Tope de jugadores ACTIVOS (no eliminados) que se pueden inscribir
+// por equipo en esta categoria - ver ModalRegistrarJugador, que
+// bloquea el alta de un jugador nuevo si el equipo ya llego al tope.
+// null (o "Sin límite" en Configuracion) significa que no hay tope,
+// que es el comportamiento por defecto.
+export const OPCIONES_MAXIMO_JUGADORES_INSCRITOS = [10, 12, 15, 18, 20, 25, 30]

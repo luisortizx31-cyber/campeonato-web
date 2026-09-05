@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../config/firebase'
-import { UMBRAL_SUSPENSION_AMARILLAS_DEFAULT, JUGADORES_POR_EQUIPO_DEFAULT } from '../models/torneo'
+import { UMBRAL_SUSPENSION_AMARILLAS_DEFAULT, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../models/torneo'
 
 const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024
 
@@ -65,6 +65,18 @@ export async function obtenerConfigTorneo(torneoId) {
 //  - jugadoresPorEquipo: formato del partido (futbol 6, 7 u 11) - se
 //    usa en ControlPartido para mostrar cuantos titulares corresponde
 //    marcar, solo como guia (no bloquea si hace falta jugar con menos).
+//  - minimoJugadoresCancha: si un equipo queda con MENOS jugadores en
+//    cancha que este numero (por expulsiones), ControlPartido avisa
+//    que se puede cerrar el partido por walkover. null significa que
+//    la regla no aplica (comportamiento por defecto, ningun partido
+//    se corta solo por quedar con pocos jugadores).
+//  - diferenciaWalkover: el marcador FIJO (ej. 3-0) con el que se
+//    cierra el partido cuando se confirma el walkover de arriba - no
+//    se suma a los goles ya metidos.
+//  - maximoJugadoresInscritos: tope de jugadores ACTIVOS por equipo en
+//    esta categoria - ModalRegistrarJugador bloquea el alta de un
+//    jugador nuevo (o el pase a otro equipo) si ya se llego al tope.
+//    null significa que no hay tope (comportamiento por defecto).
 export async function obtenerConfigCategoria(torneoId, categoria) {
   const snap = await getDoc(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
   const data = snap.exists() ? snap.data() : {}
@@ -73,6 +85,9 @@ export async function obtenerConfigCategoria(torneoId, categoria) {
     umbralRojas: data.umbralRojas || null,
     equiposEliminados: data.equiposEliminados || 0,
     jugadoresPorEquipo: data.jugadoresPorEquipo || JUGADORES_POR_EQUIPO_DEFAULT,
+    minimoJugadoresCancha: data.minimoJugadoresCancha || null,
+    diferenciaWalkover: data.diferenciaWalkover || DIFERENCIA_WALKOVER_DEFAULT,
+    maximoJugadoresInscritos: data.maximoJugadoresInscritos || null,
   }
 }
 
@@ -104,6 +119,30 @@ export async function actualizarJugadoresPorEquipo(torneoId, categoria, cantidad
   await setDoc(
     doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
     { torneoId, jugadoresPorEquipo: Number(cantidad) || JUGADORES_POR_EQUIPO_DEFAULT },
+    { merge: true }
+  )
+}
+
+export async function actualizarMinimoJugadoresCancha(torneoId, categoria, cantidad) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, minimoJugadoresCancha: cantidad ? Number(cantidad) : null },
+    { merge: true }
+  )
+}
+
+export async function actualizarDiferenciaWalkover(torneoId, categoria, cantidad) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, diferenciaWalkover: Number(cantidad) || DIFERENCIA_WALKOVER_DEFAULT },
+    { merge: true }
+  )
+}
+
+export async function actualizarMaximoJugadoresInscritos(torneoId, categoria, cantidad) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, maximoJugadoresInscritos: cantidad ? Number(cantidad) : null },
     { merge: true }
   )
 }

@@ -6,6 +6,9 @@ import {
   actualizarUmbralRojas,
   actualizarJugadoresPorEquipo,
   actualizarEquiposEliminados,
+  actualizarMinimoJugadoresCancha,
+  actualizarDiferenciaWalkover,
+  actualizarMaximoJugadoresInscritos,
 } from '../../../services/torneoConfigService'
 import {
   CATEGORIA_TORNEO,
@@ -13,6 +16,8 @@ import {
   OPCIONES_UMBRAL_AMARILLAS,
   OPCIONES_UMBRAL_ROJAS,
   OPCIONES_JUGADORES_POR_EQUIPO,
+  OPCIONES_DIFERENCIA_WALKOVER,
+  OPCIONES_MAXIMO_JUGADORES_INSCRITOS,
 } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { useAuth } from '../../../context/AuthContext'
@@ -60,6 +65,50 @@ export default function TabConfiguracion({ torneoId }) {
     } catch (err) {
       console.error('[TabConfiguracion]', err)
       setError('No se pudo guardar el formato del partido.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function handleCambiarMinimoJugadoresCancha(nuevoValor) {
+    const valor = nuevoValor ? Number(nuevoValor) : null
+    setConfig((c) => ({ ...c, minimoJugadoresCancha: valor }))
+    setGuardando(true)
+    setError(null)
+    try {
+      await actualizarMinimoJugadoresCancha(torneoId, categoria, valor)
+    } catch (err) {
+      console.error('[TabConfiguracion]', err)
+      setError('No se pudo guardar el mínimo de jugadores en cancha.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function handleCambiarDiferenciaWalkover(nuevaDiferencia) {
+    setConfig((c) => ({ ...c, diferenciaWalkover: Number(nuevaDiferencia) }))
+    setGuardando(true)
+    setError(null)
+    try {
+      await actualizarDiferenciaWalkover(torneoId, categoria, nuevaDiferencia)
+    } catch (err) {
+      console.error('[TabConfiguracion]', err)
+      setError('No se pudo guardar la diferencia de walkover.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function handleCambiarMaximoJugadoresInscritos(nuevoValor) {
+    const valor = nuevoValor ? Number(nuevoValor) : null
+    setConfig((c) => ({ ...c, maximoJugadoresInscritos: valor }))
+    setGuardando(true)
+    setError(null)
+    try {
+      await actualizarMaximoJugadoresInscritos(torneoId, categoria, valor)
+    } catch (err) {
+      console.error('[TabConfiguracion]', err)
+      setError('No se pudo guardar el máximo de jugadores inscritos.')
     } finally {
       setGuardando(false)
     }
@@ -151,6 +200,53 @@ export default function TabConfiguracion({ torneoId }) {
             </div>
 
             <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+              <label htmlFor="minimo-jugadores-cancha" className="text-sm text-ink-soft">
+                Dar walkover al bajar de
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  id="minimo-jugadores-cancha"
+                  value={config?.minimoJugadoresCancha ?? ''}
+                  disabled={!config || guardando}
+                  onChange={(e) => handleCambiarMinimoJugadoresCancha(e.target.value)}
+                  className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                >
+                  <option value="">Nunca</option>
+                  {Array.from({ length: (config?.jugadoresPorEquipo || 0) }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                <span className="text-sm text-ink-soft">jugadores en cancha</span>
+              </div>
+            </div>
+
+            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+              <label htmlFor="diferencia-walkover" className="text-sm text-ink-soft">
+                Marcador del walkover
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  id="diferencia-walkover"
+                  value={config?.diferenciaWalkover ?? ''}
+                  disabled={!config || guardando}
+                  onChange={(e) => handleCambiarDiferenciaWalkover(e.target.value)}
+                  className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                >
+                  {OPCIONES_DIFERENCIA_WALKOVER.map((n) => (
+                    <option key={n} value={n}>{n}-0</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {config?.minimoJugadoresCancha != null && (
+              <p className="mb-2.5 -mt-1 text-xs text-ink-soft">
+                Si un equipo queda con menos de {config.minimoJugadoresCancha} jugadores en cancha (por
+                expulsiones), Control de Partido va a avisar que se puede cerrar el partido {config.diferenciaWalkover}-0
+                a favor del otro equipo.
+              </p>
+            )}
+
+            <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
               <label htmlFor="umbral-amarillas" className="text-sm text-ink-soft">
                 Suspender al llegar a
               </label>
@@ -192,7 +288,7 @@ export default function TabConfiguracion({ torneoId }) {
             </div>
 
             {equipos.length > 0 && (
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+              <div className="mb-2.5 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
                 <label htmlFor="equipos-eliminados" className="text-sm text-ink-soft">
                   Equipos eliminados (últimos de la tabla)
                 </label>
@@ -212,6 +308,27 @@ export default function TabConfiguracion({ torneoId }) {
                 </div>
               </div>
             )}
+
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+              <label htmlFor="maximo-jugadores-inscritos" className="text-sm text-ink-soft">
+                Máximo de jugadores inscritos
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  id="maximo-jugadores-inscritos"
+                  value={config?.maximoJugadoresInscritos ?? ''}
+                  disabled={!config || guardando}
+                  onChange={(e) => handleCambiarMaximoJugadoresInscritos(e.target.value)}
+                  className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                >
+                  <option value="">Sin límite</option>
+                  {OPCIONES_MAXIMO_JUGADORES_INSCRITOS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                <span className="text-sm text-ink-soft">por equipo</span>
+              </div>
+            </div>
           </>
         )}
       </div>
