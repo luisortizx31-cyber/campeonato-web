@@ -1,13 +1,35 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../../services/authService'
+import { useAuth } from '../../context/AuthContext'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { cargando: cargandoAuth, estaAutenticado, error: errorAuth } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
+
+  // login() solo confirma la credencial contra Firebase Auth - el
+  // perfil (rol, torneoId) lo trae AuthContext aparte, de forma
+  // asincrona, apenas nota el cambio de sesion (onAuthStateChanged +
+  // lectura a Firestore). Antes se navegaba a "/" apenas login()
+  // resolvia, pero en ese momento el perfil todavia no habia
+  // terminado de cargar: ProtectedRoute veia estaAutenticado=false y
+  // rebotaba de vuelta a /login, obligando a iniciar sesion una
+  // segunda vez (para entonces el perfil ya habia cargado en segundo
+  // plano). Ahora se espera a que AuthContext termine de resolver
+  // antes de navegar.
+  useEffect(() => {
+    if (!enviando || cargandoAuth) return
+    if (estaAutenticado) {
+      navigate('/', { replace: true })
+    } else if (errorAuth) {
+      setError('No se pudo completar el inicio de sesión.')
+      setEnviando(false)
+    }
+  }, [enviando, cargandoAuth, estaAutenticado, errorAuth, navigate])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -15,11 +37,11 @@ export default function LoginPage() {
     setEnviando(true)
     try {
       await login(email.trim(), password)
-      navigate('/', { replace: true })
+      // La navegacion la dispara el efecto de arriba, apenas
+      // AuthContext termine de resolver el perfil - no antes.
     } catch (err) {
       console.error('[LoginPage]', err)
       setError('Correo o contraseña incorrectos.')
-    } finally {
       setEnviando(false)
     }
   }
