@@ -5,6 +5,7 @@ import { calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorari
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
+import CanchaPublica from '../CanchaPublica'
 
 // Solo lectura: muestra los cruces y resultados por fecha del
 // fixture. A diferencia de TabFechas (panel admin), no tiene ningun
@@ -16,6 +17,10 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
   const [partidos, setPartidos] = useState([])
   const [fechaSeleccionada, setFechaSeleccionada] = useState(null)
   const [cargando, setCargando] = useState(true)
+  // Solo el id, no el partido entero - asi el detalle (CanchaPublica)
+  // siempre recibe la version mas actualizada del array ya suscripto
+  // en vivo mas abajo, en vez de una copia que se queda vieja.
+  const [partidoAbiertoId, setPartidoAbiertoId] = useState(null)
 
   const barraFechasRef = useRef(null)
   useEffect(() => {
@@ -73,6 +78,15 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     return equipos.find((e) => e.id === id)?.nombre || '—'
   }
 
+  const partidoAbierto = partidoAbiertoId ? partidos.find((p) => p.id === partidoAbiertoId) : null
+
+  // Si el partido abierto deja de existir (ej. el Maestro lo borro
+  // mientras alguien lo miraba), vuelve solo al listado en vez de
+  // dejar la pantalla de detalle colgada.
+  useEffect(() => {
+    if (partidoAbiertoId && !cargando && !partidoAbierto) setPartidoAbiertoId(null)
+  }, [partidoAbiertoId, partidoAbierto, cargando])
+
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
   // Pendientes de menor a mayor hora programada primero, los ya
@@ -109,6 +123,18 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
   }
   const fechasIda = fechasDisponibles.filter((f) => fechaLeg(f) === 'ida')
   const fechasVuelta = fechasDisponibles.filter((f) => fechaLeg(f) === 'vuelta')
+
+  if (partidoAbiertoId) {
+    return partidoAbierto ? (
+      <CanchaPublica
+        torneoId={torneoId}
+        categoria={categoria}
+        partido={partidoAbierto}
+        nombreEquipo={nombreEquipo}
+        onVolver={() => setPartidoAbiertoId(null)}
+      />
+    ) : null
+  }
 
   return (
     <div>
@@ -181,7 +207,8 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
               return (
                 <li
                   key={p.id}
-                  className={`overflow-hidden rounded-2xl border border-l-4 bg-surface shadow-sm ${
+                  onClick={() => setPartidoAbiertoId(p.id)}
+                  className={`cursor-pointer overflow-hidden rounded-2xl border border-l-4 bg-surface shadow-sm transition-colors active:bg-ink-soft/5 ${
                     jugado ? 'border-line border-l-success' : enVivo ? 'border-danger/30 border-l-danger' : 'border-dashed border-line border-l-line'
                   }`}
                 >
@@ -257,6 +284,10 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       </span>
                     </div>
                   </div>
+
+                  <p className="border-t border-line px-4 py-1.5 text-right text-[10px] font-medium text-ink-soft">
+                    Ver detalle ›
+                  </p>
                 </li>
               )
             })}

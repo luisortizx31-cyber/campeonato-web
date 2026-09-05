@@ -6,6 +6,7 @@ import {
   updateDoc,
   writeBatch,
   getDocs,
+  onSnapshot,
   query,
   where,
   serverTimestamp,
@@ -358,6 +359,16 @@ export async function listarTarjetasPorPartido(partidoId) {
   const q = query(collection(db, 'torneo_tarjetas'), where('partidoId', '==', partidoId))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Igual que listarTarjetasPorPartido pero en tiempo real - la usa
+// CanchaPublica para que el publico vea aparecer una tarjeta sin
+// refrescar la pagina. Devuelve la funcion para cancelar la suscripcion.
+export function suscribirTarjetasPorPartido(partidoId, onCambio) {
+  const q = query(collection(db, 'torneo_tarjetas'), where('partidoId', '==', partidoId))
+  return onSnapshot(q, (snap) => {
+    onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  })
 }
 
 // Botón manual "Levantar suspensión" / "Reincorporar" - para cuando el

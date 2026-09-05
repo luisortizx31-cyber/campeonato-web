@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, deleteDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, addDoc, deleteDoc, getDocs, onSnapshot, query, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
 // Registra que un jugador anoto `cantidad` goles en una fecha puntual
@@ -46,4 +46,14 @@ export async function listarGolesPorPartido(partidoId) {
   const q = query(collection(db, 'torneo_goles'), where('partidoId', '==', partidoId))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Igual que listarGolesPorPartido pero en tiempo real - la usa
+// CanchaPublica para que el publico vea aparecer un gol sin refrescar
+// la pagina. Devuelve la funcion para cancelar la suscripcion.
+export function suscribirGolesPorPartido(partidoId, onCambio) {
+  const q = query(collection(db, 'torneo_goles'), where('partidoId', '==', partidoId))
+  return onSnapshot(q, (snap) => {
+    onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  })
 }
