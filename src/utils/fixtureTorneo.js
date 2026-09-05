@@ -93,15 +93,25 @@ export function formatearFechaProgramada(timestamp) {
   return `${dia} · ${hora}`
 }
 
-// Version mas compacta (sin el dia de la semana) para la etiqueta
-// chica debajo de cada pastilla "Fecha N" en el selector de
-// TabFechasPublica, que tiene mucho menos espacio horizontal que la
-// tarjeta del partido.
-export function formatearFechaCompacta(timestamp) {
+// Dia y hora por separado, para la etiqueta de dos lineas debajo de
+// cada pastilla "Fecha N" en el selector de TabFechasPublica (ej.
+// "sáb, 5 set" arriba y "12 am" abajo) - en una sola linea el formato
+// completo de formatearFechaProgramada no entra en el poco espacio
+// horizontal que tiene esa pastilla.
+export function formatearDiaCorto(timestamp) {
+  return timestamp.toDate().toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+// Hora en 12h sin los minutos cuando son :00 (ej. "12 am" en vez de
+// "12:00 a. m.") - mas compacta que toLocaleTimeString para esa misma
+// etiqueta de dos lineas.
+export function formatearHoraCorta(timestamp) {
   const fecha = timestamp.toDate()
-  const dia = fecha.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })
-  const hora = fecha.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' })
-  return `${dia} · ${hora}`
+  const minutos = fecha.getMinutes()
+  let horas = fecha.getHours() % 12
+  if (horas === 0) horas = 12
+  const meridiano = fecha.getHours() >= 12 ? 'pm' : 'am'
+  return minutos === 0 ? `${horas} ${meridiano}` : `${horas}:${String(minutos).padStart(2, '0')} ${meridiano}`
 }
 
 // Orden de los partidos DENTRO de una misma Fecha (ver TabFechas y

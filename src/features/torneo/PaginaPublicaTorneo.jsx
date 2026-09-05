@@ -17,6 +17,11 @@ const TABS = [
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
 ]
 
+// Se guarda en sessionStorage (no localStorage: solo para que un
+// refresh de pagina no vuelva siempre a Tabla de Posiciones) - mismo
+// patron que ya usa PanelTorneo.jsx del lado admin.
+const TAB_STORAGE_KEY = 'campeonato_publico_tabActiva'
+
 // Pagina publica de UN torneo (tenant) - sin login, pensada para
 // compartir el link por WhatsApp (ver PanelTorneo.jsx, boton "Copiar
 // link público"). El :torneoId de la URL dice de que colegio son los
@@ -24,7 +29,14 @@ const TABS = [
 // escribe en Firestore.
 export default function PaginaPublicaTorneo() {
   const { torneoId } = useParams()
-  const [tabActiva, setTabActiva] = useState('posiciones')
+  const [tabActiva, setTabActiva] = useState(() => {
+    try {
+      const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
+      return TABS.some((t) => t.id === guardada) ? guardada : 'posiciones'
+    } catch {
+      return 'posiciones'
+    }
+  })
   const [basesUrl, setBasesUrl] = useState(null)
   const [categoriasActivas, setCategoriasActivas] = useState(CATEGORIAS_ACTIVAS_DEFAULT)
   const [nombreTorneo, setNombreTorneo] = useState(null)
@@ -65,6 +77,14 @@ export default function PaginaPublicaTorneo() {
       })
       .catch((err) => console.error('[PaginaPublicaTorneo]', err))
   }, [torneoId])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, tabActiva)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+  }, [tabActiva])
 
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente

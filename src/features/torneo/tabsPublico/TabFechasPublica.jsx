@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, formatearFechaProgramada, formatearFechaCompacta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, formatearFechaProgramada, formatearDiaCorto, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -206,9 +206,10 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       Fecha {f}{completa ? ' ✓' : ''}
                     </button>
                     {horarioMasBajo && (
-                      <p className="whitespace-nowrap rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                        🗓 {formatearFechaCompacta(horarioMasBajo)}
-                      </p>
+                      <div className="flex flex-col items-center whitespace-nowrap rounded-lg bg-gold px-2 py-1 leading-tight text-white shadow-sm">
+                        <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
+                        <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
+                      </div>
                     )}
                   </div>
                 </div>
