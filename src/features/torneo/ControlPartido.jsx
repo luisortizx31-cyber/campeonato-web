@@ -18,7 +18,7 @@ import {
   eliminarTarjeta,
 } from '../../services/torneoTarjetasService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
-import { listarDelegadosPorEquipos } from '../../services/delegadosService'
+import { obtenerDelegadosDePartido } from '../../services/delegadosService'
 import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { nombreCorto } from '../../utils/nombreJugador'
@@ -447,10 +447,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         // desplegadas, red, etc), que el resto del partido (jugadores,
         // goles, tarjetas) se siga cargando igual - el unico efecto es
         // que no aparece el boton de habilitar delegado.
-        listarDelegadosPorEquipos([partido.equipoLocalId, partido.equipoVisitanteId]).catch((err) => {
-          console.error('[ControlPartido] listarDelegadosPorEquipos', err)
+        obtenerDelegadosDePartido(partido.equipoLocalId, partido.equipoVisitanteId).catch((err) => {
+          console.error('[ControlPartido] obtenerDelegadosDePartido', err)
           setErrorDelegados(err.code || err.message || 'error desconocido')
-          return []
+          return { local: null, visitante: null }
         }),
       ])
       setJugadoresLocal(jl.filter((j) => !j.eliminado))
@@ -460,8 +460,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
       setMinimoJugadoresCancha(cfg.minimoJugadoresCancha)
       setDiferenciaWalkover(cfg.diferenciaWalkover)
-      setDelegadoLocal(delegados.find((d) => d.equipoId === partido.equipoLocalId) || null)
-      setDelegadoVisitante(delegados.find((d) => d.equipoId === partido.equipoVisitanteId) || null)
+      setDelegadoLocal(delegados.local)
+      setDelegadoVisitante(delegados.visitante)
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo cargar la información del partido.')

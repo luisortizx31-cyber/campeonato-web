@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { obtenerConfigTorneo } from '../../services/torneoConfigService'
 import { obtenerTorneo } from '../../services/torneosService'
 import { login, logout } from '../../services/authService'
-import { obtenerDelegado } from '../../services/delegadosService'
+import { obtenerDelegadoDeEquipo } from '../../services/delegadosService'
 import { useAuth } from '../../context/AuthContext'
 import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
 import TabPosicionesPublica from './tabsPublico/TabPosicionesPublica'
@@ -35,7 +35,7 @@ const TAB_STORAGE_KEY = 'campeonato_publico_tabActiva'
 // escribe en Firestore.
 export default function PaginaPublicaTorneo() {
   const { torneoId } = useParams()
-  const { perfil, usuarioAuth, estaAutenticado } = useAuth()
+  const { perfil, estaAutenticado } = useAuth()
   const [tabActiva, setTabActiva] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
@@ -65,23 +65,23 @@ export default function PaginaPublicaTorneo() {
 
   const [delegadoDeshabilitado, setDelegadoDeshabilitado] = useState(false)
   useEffect(() => {
-    if (!esMiDelegado || !usuarioAuth) {
+    if (!esMiDelegado || !perfil?.equipoId) {
       setDelegadoDeshabilitado(false)
       return
     }
     let cancelado = false
-    obtenerDelegado(usuarioAuth.uid)
+    obtenerDelegadoDeEquipo(perfil.equipoId)
       .then((d) => {
         if (!cancelado && d?.deshabilitado) {
           setDelegadoDeshabilitado(true)
           logout()
         }
       })
-      .catch((err) => console.error('[PaginaPublicaTorneo] obtenerDelegado', err))
+      .catch((err) => console.error('[PaginaPublicaTorneo] obtenerDelegadoDeEquipo', err))
     return () => {
       cancelado = true
     }
-  }, [esMiDelegado, usuarioAuth])
+  }, [esMiDelegado, perfil?.equipoId])
 
   async function handleLoginDelegado(e) {
     e.preventDefault()

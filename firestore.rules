@@ -128,16 +128,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // /torneo_delegados/{uid}: correo, contraseña y equipo asignado de
-    // cada delegado dado de alta desde Configuracion (ver
-    // delegadosService.crearDelegado) - mismo motivo que /colegios de
-    // arriba (nunca es de lectura publica: guarda la contraseña en
-    // texto plano para que el Maestro se la pueda volver a mostrar).
-    // El propio delegado puede leer SU documento (lo usa para saber si
-    // fue deshabilitado, ver PaginaPublicaTorneo) pero nunca la lista
-    // completa ni el de otro delegado.
-    match /torneo_delegados/{uid} {
-      allow get: if (estaAutenticado() && request.auth.uid == uid) || (esMaestro() && resource.data.torneoId == miTorneoId());
+    // /torneo_delegados/{equipoId}: correo, contraseña y datos del
+    // delegado de CADA equipo (ver delegadosService.crearDelegado) -
+    // mismo motivo que /colegios de arriba (nunca es de lectura
+    // publica: guarda la contraseña en texto plano para que el Maestro
+    // se la pueda volver a mostrar). Se indexa por equipoId (no por
+    // uid) a proposito: asi ControlPartido puede leer "el delegado de
+    // este equipo" con un get() de un solo documento conocido en vez
+    // de una query de lista con 'in' - una query de lista cuya regla
+    // depende de otro documento (esMaestro()/miTorneoId()) no queda
+    // garantizada por el shape de la query en si y Firestore la
+    // rechaza entera con permission-denied, cosa que un get() de un id
+    // conocido no tiene. El propio delegado puede leer el doc de SU
+    // equipo (lo usa para saber si fue deshabilitado, ver
+    // PaginaPublicaTorneo) comparando el campo `uid` guardado adentro,
+    // ya que el id del documento ya no es su uid.
+    match /torneo_delegados/{equipoId} {
+      allow get: if (estaAutenticado() && resource.data.uid == request.auth.uid) || (esMaestro() && resource.data.torneoId == miTorneoId());
       allow list: if esMaestro() && resource.data.torneoId == miTorneoId();
       allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
       allow update: if esMaestroDe(resource.data.torneoId);
