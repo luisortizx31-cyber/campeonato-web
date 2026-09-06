@@ -112,8 +112,10 @@ export default function TabMiEquipoDelegado() {
     <div>
       <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand">Delegado de</p>
-          <p className="truncate font-bold text-ink">{equipo?.nombre || '…'}</p>
+          <p className="truncate text-sm font-bold text-ink">
+            👋 ¡Bienvenido, delegado de {equipo?.nombre || '…'}!
+          </p>
+          <p className="text-[11px] text-ink-soft">Podés inscribir jugadores y armar la alineación de tu equipo.</p>
         </div>
         <button
           onClick={() => logout()}

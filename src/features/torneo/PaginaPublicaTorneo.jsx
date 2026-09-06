@@ -154,7 +154,7 @@ export default function PaginaPublicaTorneo() {
   }, [tabActiva])
 
   const mostrarMiEquipo = esMiDelegado && !delegadoDeshabilitado
-  const TABS = mostrarMiEquipo ? [...TABS_PUBLICAS, TAB_MI_EQUIPO] : TABS_PUBLICAS
+  const TABS = mostrarMiEquipo ? [TAB_MI_EQUIPO, ...TABS_PUBLICAS] : TABS_PUBLICAS
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente
 
