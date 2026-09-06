@@ -442,7 +442,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         listarGolesPorPartido(partido.id),
         listarTarjetasPorPartido(partido.id),
         obtenerConfigCategoria(torneoId, categoria),
-        listarDelegadosPorEquipos([partido.equipoLocalId, partido.equipoVisitanteId]),
+        // Coleccion nueva - si algo falla aca (reglas recien
+        // desplegadas, red, etc), que el resto del partido (jugadores,
+        // goles, tarjetas) se siga cargando igual - el unico efecto es
+        // que no aparece el boton de habilitar delegado.
+        listarDelegadosPorEquipos([partido.equipoLocalId, partido.equipoVisitanteId]).catch((err) => {
+          console.error('[ControlPartido] listarDelegadosPorEquipos', err)
+          return []
+        }),
       ])
       setJugadoresLocal(jl.filter((j) => !j.eliminado))
       setJugadoresVisitante(jv.filter((j) => !j.eliminado))
