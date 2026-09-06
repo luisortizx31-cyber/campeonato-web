@@ -127,6 +127,9 @@ export default function TabMiEquipoDelegado() {
     const rivalId = equipoDelPartido === 'local' ? partidoAbierto.equipoVisitanteId : partidoAbierto.equipoLocalId
     return (
       <AlineacionPartidoDelegado
+        torneoId={perfil.torneoId}
+        categoria={equipo?.categoria}
+        equipoId={perfil.equipoId}
         partido={partidoAbierto}
         equipo={equipoDelPartido}
         jugadores={jugadores}

@@ -156,14 +156,27 @@ export async function agregarPartidoManual({ torneoId, categoria, fechaNumero, e
 
 // Carga (o corrige) el resultado de un partido del fixture. No toca
 // fecha/jornada - esos ya vienen fijados por generarFixture o
-// agregarPartidoManual.
+// agregarPartidoManual. Deja asentada la hora real de finalizacion
+// (horaFin) - si se "corrige" un resultado ya cargado, simplemente
+// queda pisada por la hora de la correccion, no hace falta
+// distinguir ese caso.
 export async function registrarResultadoPartido(partidoId, { golesLocal, golesVisitante }) {
   await updateDoc(doc(db, 'torneo_partidos', partidoId), {
     golesLocal: Number(golesLocal),
     golesVisitante: Number(golesVisitante),
     golesLocalEnVivo: null,
     golesVisitanteEnVivo: null,
+    horaFin: serverTimestamp(),
   })
+}
+
+// Marca el arranque REAL del partido (distinto del horario
+// programado, ver actualizarFechaProgramada) - a partir de aca el
+// delegado ya no puede tocar la alineacion directo, sus cambios
+// quedan como solicitud para que el Maestro los apruebe (ver
+// torneoSolicitudesCambioService y AlineacionPartidoDelegado).
+export async function arrancarPartido(partidoId) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), { horaInicio: serverTimestamp() })
 }
 
 // Marcador "en vivo" (parcial, mientras el partido todavia no se

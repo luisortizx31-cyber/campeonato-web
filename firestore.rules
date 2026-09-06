@@ -285,6 +285,28 @@ service cloud.firestore {
       allow delete: if esMaestroDe(resource.data.torneoId);
     }
 
+    // Pedido del delegado para sacar a un titular una vez que el
+    // partido ya arranco (ver torneo_partidos.horaInicio y
+    // ControlPartido -> "Arrancar partido") - mientras no arranco, el
+    // delegado sigue editando la alineacion directo (torneo_partidos de
+    // arriba). El Maestro aprueba o rechaza desde ControlPartido; solo
+    // el resuelve, el delegado unicamente puede crear el pedido y
+    // mirar como quedo el suyo.
+    match /torneo_solicitudes_cambio/{solicitudId} {
+      allow get, list: if (esMaestro() && resource.data.torneoId == miTorneoId())
+                       || (esDelegado()
+                           && resource.data.torneoId == perfilDe(request.auth.uid).torneoId
+                           && resource.data.equipoId == miEquipoIdDelegado());
+      allow create: if esDelegado()
+                    && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
+                    && request.resource.data.equipoId == miEquipoIdDelegado()
+                    && request.resource.data.estado == 'pendiente';
+      allow update: if esMaestroDe(resource.data.torneoId)
+                    && resource.data.estado == 'pendiente'
+                    && (request.resource.data.estado == 'aprobada' || request.resource.data.estado == 'rechazada');
+      allow delete: if false;
+    }
+
     // Las tarjetas tambien actualizan los contadores del jugador
     // (amarillasAcumuladas, suspendido) en la MISMA request del
     // Maestro via runTransaction (torneoTarjetasService.js) - no hay

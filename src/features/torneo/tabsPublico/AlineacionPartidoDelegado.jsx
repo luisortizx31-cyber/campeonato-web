@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { actualizarTitular, actualizarSuplente } from '../../../services/torneoPartidosService'
 import { actualizarNumeroCamiseta } from '../../../services/torneoJugadoresService'
+import { crearSolicitudCambio, suscribirSolicitudesPorPartidoYEquipo } from '../../../services/torneoSolicitudesCambioService'
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -52,8 +53,17 @@ function InputCamiseta({ jugador, onGuardar }) {
  * Maestro tenga la alineacion abierta para este equipo (ver
  * ControlPartido y firestore.rules) - si la cierra en el medio, el
  * proximo intento de guardar simplemente falla con un error.
+ *
+ * Mientras el partido no arranco (partido.horaInicio == null, ver
+ * ControlPartido -> "Arrancar partido") el delegado edita la
+ * alineacion directo, como siempre. Una vez arrancado, tocar a un
+ * titular ya no lo mueve directo - abre un pedido de cambio que el
+ * Maestro tiene que aprobar desde ControlPartido (ver
+ * torneoSolicitudesCambioService), para que un jugador que no llego no
+ * quede sin poder resolverse pero tampoco se meta un cambio sin que el
+ * Maestro se entere en medio del partido.
  */
-export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: jugadoresIniciales, jugadoresPorEquipo, nombreRival, onVolver }) {
+export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoId, partido, equipo, jugadores: jugadoresIniciales, jugadoresPorEquipo, nombreRival, onVolver }) {
   const [titulares, setTitulares] = useState(
     (equipo === 'local' ? partido.titularesLocal : partido.titularesVisitante) || []
   )
@@ -71,6 +81,25 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
   // vista a alguien que en realidad no sigue convocado para este
   // partido.
   const [cambio, setCambio] = useState(null)
+  const [solicitudes, setSolicitudes] = useState([])
+  const [enviandoSolicitud, setEnviandoSolicitud] = useState(false)
+
+  // El partido puede seguir actualizandose (ver TabMiEquipoDelegado,
+  // suscrito en vivo) mientras esta pantalla queda abierta - sin esto,
+  // un cambio que el Maestro apruebe desde ControlPartido no se
+  // reflejaria aca hasta salir y volver a entrar.
+  useEffect(() => {
+    setTitulares((equipo === 'local' ? partido.titularesLocal : partido.titularesVisitante) || [])
+    setSuplentes((equipo === 'local' ? partido.suplentesLocal : partido.suplentesVisitante) || [])
+  }, [partido.titularesLocal, partido.titularesVisitante, partido.suplentesLocal, partido.suplentesVisitante, equipo])
+
+  useEffect(() => {
+    const desuscribir = suscribirSolicitudesPorPartidoYEquipo(partido.id, equipoId, setSolicitudes)
+    return desuscribir
+  }, [partido.id, equipoId])
+
+  const enVivo = partido.horaInicio != null && partido.golesLocal == null
+  const solicitudesPendientes = solicitudes.filter((s) => s.estado === 'pendiente')
 
   async function mover(jugadorId, nuevoEstado) {
     const nuevosTitulares = nuevoEstado === 'titular' ? [...new Set([...titulares, jugadorId])] : titulares.filter((id) => id !== jugadorId)
@@ -120,10 +149,40 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
     await mover(jugadorId, nuevoEstado)
   }
 
+  // El partido ya arranco - en vez de aplicar el cambio directo, queda
+  // pedido para que el Maestro lo apruebe desde ControlPartido (ver
+  // torneoSolicitudesCambioService.aprobarSolicitud).
+  async function handlePedirCambio(jugadorEntraId) {
+    if (!cambio) return
+    setEnviandoSolicitud(true)
+    setError(null)
+    try {
+      await crearSolicitudCambio({
+        torneoId,
+        categoria,
+        partidoId: partido.id,
+        equipo,
+        equipoId,
+        jugadorSaleId: cambio.id,
+        jugadorEntraId,
+      })
+      setCambio(null)
+    } catch (err) {
+      console.error('[AlineacionPartidoDelegado] handlePedirCambio', err)
+      setError('No se pudo enviar el pedido de cambio. Probá de nuevo o avisale al Maestro directamente.')
+    } finally {
+      setEnviandoSolicitud(false)
+    }
+  }
+
   const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
   const listaSuplentes = jugadores.filter((j) => suplentes.includes(j.id)).sort(porNombre)
   const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
+
+  function nombreJugador(jugadorId) {
+    return jugadores.find((j) => j.id === jugadorId)?.nombre || '—'
+  }
 
   return (
     <div>
@@ -141,6 +200,22 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
         Elegí quiénes juegan este partido. Titulares:{' '}
         <strong className={completo ? 'text-success' : 'text-ink'}>{titulares.length}/{jugadoresPorEquipo}</strong>
       </p>
+
+      {enVivo && (
+        <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
+          🔴 El partido ya arrancó - para sacar a un titular ahora tenés que pedirle el cambio al Maestro.
+        </p>
+      )}
+
+      {solicitudesPendientes.length > 0 && (
+        <div className="mb-3 space-y-1.5">
+          {solicitudesPendientes.map((s) => (
+            <p key={s.id} className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+              ⏳ Pedido pendiente: sale {nombreJugador(s.jugadorSaleId)}, entra {nombreJugador(s.jugadorEntraId)} - esperando que el Maestro lo apruebe.
+            </p>
+          ))}
+        </div>
+      )}
 
       {error && <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
@@ -222,20 +297,55 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
               <h1 className="text-base font-semibold text-ink">¿Qué hacemos con {cambio.nombre}?</h1>
               <button onClick={() => setCambio(null)} className="text-2xl leading-none text-ink-soft px-1">×</button>
             </div>
-            <div className="space-y-2 p-4">
-              <button
-                onClick={() => handleMoverDesdeCambio('suplente')}
-                className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
-              >
-                Pasa a Suplente
-              </button>
-              <button
-                onClick={() => handleMoverDesdeCambio('pool')}
-                className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
-              >
-                Vuelve a Jugadores
-              </button>
-            </div>
+            {enVivo ? (
+              <div className="p-4">
+                {solicitudesPendientes.some((s) => s.jugadorSaleId === cambio.id) ? (
+                  <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
+                    Ya hay un pedido pendiente para sacar a {cambio.nombre} - esperá a que el Maestro lo apruebe.
+                  </p>
+                ) : listaSuplentes.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-sm text-ink-soft">
+                    No tenés suplentes convocados para reemplazarlo. Avisale al Maestro directamente.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mb-3 text-xs text-ink-soft">
+                      El partido ya arrancó - elegí quién entra por él. Esto le queda pedido al Maestro, no se aplica
+                      hasta que lo apruebe.
+                    </p>
+                    <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+                      {listaSuplentes.map((s) => (
+                        <li key={s.id}>
+                          <button
+                            onClick={() => handlePedirCambio(s.id)}
+                            disabled={enviandoSolicitud}
+                            className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm text-ink disabled:opacity-50"
+                          >
+                            {s.nombre}
+                            <span className="shrink-0 text-xs font-medium text-brand">Pedir cambio ›</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2 p-4">
+                <button
+                  onClick={() => handleMoverDesdeCambio('suplente')}
+                  className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
+                >
+                  Pasa a Suplente
+                </button>
+                <button
+                  onClick={() => handleMoverDesdeCambio('pool')}
+                  className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
+                >
+                  Vuelve a Jugadores
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

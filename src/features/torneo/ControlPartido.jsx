@@ -9,6 +9,7 @@ import {
   reiniciarPartidoCompleto,
   actualizarMarcadorEnVivo,
   alternarAlineacionAbierta,
+  arrancarPartido,
 } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
@@ -19,6 +20,11 @@ import {
 } from '../../services/torneoTarjetasService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { obtenerDelegadosDePartido } from '../../services/delegadosService'
+import {
+  suscribirSolicitudesPendientesPorPartido,
+  aprobarSolicitud,
+  rechazarSolicitud,
+} from '../../services/torneoSolicitudesCambioService'
 import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { nombreCorto } from '../../utils/nombreJugador'
@@ -391,6 +397,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [alineacionAbiertaVisitante, setAlineacionAbiertaVisitante] = useState(partido.alineacionAbiertaVisitante || false)
   const [cambiandoAperturaDelegado, setCambiandoAperturaDelegado] = useState(null) // 'local' | 'visitante' | null
   const [errorDelegados, setErrorDelegados] = useState(null)
+  // Hora REAL de arranque (distinta del horario programado) - a partir
+  // de que se toca "Arrancar partido", el delegado deja de poder tocar
+  // la alineacion directo y sus cambios quedan como solicitud (ver
+  // torneoSolicitudesCambioService y AlineacionPartidoDelegado).
+  const [horaInicio, setHoraInicio] = useState(partido.horaInicio || null)
+  const [arrancando, setArrancando] = useState(false)
+  const [solicitudesPendientes, setSolicitudesPendientes] = useState([])
+  const [procesandoSolicitud, setProcesandoSolicitud] = useState(null)
   // Que pestaña (Alineación/Cancha) se ve para ESTE partido puntual -
   // se guarda en sessionStorage para que un refresh de pagina no
   // vuelva siempre a Alineación. Si no hay nada guardado: directo a
@@ -473,6 +487,11 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   useEffect(() => {
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partido.id])
+
+  useEffect(() => {
+    const desuscribir = suscribirSolicitudesPendientesPorPartido(partido.id, setSolicitudesPendientes)
+    return desuscribir
   }, [partido.id])
 
   const golesLocalCount = goles
@@ -602,6 +621,62 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo guardar la alineación.')
+    }
+  }
+
+  // Deja asentada la hora REAL de arranque - a partir de aca el
+  // delegado ya no puede tocar la alineacion directo (ver
+  // AlineacionPartidoDelegado), sus cambios quedan pendientes de
+  // aprobar aca abajo.
+  async function handleArrancarPartido() {
+    if (
+      !confirm(
+        '¿Arrancar el partido ahora? Desde este momento el delegado ya no va a poder cambiar la alineación directo - sus cambios van a quedar como pedido para que los apruebes vos.'
+      )
+    )
+      return
+    setArrancando(true)
+    setError(null)
+    const ahora = new Date()
+    setHoraInicio(ahora)
+    try {
+      await arrancarPartido(partido.id)
+    } catch (err) {
+      console.error('[ControlPartido] handleArrancarPartido', err)
+      setError('No se pudo registrar el arranque del partido.')
+      setHoraInicio(null)
+    } finally {
+      setArrancando(false)
+    }
+  }
+
+  async function handleAprobarSolicitud(solicitud) {
+    setProcesandoSolicitud(solicitud.id)
+    setError(null)
+    try {
+      await aprobarSolicitud(solicitud)
+      const setTitulares = solicitud.equipo === 'local' ? setTitularesLocal : setTitularesVisitante
+      const setSuplentes = solicitud.equipo === 'local' ? setSuplentesLocal : setSuplentesVisitante
+      setTitulares((t) => [...new Set([...t.filter((id) => id !== solicitud.jugadorSaleId), solicitud.jugadorEntraId])])
+      setSuplentes((s) => s.filter((id) => id !== solicitud.jugadorEntraId))
+    } catch (err) {
+      console.error('[ControlPartido] handleAprobarSolicitud', err)
+      setError('No se pudo aprobar el cambio.')
+    } finally {
+      setProcesandoSolicitud(null)
+    }
+  }
+
+  async function handleRechazarSolicitud(solicitud) {
+    setProcesandoSolicitud(solicitud.id)
+    setError(null)
+    try {
+      await rechazarSolicitud(solicitud.id)
+    } catch (err) {
+      console.error('[ControlPartido] handleRechazarSolicitud', err)
+      setError('No se pudo rechazar el pedido.')
+    } finally {
+      setProcesandoSolicitud(null)
     }
   }
 
@@ -888,6 +963,20 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
   const colorLocal = colorEquipo(nombreEquipo(partido.equipoLocalId))
   const colorVisitante = colorEquipo(nombreEquipo(partido.equipoVisitanteId))
+  const jugado = partido.golesLocal != null
+
+  function nombreJugadorDe(jugadorId) {
+    return [...jugadoresLocal, ...jugadoresVisitante].find((j) => j.id === jugadorId)?.nombre || '—'
+  }
+
+  function formatearHora(valor) {
+    const d = valor?.toDate ? valor.toDate() : valor
+    let horas = d.getHours() % 12
+    if (horas === 0) horas = 12
+    const minutos = String(d.getMinutes()).padStart(2, '0')
+    const meridiano = d.getHours() >= 12 ? 'pm' : 'am'
+    return `${horas}:${minutos} ${meridiano}`
+  }
 
   return (
     <div>
@@ -910,6 +999,54 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
           {nombreEquipo(partido.equipoLocalId)} vs {nombreEquipo(partido.equipoVisitanteId)}
         </p>
       </div>
+
+      {!jugado && (
+        horaInicio ? (
+          <p className="mb-3 rounded-lg bg-success-soft px-3 py-2 text-center text-xs font-medium text-success">
+            🟢 Partido arrancado a las {formatearHora(horaInicio)}
+          </p>
+        ) : (
+          <button
+            onClick={handleArrancarPartido}
+            disabled={arrancando}
+            className="mb-3 w-full rounded-lg border border-success/30 bg-success-soft py-2 text-sm font-medium text-success disabled:opacity-50"
+          >
+            {arrancando ? 'Arrancando…' : '▶ Arrancar partido'}
+          </button>
+        )
+      )}
+
+      {solicitudesPendientes.length > 0 && (
+        <div className="mb-3 space-y-2 rounded-xl border border-warning/30 bg-warning-soft p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-warning">
+            ⚠ {solicitudesPendientes.length} cambio{solicitudesPendientes.length === 1 ? '' : 's'} pedido{solicitudesPendientes.length === 1 ? '' : 's'} por el delegado
+          </p>
+          {solicitudesPendientes.map((s) => (
+            <div key={s.id} className="rounded-lg bg-paper p-2.5">
+              <p className="text-sm text-ink">
+                Sale <strong>{nombreJugadorDe(s.jugadorSaleId)}</strong>, entra{' '}
+                <strong>{nombreJugadorDe(s.jugadorEntraId)}</strong> ({nombreEquipo(s.equipoId)})
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => handleAprobarSolicitud(s)}
+                  disabled={procesandoSolicitud === s.id}
+                  className="flex-1 rounded-lg bg-success py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                >
+                  {procesandoSolicitud === s.id ? '…' : 'Aprobar'}
+                </button>
+                <button
+                  onClick={() => handleRechazarSolicitud(s)}
+                  disabled={procesandoSolicitud === s.id}
+                  className="flex-1 rounded-lg border border-danger/30 py-1.5 text-xs font-medium text-danger disabled:opacity-50"
+                >
+                  {procesandoSolicitud === s.id ? '…' : 'Rechazar'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && (
         <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
