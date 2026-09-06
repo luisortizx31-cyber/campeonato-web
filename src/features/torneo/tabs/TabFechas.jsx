@@ -456,21 +456,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     setPartidoControl(partido)
   }
 
-  // Ordenadas por horario programado (de menor a mayor, la mas
-  // temprana entre TODOS sus partidos, jugados o no) en vez de por
-  // numero de Fecha - asi una fecha reprogramada para mas adelante
-  // aparece donde realmente le toca en el calendario, no donde le
-  // tocaria por numero. Una fecha sin ningun horario puesto todavia
-  // queda al final (Infinity), en orden de numero entre ellas.
-  const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort(
-    (a, b) => {
-      const conFechaA = partidos.filter((p) => p.fechaNumero === a && p.fecha)
-      const conFechaB = partidos.filter((p) => p.fechaNumero === b && p.fecha)
-      const horaA = conFechaA.length > 0 ? Math.min(...conFechaA.map((p) => p.fecha.toMillis())) : Infinity
-      const horaB = conFechaB.length > 0 ? Math.min(...conFechaB.map((p) => p.fecha.toMillis())) : Infinity
-      return horaA - horaB || a - b
-    }
-  )
+  const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const hayFixture = fechasDisponibles.length > 0
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
   // Pendientes de menor a mayor hora programada primero, los ya
