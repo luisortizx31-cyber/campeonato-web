@@ -15,8 +15,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import { generarRondas } from '../utils/fixtureTorneo'
-import { listarGolesPorPartido, eliminarGol } from './torneoGolesService'
-import { listarTarjetasPorPartido, eliminarTarjeta } from './torneoTarjetasService'
+import { listarGolesPorPartido, listarGolesPorCategoria, eliminarGol } from './torneoGolesService'
+import { listarTarjetasPorPartido, listarTarjetasPorCategoria, eliminarTarjeta } from './torneoTarjetasService'
 
 // Los partidos del fixture generado no tienen `fecha` real (no hay
 // calendario en la app), asi que se ordenan por fechaNumero cuando
@@ -344,22 +344,56 @@ export async function reiniciarResultadosFecha(torneoId, categoria, fechaNumero)
 
 // Igual que reiniciarResultadosFecha pero para TODAS las fechas de la
 // categoria a la vez: el fixture queda intacto (mismos cruces, mismo
-// numero de fecha) pero todos los partidos vuelven a "Pendiente".
-// Tampoco toca tarjetas ni sanciones - para eso esta
-// reiniciarTemporadaCompleta.
+// numero de fecha, mismo dia/hora programado) pero cada partido vuelve
+// a cero por completo - resultado, goles, tarjetas Y alineacion (todos
+// los jugadores vuelven a "Jugadores", ver TabMiEquipoDelegado/
+// ControlPartido) - y cada jugador de la categoria queda sin
+// amarillas/rojas ni suspension/eliminacion, como si nadie hubiera
+// jugado todavia. Es la version "reiniciar todo pero sin perder el
+// fixture" de reiniciarTemporadaCompleta (esa SI borra los partidos).
 export async function reiniciarResultadosTodasLasFechas(torneoId, categoria) {
-  const snap = await getDocs(
-    query(
-      collection(db, 'torneo_partidos'),
-      where('torneoId', '==', torneoId),
-      where('categoria', '==', categoria)
-    )
-  )
-  const partidosFixture = snap.docs.filter((d) => d.data().fechaNumero != null)
+  const [partidosSnap, goles, tarjetas, jugadoresSnap] = await Promise.all([
+    getDocs(query(collection(db, 'torneo_partidos'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
+    listarGolesPorCategoria(torneoId, categoria),
+    listarTarjetasPorCategoria(torneoId, categoria),
+    getDocs(query(collection(db, 'torneo_jugadores'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
+  ])
+  const partidosFixture = partidosSnap.docs.filter((d) => d.data().fechaNumero != null)
   if (partidosFixture.length === 0) return
 
   const batch = writeBatch(db)
-  partidosFixture.forEach((d) => batch.update(d.ref, { golesLocal: null, golesVisitante: null }))
+  partidosFixture.forEach((d) =>
+    batch.update(d.ref, {
+      golesLocal: null,
+      golesVisitante: null,
+      golesLocalEnVivo: null,
+      golesVisitanteEnVivo: null,
+      titularesLocal: [],
+      titularesVisitante: [],
+      suplentesLocal: [],
+      suplentesVisitante: [],
+      dniConfirmadoLocal: [],
+      dniConfirmadoVisitante: [],
+      alineacionAbiertaLocal: false,
+      alineacionAbiertaVisitante: false,
+    })
+  )
+  goles.forEach((g) => batch.delete(doc(db, 'torneo_goles', g.id)))
+  tarjetas.forEach((t) => batch.delete(doc(db, 'torneo_tarjetas', t.id)))
+  jugadoresSnap.docs.forEach((d) =>
+    batch.update(d.ref, {
+      amarillasAcumuladas: 0,
+      rojasAcumuladas: 0,
+      suspendido: false,
+      motivoSuspension: null,
+      suspendidoDesde: null,
+      fechasSuspension: null,
+      suspendidoDesdeFecha: null,
+      suspendidoHastaFecha: null,
+      eliminado: false,
+      motivoEliminacion: null,
+    })
+  )
   await batch.commit()
 }
 

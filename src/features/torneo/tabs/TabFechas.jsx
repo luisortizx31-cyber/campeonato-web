@@ -191,11 +191,17 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   }
 
   // Igual que el reinicio individual por partido (ver ↺ en cada fila)
-  // pero para todas las fechas de la categoria a la vez.
+  // pero para todas las fechas de la categoria a la vez: ademas del
+  // resultado, borra goles y tarjetas, levanta cualquier suspension y
+  // vacia la alineacion de cada partido (todos los jugadores vuelven a
+  // "Jugadores") - el unico que NO se borra es el fixture (los cruces y
+  // el dia/hora programado quedan igual).
   async function handleReiniciarResultadosTodas() {
     const confirmacion = confirm(
-      `¿Reiniciar los resultados de TODAS las fechas de ${CATEGORIA_TORNEO_LABELS[categoria]}?\n\n` +
-        'Todos los partidos quedan pendientes de nuevo. El fixture, las tarjetas y las sanciones NO se borran.'
+      `¿Reiniciar TODOS los partidos de ${CATEGORIA_TORNEO_LABELS[categoria]}?\n\n` +
+        'Todos los partidos vuelven a Pendiente: se borran sus goles, tarjetas y alineación (los jugadores ' +
+        'vuelven a "Jugadores"), y se levantan todas las suspensiones. El fixture (los cruces y el ' +
+        'calendario) NO se borra.\n\nEsta acción no se puede deshacer.'
     )
     if (!confirmacion) return
     setReiniciandoResultadosTodas(true)
@@ -711,7 +717,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
           >
             {reiniciandoResultadosTodas
               ? 'Reiniciando…'
-              : `Reiniciar resultados de TODAS las fechas de ${CATEGORIA_TORNEO_LABELS[categoria]} (deja el fixture intacto)`}
+              : `Reiniciar TODOS los partidos de ${CATEGORIA_TORNEO_LABELS[categoria]} (goles, tarjetas y alineación - deja el fixture intacto)`}
           </button>
         </div>
       )}
