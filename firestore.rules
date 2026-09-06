@@ -82,6 +82,18 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
     }
 
+    // El Maestro puede cerrar la inscripcion de jugadores por categoria
+    // (ver TabJugadores -> "Inscripciones de delegados" y
+    // torneoConfigService.actualizarInscripcionesCerradas) para que los
+    // delegados dejen de poder dar de alta o editar jugadores de su
+    // equipo - el Maestro mismo NUNCA se ve afectado por este flag, solo
+    // los delegados. exists()+get() (no solo get()) porque una
+    // categoria sin config guardada todavia no tiene este doc creado.
+    function inscripcionesCerradas(torneoId, categoria) {
+      let ref = /databases/$(database)/documents/torneo_config/$(torneoId + '_' + categoria);
+      return exists(ref) && get(ref).data.inscripcionesCerradas == true;
+    }
+
     // ---------------------------------------------------------------
     // /usuarios - un colegio = un usuario con role:'master' y su
     // torneoId asignado. El alta (Authentication + este doc) la hace
@@ -190,12 +202,14 @@ service cloud.firestore {
       allow create: if (esMaestro() && request.resource.data.torneoId == miTorneoId())
                     || (esDelegado()
                         && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
-                        && request.resource.data.equipoId == miEquipoIdDelegado());
+                        && request.resource.data.equipoId == miEquipoIdDelegado()
+                        && !inscripcionesCerradas(request.resource.data.torneoId, request.resource.data.categoria));
       allow update: if esMaestroDe(resource.data.torneoId)
                     || (esDelegado()
                         && resource.data.torneoId == perfilDe(request.auth.uid).torneoId
                         && resource.data.equipoId == miEquipoIdDelegado()
-                        && request.resource.data.equipoId == resource.data.equipoId);
+                        && request.resource.data.equipoId == resource.data.equipoId
+                        && !inscripcionesCerradas(resource.data.torneoId, resource.data.categoria));
       allow delete: if esMaestroDe(resource.data.torneoId);
 
       // El doc /privado/datos es OPCIONAL (solo se crea si el jugador
@@ -209,7 +223,16 @@ service cloud.firestore {
       // no se puede leer de un resource null.
       match /privado/{docId} {
         allow get: if esMaestro() && (resource == null || resource.data.torneoId == miTorneoId());
-        allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+        // El delegado puede CREAR el DNI/telefono de un jugador nuevo de
+        // su equipo (mismo formulario que el Maestro, ver
+        // ModalInscribirJugadorDelegado) pero no leerlo ni editarlo
+        // despues - "Ver datos"/"Editar" siguen siendo solo del Maestro,
+        // desde TabJugadores.
+        allow create: if (esMaestro() && request.resource.data.torneoId == miTorneoId())
+                      || (esDelegado()
+                          && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
+                          && get(/databases/$(database)/documents/torneo_jugadores/$(jugadorId)).data.equipoId == miEquipoIdDelegado()
+                          && !inscripcionesCerradas(request.resource.data.torneoId, get(/databases/$(database)/documents/torneo_jugadores/$(jugadorId)).data.categoria));
         allow update, delete: if esMaestro() && (resource == null || resource.data.torneoId == miTorneoId());
       }
     }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
-import { logout } from '../../../services/authService'
 import { listarJugadoresPorEquipo } from '../../../services/torneoJugadoresService'
 import { obtenerEquipo, listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
@@ -29,6 +28,7 @@ export default function TabMiEquipoDelegado() {
   const [partidoAbiertoId, setPartidoAbiertoId] = useState(null)
   const [subTab, setSubTab] = useState('jugadores')
   const [jugadoresAbierto, setJugadoresAbierto] = useState(true)
+  const [inscripcionesCerradas, setInscripcionesCerradas] = useState(false)
 
   async function cargarJugadores() {
     try {
@@ -57,6 +57,7 @@ export default function TabMiEquipoDelegado() {
         setJugadores(js.filter((j) => !j.eliminado))
         setEquipos(eqs)
         setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
+        setInscripcionesCerradas(cfg.inscripcionesCerradas)
       })
       .catch((err) => {
         console.error('[TabMiEquipoDelegado]', err)
@@ -121,19 +122,11 @@ export default function TabMiEquipoDelegado() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-ink">
-            👋 ¡Bienvenido, delegado de {equipo?.nombre || '…'}!
-          </p>
-          <p className="text-[11px] text-ink-soft">Podés inscribir jugadores y armar la alineación de tu equipo.</p>
-        </div>
-        <button
-          onClick={() => logout()}
-          className="shrink-0 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink-soft"
-        >
-          Cerrar sesión
-        </button>
+      <div className="mb-4 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3">
+        <p className="truncate text-sm font-bold text-ink">
+          👋 ¡Bienvenido, delegado de {equipo?.nombre || '…'}!
+        </p>
+        <p className="text-[11px] text-ink-soft">Podés inscribir jugadores y armar la alineación de tu equipo.</p>
       </div>
 
       <div className="mb-4 flex overflow-hidden rounded-xl border border-line">
@@ -209,12 +202,18 @@ export default function TabMiEquipoDelegado() {
             )}
           </div>
 
-          <button
-            onClick={() => setModalNuevo(true)}
-            className="w-full rounded-lg bg-brand py-2.5 text-sm font-medium text-white"
-          >
-            + Inscribir jugador
-          </button>
+          {inscripcionesCerradas ? (
+            <p className="rounded-lg border border-dashed border-line px-4 py-3 text-center text-xs text-ink-soft">
+              Las inscripciones están cerradas. Si querés inscribir más jugadores, hablá con el administrador del torneo.
+            </p>
+          ) : (
+            <button
+              onClick={() => setModalNuevo(true)}
+              className="w-full rounded-lg bg-brand py-2.5 text-sm font-medium text-white"
+            >
+              + Inscribir jugador
+            </button>
+          )}
         </>
       )}
 
@@ -240,7 +239,7 @@ export default function TabMiEquipoDelegado() {
         </ul>
       )}
 
-      {modalNuevo && equipo && (
+      {modalNuevo && equipo && !inscripcionesCerradas && (
         <ModalInscribirJugadorDelegado
           torneoId={perfil.torneoId}
           categoria={equipo.categoria}

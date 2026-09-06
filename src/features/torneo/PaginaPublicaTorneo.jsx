@@ -193,7 +193,14 @@ export default function PaginaPublicaTorneo() {
                 📄 Bases
               </a>
             )}
-            {!mostrarMiEquipo && (
+            {mostrarMiEquipo ? (
+              <button
+                onClick={() => logout()}
+                className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft"
+              >
+                Cerrar sesión
+              </button>
+            ) : (
               <button
                 onClick={() => setMostrarLoginDelegado((v) => !v)}
                 className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft"

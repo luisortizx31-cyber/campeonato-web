@@ -1,19 +1,43 @@
 import { useState } from 'react'
 import { registrarJugador } from '../../services/torneoJugadoresService'
+import { consultarDni } from '../../services/dniLookupService'
 
 /**
- * Version simplificada de ModalRegistrarJugador para el delegado (ver
- * TabMiEquipoDelegado): sin selector de equipo (siempre el suyo, fijo)
- * ni DNI/telefono/verificacion RENIEC - eso queda para el Maestro
- * desde el panel admin. Solo nombre, camiseta y "jale".
+ * Version para el delegado (ver TabMiEquipoDelegado) de
+ * ModalRegistrarJugador: mismos campos que usa el Maestro (DNI y
+ * telefono incluidos, con la misma validacion RENIEC), pero sin
+ * selector de equipo (siempre el suyo, fijo) y sin el chequeo de DNI
+ * duplicado entre equipos - eso queda para cuando el Maestro revise el
+ * plantel completo desde Jugadores, para no darle al delegado permiso
+ * de leer datos privados de jugadores de otros equipos (ver
+ * firestore.rules, /torneo_jugadores/privado).
  */
 export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equipoId, jugadores, onCerrar, onGuardado }) {
-  const [form, setForm] = useState({ nombre: '', numeroCamiseta: '', esJale: false })
+  const [form, setForm] = useState({ nombre: '', numeroCamiseta: '', esJale: false, dni: '', telefono: '' })
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
+  const [validacionDni, setValidacionDni] = useState(null) // null | 'cargando' | {data} | 'no_encontrado' | 'error_conexion'
 
   function actualizar(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }))
+  }
+
+  function handleDni(valor) {
+    actualizar('dni', valor.replace(/\D/g, '').slice(0, 8))
+    setValidacionDni(null)
+  }
+
+  async function handleBlurDni() {
+    if (form.dni.length !== 8) return
+    setValidacionDni('cargando')
+    try {
+      const data = await consultarDni(form.dni)
+      setValidacionDni({ data })
+      if (data?.fullName) actualizar('nombre', data.fullName)
+    } catch (err) {
+      console.error('[ModalInscribirJugadorDelegado] consultarDni', err)
+      setValidacionDni(err instanceof TypeError ? 'error_conexion' : 'no_encontrado')
+    }
   }
 
   async function handleSubmit(e) {
@@ -38,6 +62,8 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
         nombre: form.nombre,
         numeroCamiseta: form.numeroCamiseta,
         esJale: form.esJale,
+        dni: form.dni,
+        telefono: form.telefono,
       })
       onGuardado()
     } catch (err) {
@@ -57,6 +83,47 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
         </div>
 
         <form onSubmit={handleSubmit} className="p-5">
+          <div className="mb-1">
+            <label className="block text-sm font-medium text-ink mb-1">DNI (opcional)</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.dni}
+              onChange={(e) => handleDni(e.target.value)}
+              onBlur={handleBlurDni}
+              placeholder="12345678"
+              maxLength={8}
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 font-mono text-ink outline-none focus-visible:border-brand"
+            />
+            {validacionDni === 'cargando' && <p className="mt-1 text-xs text-ink-soft">Buscando…</p>}
+            {validacionDni === 'no_encontrado' && (
+              <p className="mt-1 text-xs text-warning">No se encontró información pública de este DNI.</p>
+            )}
+            {validacionDni === 'error_conexion' && (
+              <p className="mt-1 text-xs text-warning">
+                No se pudo conectar con el servicio de verificación. Completa el nombre a mano.
+              </p>
+            )}
+            {validacionDni?.data && (
+              <p className="mt-1 text-xs text-success">✓ {validacionDni.data.fullName}</p>
+            )}
+          </div>
+          <p className="mb-4 text-xs text-ink-soft">
+            El DNI queda guardado solo para el administrador del torneo, nunca se muestra en el link público.
+          </p>
+
+          <div className="mb-1">
+            <label className="block text-sm font-medium text-ink mb-1">Teléfono (opcional)</label>
+            <input
+              type="tel"
+              value={form.telefono}
+              onChange={(e) => actualizar('telefono', e.target.value)}
+              placeholder="987654321"
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-ink outline-none focus-visible:border-brand"
+            />
+          </div>
+          <p className="mb-4 text-xs text-ink-soft">Tampoco se muestra en el link público.</p>
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-ink mb-1">Nombre completo</label>
             <input

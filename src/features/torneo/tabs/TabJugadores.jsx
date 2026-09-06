@@ -5,7 +5,7 @@ import {
   eliminarJugador,
   obtenerDatosPrivadosJugador,
 } from '../../../services/torneoJugadoresService'
-import { obtenerConfigCategoria } from '../../../services/torneoConfigService'
+import { obtenerConfigCategoria, actualizarInscripcionesCerradas } from '../../../services/torneoConfigService'
 import { construirLinkWhatsapp } from '../../../utils/whatsapp'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { WhatsappIcon } from '../../shared/WhatsappIcon'
@@ -104,6 +104,8 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
   const [errorAccion, setErrorAccion] = useState(null)
   const [datosVisibles, setDatosVisibles] = useState({}) // { [jugadorId]: 'cargando' | { dni, telefono } | 'error' }
   const [maximoJugadoresInscritos, setMaximoJugadoresInscritos] = useState(null)
+  const [inscripcionesCerradas, setInscripcionesCerradas] = useState(false)
+  const [cambiandoInscripciones, setCambiandoInscripciones] = useState(false)
 
   async function cargar() {
     setCargando(true)
@@ -117,11 +119,26 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
       setEquipos(eq)
       setJugadores(js)
       setMaximoJugadoresInscritos(cfg.maximoJugadoresInscritos)
+      setInscripcionesCerradas(cfg.inscripcionesCerradas)
     } catch (err) {
       console.error('[TabJugadores]', err)
       setError('No se pudieron cargar los jugadores.')
     } finally {
       setCargando(false)
+    }
+  }
+
+  async function toggleInscripciones() {
+    const nuevoValor = !inscripcionesCerradas
+    setCambiandoInscripciones(true)
+    try {
+      await actualizarInscripcionesCerradas(torneoId, categoria, nuevoValor)
+      setInscripcionesCerradas(nuevoValor)
+    } catch (err) {
+      console.error('[TabJugadores] toggleInscripciones', err)
+      setErrorAccion('No se pudo cambiar el estado de las inscripciones.')
+    } finally {
+      setCambiandoInscripciones(false)
     }
   }
 
@@ -185,6 +202,28 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
       <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
 
       <div {...swipeCategoria}>
+      <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink">Inscripciones de delegados</p>
+          <p className="text-xs text-ink-soft">
+            {inscripcionesCerradas
+              ? 'Cerradas: los delegados solo pueden ver su plantel, no inscribir ni editar.'
+              : 'Abiertas: los delegados pueden inscribir jugadores de su equipo.'}
+          </p>
+        </div>
+        <button
+          onClick={toggleInscripciones}
+          disabled={cambiandoInscripciones}
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${
+            inscripcionesCerradas
+              ? 'border-danger/30 bg-danger-soft text-danger'
+              : 'border-success/30 bg-success-soft text-success'
+          }`}
+        >
+          {cambiandoInscripciones ? '…' : inscripcionesCerradas ? '🔒 Cerradas' : '🔓 Abiertas'}
+        </button>
+      </div>
+
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => abrirNuevo()}

@@ -99,6 +99,10 @@ export async function actualizarCategoriasActivas(torneoId, categorias) {
 //    esta categoria - ModalRegistrarJugador bloquea el alta de un
 //    jugador nuevo (o el pase a otro equipo) si ya se llego al tope.
 //    null significa que no hay tope (comportamiento por defecto).
+//  - inscripcionesCerradas: corta que los DELEGADOS (no el Maestro)
+//    puedan inscribir jugadores nuevos o editar los que ya tienen en
+//    esta categoria (ver TabJugadores y firestore.rules,
+//    funcion inscripcionesCerradas) - false por defecto (abiertas).
 export async function obtenerConfigCategoria(torneoId, categoria) {
   const snap = await getDoc(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
   const data = snap.exists() ? snap.data() : {}
@@ -110,6 +114,7 @@ export async function obtenerConfigCategoria(torneoId, categoria) {
     minimoJugadoresCancha: data.minimoJugadoresCancha || null,
     diferenciaWalkover: data.diferenciaWalkover || DIFERENCIA_WALKOVER_DEFAULT,
     maximoJugadoresInscritos: data.maximoJugadoresInscritos || null,
+    inscripcionesCerradas: Boolean(data.inscripcionesCerradas),
   }
 }
 
@@ -165,6 +170,14 @@ export async function actualizarMaximoJugadoresInscritos(torneoId, categoria, ca
   await setDoc(
     doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
     { torneoId, maximoJugadoresInscritos: cantidad ? Number(cantidad) : null },
+    { merge: true }
+  )
+}
+
+export async function actualizarInscripcionesCerradas(torneoId, categoria, cerradas) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, inscripcionesCerradas: Boolean(cerradas) },
     { merge: true }
   )
 }
