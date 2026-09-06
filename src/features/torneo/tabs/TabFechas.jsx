@@ -41,6 +41,11 @@ import { SelectorFechaHora } from '../../shared/SelectorFechaHora'
 // tire al Maestro de vuelta a la lista de fechas.
 const STORAGE_CATEGORIA = 'campeonato_fechas_categoria'
 const STORAGE_PARTIDO_CONTROL_ID = 'campeonato_fechas_partidoControlId'
+// Prefijo nada mas - la clave real incluye la categoria (ver
+// fechaSeleccionada mas abajo), para que un refresh en "Promo 2002"
+// vuelva a su Fecha 4 sin pisar la Fecha 1 que tenia elegida "Promo
+// 1996".
+const STORAGE_FECHA_SELECCIONADA_PREFIJO = 'campeonato_fechas_fechaSeleccionada_'
 
 export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones }) {
   const [categoria, setCategoria] = useState(() => {
@@ -60,7 +65,14 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [generando, setGenerando] = useState(false)
   const [errorGenerar, setErrorGenerar] = useState(null)
 
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(null)
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
+    try {
+      const guardada = sessionStorage.getItem(STORAGE_FECHA_SELECCIONADA_PREFIJO + categoria)
+      return guardada != null ? Number(guardada) : null
+    } catch {
+      return null
+    }
+  })
   const [busqueda, setBusqueda] = useState('')
   const [formResultados, setFormResultados] = useState({})
   const [guardandoPartido, setGuardandoPartido] = useState(null)
@@ -107,6 +119,20 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
       // Sin sessionStorage (modo privado, etc) simplemente no persiste.
     }
   }, [categoria])
+
+  // Recuerda la Fecha elegida (por categoria) para que un refresh de
+  // pagina vuelva a la misma en vez de saltar a la que calcularia sola
+  // (ver cargar() mas abajo) - esa cuenta solo como "primera vez que se
+  // entra a esta categoria", no despues de cada refresh.
+  useEffect(() => {
+    try {
+      if (fechaSeleccionada != null) {
+        sessionStorage.setItem(STORAGE_FECHA_SELECCIONADA_PREFIJO + categoria, String(fechaSeleccionada))
+      }
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+  }, [categoria, fechaSeleccionada])
 
   // OJO: este efecto NO puede escribir en sessionStorage hasta que se
   // haya intentado restaurar (ver mas abajo) - partidoControl arranca
@@ -430,7 +456,21 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     setPartidoControl(partido)
   }
 
-  const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
+  // Ordenadas por horario programado (de menor a mayor, la mas
+  // temprana entre TODOS sus partidos, jugados o no) en vez de por
+  // numero de Fecha - asi una fecha reprogramada para mas adelante
+  // aparece donde realmente le toca en el calendario, no donde le
+  // tocaria por numero. Una fecha sin ningun horario puesto todavia
+  // queda al final (Infinity), en orden de numero entre ellas.
+  const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort(
+    (a, b) => {
+      const conFechaA = partidos.filter((p) => p.fechaNumero === a && p.fecha)
+      const conFechaB = partidos.filter((p) => p.fechaNumero === b && p.fecha)
+      const horaA = conFechaA.length > 0 ? Math.min(...conFechaA.map((p) => p.fecha.toMillis())) : Infinity
+      const horaB = conFechaB.length > 0 ? Math.min(...conFechaB.map((p) => p.fecha.toMillis())) : Infinity
+      return horaA - horaB || a - b
+    }
+  )
   const hayFixture = fechasDisponibles.length > 0
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
   // Pendientes de menor a mayor hora programada primero, los ya
