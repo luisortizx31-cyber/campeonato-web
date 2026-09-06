@@ -95,7 +95,7 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
   async function handleGuardarCamiseta(jugadorId, valor) {
     const numero = valor === '' ? null : Number(valor)
     if (numero != null) {
-      const duplicado = jugadores.find((j) => j.id !== jugadorId && j.numeroCamiseta === numero)
+      const duplicado = jugadores.find((j) => j.id !== jugadorId && j.numeroCamiseta != null && Number(j.numeroCamiseta) === numero)
       if (duplicado) {
         setError(`El número ${numero} ya lo tiene ${duplicado.nombre}.`)
         return false

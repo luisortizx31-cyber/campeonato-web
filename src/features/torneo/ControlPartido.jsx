@@ -564,7 +564,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
     if (numero != null) {
       const equipoDelJugador = jugadoresLocal.some((j) => j.id === jugadorId) ? jugadoresLocal : jugadoresVisitante
-      const duplicado = equipoDelJugador.find((j) => j.id !== jugadorId && j.numeroCamiseta === numero)
+      const duplicado = equipoDelJugador.find((j) => j.id !== jugadorId && j.numeroCamiseta != null && Number(j.numeroCamiseta) === numero)
       if (duplicado) {
         setError(`El número ${numero} ya lo tiene ${duplicado.nombre} en este equipo.`)
         return false

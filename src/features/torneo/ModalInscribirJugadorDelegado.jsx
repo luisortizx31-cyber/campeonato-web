@@ -75,7 +75,10 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
 
     if (form.numeroCamiseta) {
       const numero = Number(form.numeroCamiseta)
-      const duplicado = jugadores.find((j) => j.id !== jugador?.id && j.numeroCamiseta === numero)
+      // Number(...) tambien del lado guardado - jugadores viejos pueden
+      // tener el numero como string (ver registrarJugador) y "10"
+      // === 10 da false.
+      const duplicado = jugadores.find((j) => j.id !== jugador?.id && j.numeroCamiseta != null && Number(j.numeroCamiseta) === numero)
       if (duplicado) {
         setError(`El número ${numero} ya lo tiene ${duplicado.nombre}.`)
         return

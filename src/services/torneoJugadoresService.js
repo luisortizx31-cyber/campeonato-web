@@ -35,7 +35,12 @@ export async function registrarJugador({ torneoId, equipoId, categoria, nombre, 
     equipoId,
     categoria,
     nombre: nombre.trim(),
-    numeroCamiseta: numeroCamiseta || null,
+    // Siempre como Number (nunca el string tal cual viene del input) -
+    // si no, dos jugadores con "10" (string) y 10 (number) se comparan
+    // como distintos con === en el chequeo de numero repetido de los
+    // modales de registro, dejando pasar duplicados sin que salte el
+    // aviso.
+    numeroCamiseta: numeroCamiseta ? Number(numeroCamiseta) : null,
     // "Jale": jugador que no es de la promo/equipo (se sumo de
     // afuera) - solo informativo, no bloquea ni afecta nada del
     // sistema, es para que se sepa a simple vista quien es de la
@@ -113,7 +118,8 @@ export async function actualizarJugador(jugadorId, { equipoId, nombre, numeroCam
   await updateDoc(doc(db, 'torneo_jugadores', jugadorId), {
     equipoId,
     nombre: nombre.trim(),
-    numeroCamiseta: numeroCamiseta || null,
+    // Siempre Number - ver registrarJugador.
+    numeroCamiseta: numeroCamiseta ? Number(numeroCamiseta) : null,
     esJale: Boolean(esJale),
   })
 }

@@ -115,8 +115,11 @@ export default function ModalRegistrarJugador({ torneoId, categoria, equipos, ju
     // plantel por su cuenta).
     if (form.numeroCamiseta) {
       const numero = Number(form.numeroCamiseta)
+      // Number(...) tambien del lado guardado (no solo el del form) -
+      // jugadores viejos pueden tener el numero guardado como string,
+      // ver registrarJugador/actualizarJugador, y "10" === 10 da false.
       const duplicadoCamiseta = jugadores.find(
-        (j) => j.id !== jugador?.id && j.equipoId === form.equipoId && j.numeroCamiseta === numero
+        (j) => j.id !== jugador?.id && j.equipoId === form.equipoId && j.numeroCamiseta != null && Number(j.numeroCamiseta) === numero
       )
       if (duplicadoCamiseta) {
         setError(`El número ${numero} ya lo tiene ${duplicadoCamiseta.nombre} en este equipo.`)
