@@ -241,6 +241,11 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   }
 
   async function handleGuardarResultado(partido) {
+    const bloqueante = partidoBloqueadoPor(partido)
+    if (bloqueante) {
+      setErrorGuardar(mensajeBloqueo(bloqueante, partido.fechaNumero))
+      return
+    }
     const valores = formResultados[partido.id] || {}
     const golesLocal = valores.golesLocal ?? partido.golesLocal
     const golesVisitante = valores.golesVisitante ?? partido.golesVisitante
@@ -266,6 +271,11 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   // reescriben). Asi puede llenar todos los marcadores de la fecha y
   // guardar con un solo click, en vez de uno por partido.
   async function handleGuardarTodos() {
+    const bloqueante = partidosSinFinalizar.find((p) => p.fechaNumero < fechaSeleccionada)
+    if (bloqueante) {
+      setErrorGuardar(mensajeBloqueo(bloqueante, fechaSeleccionada))
+      return
+    }
     const pendientes = partidosDeFecha.filter((p) => {
       const valores = formResultados[p.id]
       return valores && valores.golesLocal !== undefined && valores.golesLocal !== '' &&
@@ -356,6 +366,38 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     return equipos.find((e) => e.id === id)?.nombre || '—'
   }
 
+  // Partido "en vivo" (alineacion ya cargada, ver enVivo en FilaPartido
+  // mas abajo) pero sin finalizar todavia. Mientras alguno de una fecha
+  // ANTERIOR quede asi, no se deja tocar (ni abrir Control ni cargar
+  // resultado) ningun partido de una fecha posterior - para no repetir
+  // el caso de tarjetas "en borrador" que se quedan sin aplicar porque
+  // el Maestro sigue de largo con la fecha siguiente sin darse cuenta
+  // de que dejo uno a medias (ver torneoTarjetasService.
+  // finalizarTarjetasPartido). Una fecha que directamente todavia no
+  // arranco (ej. reprogramada para mas adelante) NO bloquea nada - solo
+  // una que quedo empezada y sin cerrar.
+  function partidoEnVivoSinFinalizar(p) {
+    return p.golesLocal == null && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
+  }
+  const partidosSinFinalizar = partidos.filter(partidoEnVivoSinFinalizar)
+
+  function partidoBloqueadoPor(partido) {
+    return partidosSinFinalizar.find((p) => p.id !== partido.id && p.fechaNumero < partido.fechaNumero)
+  }
+
+  function mensajeBloqueo(bloqueante, fechaDestino) {
+    return `Primero terminá el partido de ${nombreEquipo(bloqueante.equipoLocalId)} vs ${nombreEquipo(bloqueante.equipoVisitanteId)} (Fecha ${bloqueante.fechaNumero}) antes de seguir con la Fecha ${fechaDestino}.`
+  }
+
+  function handleAbrirControl(partido) {
+    const bloqueante = partidoBloqueadoPor(partido)
+    if (bloqueante) {
+      setErrorGuardar(mensajeBloqueo(bloqueante, partido.fechaNumero))
+      return
+    }
+    setPartidoControl(partido)
+  }
+
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
   const hayFixture = fechasDisponibles.length > 0
   const swipeFecha = useSwipeHorizontal(fechasDisponibles, fechaSeleccionada, setFechaSeleccionada)
@@ -378,6 +420,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     return valores && valores.golesLocal !== undefined && valores.golesLocal !== '' &&
       valores.golesVisitante !== undefined && valores.golesVisitante !== ''
   })
+  const fechaSeleccionadaBloqueadaPor = partidosSinFinalizar.find((p) => p.fechaNumero < fechaSeleccionada)
 
   function fechaCompleta(f) {
     return partidos.filter((p) => p.fechaNumero === f).every((p) => p.golesLocal != null)
@@ -603,13 +646,22 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     reiniciando={reiniciandoPartido === p.id}
                     onGuardarHorario={handleGuardarFechaProgramada}
                     nombreEquipo={nombreEquipo}
-                    onAbrirControl={setPartidoControl}
+                    onAbrirControl={handleAbrirControl}
+                    bloqueadoPor={partidoBloqueadoPor(p)}
                   />
                 ))}
               </ul>
             )
           ) : (
             <div {...swipeFecha}>
+              {fechaSeleccionadaBloqueadaPor && (
+                <p className="mb-2.5 rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+                  ⚠ Tenés un partido sin finalizar en la Fecha {fechaSeleccionadaBloqueadaPor.fechaNumero} (
+                  {nombreEquipo(fechaSeleccionadaBloqueadaPor.equipoLocalId)} vs{' '}
+                  {nombreEquipo(fechaSeleccionadaBloqueadaPor.equipoVisitanteId)}) - terminalo antes de cargar
+                  resultados de esta fecha.
+                </p>
+              )}
               <ul className="space-y-2.5">
                 {partidosDeFecha.map((p) => (
                   <FilaPartido
@@ -625,7 +677,8 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     reiniciando={reiniciandoPartido === p.id}
                     onGuardarHorario={handleGuardarFechaProgramada}
                     nombreEquipo={nombreEquipo}
-                    onAbrirControl={setPartidoControl}
+                    onAbrirControl={handleAbrirControl}
+                    bloqueadoPor={partidoBloqueadoPor(p)}
                   />
                 ))}
               </ul>
@@ -633,7 +686,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
               {partidosDeFecha.length > 0 && (
                 <button
                   onClick={handleGuardarTodos}
-                  disabled={guardandoTodos || partidosPendientes.length === 0}
+                  disabled={guardandoTodos || partidosPendientes.length === 0 || Boolean(fechaSeleccionadaBloqueadaPor)}
                   className="mt-3 w-full rounded-lg bg-brand py-2.5 font-medium text-white disabled:opacity-50"
                 >
                   {guardandoTodos
@@ -709,7 +762,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl, bloqueadoPor }) {
   const [editandoHorario, setEditandoHorario] = useState(false)
   const [horarioDraft, setHorarioDraft] = useState(null) // Date | null
   const [guardandoHorario, setGuardandoHorario] = useState(false)
@@ -780,8 +833,13 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         {onAbrirControl && (
           <button
             onClick={() => onAbrirControl(partido)}
-            className="shrink-0 rounded-lg border border-line bg-surface px-2 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
-            title="Alineación y eventos del partido"
+            disabled={Boolean(bloqueadoPor)}
+            className="shrink-0 rounded-lg border border-line bg-surface px-2 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft"
+            title={
+              bloqueadoPor
+                ? `Terminá primero el partido de ${nombreEquipo(bloqueadoPor.equipoLocalId)} vs ${nombreEquipo(bloqueadoPor.equipoVisitanteId)} (Fecha ${bloqueadoPor.fechaNumero})`
+                : 'Alineación y eventos del partido'
+            }
           >
             📋 Control
           </button>
@@ -880,9 +938,14 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
 
       {!ocultarBoton && (
         <div className="border-t border-line bg-paper px-3 py-2 text-right">
+          {bloqueadoPor && (
+            <p className="mb-1.5 text-left text-[11px] text-warning">
+              ⚠ Terminá antes el partido de Fecha {bloqueadoPor.fechaNumero}
+            </p>
+          )}
           <button
             onClick={() => onGuardar(partido)}
-            disabled={guardando}
+            disabled={guardando || Boolean(bloqueadoPor)}
             className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
           >
             {guardando ? 'Guardando…' : jugado ? 'Corregir' : 'Guardar'}
