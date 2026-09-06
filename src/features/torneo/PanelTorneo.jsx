@@ -15,12 +15,12 @@ import TabConfiguracion from './tabs/TabConfiguracion'
 
 const TABS = [
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechas },
-  { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
   { id: 'posiciones', label: 'Posiciones', icon: '📊', Componente: TabPosiciones },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadores },
-  { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestados },
   { id: 'reclamos', label: 'Reclamos', icon: '📢', Componente: TabReclamos },
+  { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
+  { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },
   { id: 'bases', label: 'Bases', icon: '📄', Componente: TabBases },
   { id: 'configuracion', label: 'Configuración', icon: '⚙️', Componente: TabConfiguracion },
 ]
