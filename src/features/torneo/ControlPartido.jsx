@@ -8,6 +8,7 @@ import {
   registrarResultadoPartido,
   reiniciarPartidoCompleto,
   actualizarMarcadorEnVivo,
+  alternarAlineacionAbierta,
 } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
@@ -17,6 +18,7 @@ import {
   eliminarTarjeta,
 } from '../../services/torneoTarjetasService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
+import { listarDelegadosPorEquipos } from '../../services/delegadosService'
 import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { nombreCorto } from '../../utils/nombreJugador'
@@ -376,6 +378,18 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [minimoJugadoresCancha, setMinimoJugadoresCancha] = useState(null)
   const [diferenciaWalkover, setDiferenciaWalkover] = useState(DIFERENCIA_WALKOVER_DEFAULT)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
+  // Delegado activo (no deshabilitado) de cada equipo, si tiene uno
+  // asignado (ver Configuracion -> Delegados de equipo) - solo si
+  // existe tiene sentido mostrar el boton de habilitarle la
+  // alineacion de este partido puntual.
+  const [delegadoLocal, setDelegadoLocal] = useState(null)
+  const [delegadoVisitante, setDelegadoVisitante] = useState(null)
+  // Si el delegado de cada lado puede armar la alineacion de ESTE
+  // partido ahora mismo (ver firestore.rules) - el Maestro lo prende
+  // y lo apaga desde aca, partido por partido.
+  const [alineacionAbiertaLocal, setAlineacionAbiertaLocal] = useState(partido.alineacionAbiertaLocal || false)
+  const [alineacionAbiertaVisitante, setAlineacionAbiertaVisitante] = useState(partido.alineacionAbiertaVisitante || false)
+  const [cambiandoAperturaDelegado, setCambiandoAperturaDelegado] = useState(null) // 'local' | 'visitante' | null
   // Que pestaña (Alineación/Cancha) se ve para ESTE partido puntual -
   // se guarda en sessionStorage para que un refresh de pagina no
   // vuelva siempre a Alineación. Si no hay nada guardado: directo a
@@ -422,12 +436,13 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setCargando(true)
     setError(null)
     try {
-      const [jl, jv, gs, ts, cfg] = await Promise.all([
+      const [jl, jv, gs, ts, cfg, delegados] = await Promise.all([
         listarJugadoresPorEquipo(partido.equipoLocalId),
         listarJugadoresPorEquipo(partido.equipoVisitanteId),
         listarGolesPorPartido(partido.id),
         listarTarjetasPorPartido(partido.id),
         obtenerConfigCategoria(torneoId, categoria),
+        listarDelegadosPorEquipos([partido.equipoLocalId, partido.equipoVisitanteId]),
       ])
       setJugadoresLocal(jl.filter((j) => !j.eliminado))
       setJugadoresVisitante(jv.filter((j) => !j.eliminado))
@@ -436,6 +451,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
       setMinimoJugadoresCancha(cfg.minimoJugadoresCancha)
       setDiferenciaWalkover(cfg.diferenciaWalkover)
+      setDelegadoLocal(delegados.find((d) => d.equipoId === partido.equipoLocalId) || null)
+      setDelegadoVisitante(delegados.find((d) => d.equipoId === partido.equipoVisitanteId) || null)
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo cargar la información del partido.')
@@ -652,6 +669,26 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError('No se pudo guardar el check de DNI.')
+    }
+  }
+
+  // Habilita (o cierra) que el delegado de ESE equipo pueda armar la
+  // alineacion de este partido puntual desde el link publico - ver
+  // firestore.rules, que solo lo deja mientras este flag este abierto.
+  async function handleAlternarAperturaDelegado(equipo) {
+    const actual = equipo === 'local' ? alineacionAbiertaLocal : alineacionAbiertaVisitante
+    const setEstado = equipo === 'local' ? setAlineacionAbiertaLocal : setAlineacionAbiertaVisitante
+    setEstado(!actual)
+    setCambiandoAperturaDelegado(equipo)
+    setError(null)
+    try {
+      await alternarAlineacionAbierta(partido.id, equipo, !actual)
+    } catch (err) {
+      console.error('[ControlPartido]', err)
+      setEstado(actual)
+      setError('No se pudo cambiar el acceso del delegado.')
+    } finally {
+      setCambiandoAperturaDelegado(null)
     }
   }
 
@@ -884,6 +921,21 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       <div {...swipeVista}>
       {vista === 'alineacion' ? (
         <div className="space-y-2">
+          {delegadoLocal && (
+            <button
+              onClick={() => handleAlternarAperturaDelegado('local')}
+              disabled={cambiandoAperturaDelegado === 'local'}
+              className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-medium disabled:opacity-50 ${
+                alineacionAbiertaLocal
+                  ? 'border-success/30 bg-success-soft text-success'
+                  : 'border-line bg-surface text-ink-soft'
+              }`}
+            >
+              {alineacionAbiertaLocal
+                ? `🔓 ${delegadoLocal.nombreDelegado || 'El delegado'} puede armar esta alineación — tocar para cerrar`
+                : `🔒 Habilitar a ${delegadoLocal.nombreDelegado || 'el delegado'} para armar esta alineación`}
+            </button>
+          )}
           <SelectorAlineacion
             titulo={nombreEquipo(partido.equipoLocalId)}
             jugadores={jugadoresLocal}
@@ -905,6 +957,21 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
           <div className="my-1 h-1.5 rounded-full bg-black" />
 
+          {delegadoVisitante && (
+            <button
+              onClick={() => handleAlternarAperturaDelegado('visitante')}
+              disabled={cambiandoAperturaDelegado === 'visitante'}
+              className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-medium disabled:opacity-50 ${
+                alineacionAbiertaVisitante
+                  ? 'border-success/30 bg-success-soft text-success'
+                  : 'border-line bg-surface text-ink-soft'
+              }`}
+            >
+              {alineacionAbiertaVisitante
+                ? `🔓 ${delegadoVisitante.nombreDelegado || 'El delegado'} puede armar esta alineación — tocar para cerrar`
+                : `🔒 Habilitar a ${delegadoVisitante.nombreDelegado || 'el delegado'} para armar esta alineación`}
+            </button>
+          )}
           <SelectorAlineacion
             titulo={nombreEquipo(partido.equipoVisitanteId)}
             jugadores={jugadoresVisitante}

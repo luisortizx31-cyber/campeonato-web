@@ -48,6 +48,17 @@ export async function obtenerDelegado(uid) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null
 }
 
+// Delegados de UNO o dos equipos puntuales (los dos lados de un
+// partido) - la usa ControlPartido para saber si mostrar el boton de
+// habilitar/cerrar alineacion para cada lado. Excluye los
+// deshabilitados: si el Maestro le cerro el acceso al delegado, el
+// boton no tiene sentido mostrarlo.
+export async function listarDelegadosPorEquipos(equipoIds) {
+  if (equipoIds.length === 0) return []
+  const snap = await getDocs(query(collection(db, 'torneo_delegados'), where('equipoId', 'in', equipoIds)))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((d) => !d.deshabilitado)
+}
+
 export async function listarDelegados(torneoId) {
   const snap = await getDocs(query(collection(db, 'torneo_delegados'), where('torneoId', '==', torneoId)))
   const delegados = snap.docs.map((d) => ({ id: d.id, ...d.data() }))

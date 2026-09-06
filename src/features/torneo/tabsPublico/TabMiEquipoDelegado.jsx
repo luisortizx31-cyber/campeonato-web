@@ -2,45 +2,111 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { logout } from '../../../services/authService'
 import { listarJugadoresPorEquipo } from '../../../services/torneoJugadoresService'
-import { obtenerEquipo } from '../../../services/torneoEquiposService'
+import { obtenerEquipo, listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
+import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
+import { obtenerConfigCategoria } from '../../../services/torneoConfigService'
 import ModalInscribirJugadorDelegado from '../ModalInscribirJugadorDelegado'
+import AlineacionPartidoDelegado from './AlineacionPartidoDelegado'
 
 /**
  * Vista del delegado logueado desde la pagina publica (ver
  * PaginaPublicaTorneo) - acceso restringido a SU equipo nada mas (ver
- * firestore.rules): puede ver su plantel e inscribir jugadores nuevos,
- * nada del resto del torneo.
+ * firestore.rules): puede ver su plantel, inscribir jugadores nuevos,
+ * y armar la alineacion de un partido puntual mientras el Maestro se
+ * lo tenga habilitado (ver ControlPartido, boton "Habilitar
+ * delegado").
  */
 export default function TabMiEquipoDelegado() {
   const { perfil } = useAuth()
   const [equipo, setEquipo] = useState(null)
   const [jugadores, setJugadores] = useState([])
+  const [equipos, setEquipos] = useState([])
+  const [partidos, setPartidos] = useState([])
+  const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(11)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [modalNuevo, setModalNuevo] = useState(false)
+  const [partidoAbiertoId, setPartidoAbiertoId] = useState(null)
 
-  async function cargar() {
-    setCargando(true)
-    setError(null)
+  async function cargarJugadores() {
     try {
-      const [eq, js] = await Promise.all([
-        obtenerEquipo(perfil.equipoId),
-        listarJugadoresPorEquipo(perfil.equipoId),
-      ])
-      setEquipo(eq)
+      const js = await listarJugadoresPorEquipo(perfil.equipoId)
       setJugadores(js.filter((j) => !j.eliminado))
     } catch (err) {
-      console.error('[TabMiEquipoDelegado]', err)
-      setError('No se pudo cargar tu equipo.')
-    } finally {
-      setCargando(false)
+      console.error('[TabMiEquipoDelegado] cargarJugadores', err)
     }
   }
 
   useEffect(() => {
-    cargar()
+    let cancelado = false
+    setCargando(true)
+    setError(null)
+
+    obtenerEquipo(perfil.equipoId)
+      .then(async (eq) => {
+        if (cancelado || !eq) return
+        setEquipo(eq)
+        const [js, eqs, cfg] = await Promise.all([
+          listarJugadoresPorEquipo(perfil.equipoId),
+          listarEquiposPorCategoria(perfil.torneoId, eq.categoria),
+          obtenerConfigCategoria(perfil.torneoId, eq.categoria),
+        ])
+        if (cancelado) return
+        setJugadores(js.filter((j) => !j.eliminado))
+        setEquipos(eqs)
+        setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
+      })
+      .catch((err) => {
+        console.error('[TabMiEquipoDelegado]', err)
+        if (!cancelado) setError('No se pudo cargar tu equipo.')
+      })
+      .finally(() => {
+        if (!cancelado) setCargando(false)
+      })
+
+    return () => {
+      cancelado = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [perfil.equipoId])
+
+  // Los partidos se siguen en vivo para que la lista de "podés armar la
+  // alineación" aparezca sola apenas el Maestro la habilita, sin tener
+  // que refrescar la página - pero recien se suscribe una vez que se
+  // sabe la categoria del equipo (necesita el equipo cargado primero).
+  useEffect(() => {
+    if (!equipo) return
+    const desuscribir = suscribirPartidosPorCategoria(perfil.torneoId, equipo.categoria, (ps) => {
+      setPartidos(ps.filter((p) => p.equipoLocalId === perfil.equipoId || p.equipoVisitanteId === perfil.equipoId))
+    })
+    return desuscribir
+  }, [perfil.torneoId, perfil.equipoId, equipo])
+
+  function nombreEquipo(id) {
+    return equipos.find((e) => e.id === id)?.nombre || '—'
+  }
+
+  const partidosConAlineacionAbierta = partidos.filter((p) => {
+    const esLocal = p.equipoLocalId === perfil.equipoId
+    return esLocal ? p.alineacionAbiertaLocal : p.alineacionAbiertaVisitante
+  })
+
+  const partidoAbierto = partidoAbiertoId ? partidos.find((p) => p.id === partidoAbiertoId) : null
+
+  if (partidoAbierto) {
+    const equipoDelPartido = partidoAbierto.equipoLocalId === perfil.equipoId ? 'local' : 'visitante'
+    const rivalId = equipoDelPartido === 'local' ? partidoAbierto.equipoVisitanteId : partidoAbierto.equipoLocalId
+    return (
+      <AlineacionPartidoDelegado
+        partido={partidoAbierto}
+        equipo={equipoDelPartido}
+        jugadores={jugadores}
+        jugadoresPorEquipo={jugadoresPorEquipo}
+        nombreRival={nombreEquipo(rivalId)}
+        onVolver={() => setPartidoAbiertoId(null)}
+      />
+    )
+  }
 
   return (
     <div>
@@ -56,6 +122,28 @@ export default function TabMiEquipoDelegado() {
           Cerrar sesión
         </button>
       </div>
+
+      {partidosConAlineacionAbierta.length > 0 && (
+        <ul className="mb-4 space-y-2">
+          {partidosConAlineacionAbierta.map((p) => {
+            const esLocal = p.equipoLocalId === perfil.equipoId
+            const rivalId = esLocal ? p.equipoVisitanteId : p.equipoLocalId
+            return (
+              <li key={p.id}>
+                <button
+                  onClick={() => setPartidoAbiertoId(p.id)}
+                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-success/30 bg-success-soft px-4 py-3 text-left"
+                >
+                  <span className="min-w-0 truncate text-sm font-semibold text-success">
+                    🔓 Fecha {p.fechaNumero} vs {nombreEquipo(rivalId)} — Armar alineación
+                  </span>
+                  <span className="shrink-0 text-success">›</span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       <div className="mb-4 flex justify-end">
         <button
@@ -108,7 +196,7 @@ export default function TabMiEquipoDelegado() {
           onCerrar={() => setModalNuevo(false)}
           onGuardado={async () => {
             setModalNuevo(false)
-            await cargar()
+            await cargarJugadores()
           }}
         />
       )}

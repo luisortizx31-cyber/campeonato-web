@@ -311,6 +311,16 @@ export async function actualizarDniConfirmado(partidoId, equipo, jugadorId, conf
   })
 }
 
+// El Maestro habilita (o cierra) que el delegado de un equipo pueda
+// armar la alineacion de ESTE partido puntual desde el link publico
+// (ver ControlPartido y AlineacionPartidoDelegado) - ver
+// firestore.rules, que solo deja tocar titulares/suplentes/dni del
+// propio lado mientras este flag este en true.
+export async function alternarAlineacionAbierta(partidoId, equipo, abierta) {
+  const campo = equipo === 'local' ? 'alineacionAbiertaLocal' : 'alineacionAbiertaVisitante'
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), { [campo]: abierta })
+}
+
 // Vuelve a "Pendiente" (golesLocal/golesVisitante = null) los
 // partidos de UNA fecha puntual - a diferencia de eliminarFixture, no
 // borra los partidos ni el fixture, solo el marcador ya cargado, para

@@ -62,6 +62,26 @@ service cloud.firestore {
       return perfilDe(request.auth.uid).equipoId;
     }
 
+    // El Maestro habilita/cierra, partido por partido, que el delegado
+    // de CADA equipo pueda armar su propia alineacion (ver
+    // ControlPartido -> boton "Habilitar/Cerrar delegado" y
+    // AlineacionPartidoDelegado del lado publico). Mientras esta
+    // cerrado (el default, ver alternarAlineacionAbierta), el delegado
+    // no puede tocar el partido para nada.
+    function esDelegadoLocalDePartido() {
+      return esDelegado() && miEquipoIdDelegado() == resource.data.equipoLocalId;
+    }
+    function esDelegadoVisitanteDePartido() {
+      return esDelegado() && miEquipoIdDelegado() == resource.data.equipoVisitanteId;
+    }
+    // El delegado solo puede tocar los campos de alineacion de SU
+    // propio lado (local o visitante) - nunca el marcador, las
+    // tarjetas, ni la alineacion del rival ni los flags de apertura
+    // (esos los sigue manejando solo el Maestro).
+    function soloCambioAlineacion(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    }
+
     // ---------------------------------------------------------------
     // /usuarios - un colegio = un usuario con role:'master' y su
     // torneoId asignado. El alta (Authentication + este doc) la hace
@@ -196,7 +216,14 @@ service cloud.firestore {
     match /torneo_partidos/{partidoId} {
       allow get, list: if true;
       allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
-      allow update, delete: if esMaestroDe(resource.data.torneoId);
+      allow update: if esMaestroDe(resource.data.torneoId)
+                    || (esDelegadoLocalDePartido()
+                        && resource.data.alineacionAbiertaLocal == true
+                        && soloCambioAlineacion(['titularesLocal', 'suplentesLocal', 'dniConfirmadoLocal']))
+                    || (esDelegadoVisitanteDePartido()
+                        && resource.data.alineacionAbiertaVisitante == true
+                        && soloCambioAlineacion(['titularesVisitante', 'suplentesVisitante', 'dniConfirmadoVisitante']));
+      allow delete: if esMaestroDe(resource.data.torneoId);
     }
 
     // Las tarjetas tambien actualizan los contadores del jugador
