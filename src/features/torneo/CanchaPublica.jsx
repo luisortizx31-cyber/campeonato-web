@@ -239,7 +239,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                           const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
                           return (
                             <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                              <span className="min-w-0 truncate text-ink">{j.nombre}</span>
+                              <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
                               <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
                             </li>
                           )
@@ -253,7 +253,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                       <ul className="space-y-1">
                         {amarillas.map((j) => (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate text-ink">{j.nombre}</span>
+                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
                             <span className="shrink-0 text-warning">1 amarilla</span>
                           </li>
                         ))}
@@ -266,7 +266,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                       <ul className="space-y-1">
                         {goleadores.map((j) => (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate text-ink">{j.nombre}</span>
+                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
                             <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
                           </li>
                         ))}
