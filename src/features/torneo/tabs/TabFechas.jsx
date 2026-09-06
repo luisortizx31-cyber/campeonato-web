@@ -83,6 +83,16 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [partidoControl, setPartidoControl] = useState(null)
   const restauroPartidoControl = useRef(false)
 
+  // Se actualiza solo (cada 1 min) para que la pastilla de una Fecha
+  // empiece a parpadear apenas se llega a su horario, sin necesidad de
+  // que algun dato del partido cambie mientras tanto (ver
+  // horaLlegada, mismo criterio que TabFechasPublica).
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
+
   const barraFechasRef = useRef(null)
   useEffect(() => {
     if (!barraFechasRef.current || fechaSeleccionada == null) return
@@ -159,8 +169,24 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
       setFechaSeleccionada((actual) => {
         if (fechas.length === 0) return null
         if (actual && fechas.includes(actual)) return actual
-        const pendiente = fechas.find((f) => ps.some((p) => p.fechaNumero === f && p.golesLocal == null))
-        return pendiente ?? fechas[0]
+        // Al entrar a la pestaña, arranca en la fecha pendiente cuyo
+        // horario programado sea el mas proximo (no simplemente la de
+        // menor numero) - asi una fecha reprogramada para mas adelante
+        // no tapa a la que en realidad toca jugar hoy (ver
+        // reprogramarFecha, que mueve el horario pero no el
+        // fechaNumero). Una fecha pendiente sin horario puesto queda al
+        // final de este criterio.
+        const pendientes = fechas.filter((f) => ps.some((p) => p.fechaNumero === f && p.golesLocal == null))
+        if (pendientes.length === 0) return fechas[0]
+        const conHorario = pendientes
+          .map((f) => {
+            const horarios = ps
+              .filter((p) => p.fechaNumero === f && p.golesLocal == null && p.fecha)
+              .map((p) => p.fecha.toMillis())
+            return { f, horario: horarios.length > 0 ? Math.min(...horarios) : Infinity }
+          })
+          .sort((a, b) => a.horario - b.horario || a.f - b.f)
+        return conHorario[0].f
       })
     } catch (err) {
       console.error('[TabFechas]', err)
@@ -438,6 +464,22 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
       .some((p) => p.golesLocal != null || p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
   }
 
+  // Horario mas temprano entre los partidos PENDIENTES de esta Fecha
+  // (mismo criterio que TabFechasPublica).
+  function horarioMasBajoDe(f) {
+    const conFecha = partidos.filter((p) => p.fechaNumero === f && p.golesLocal == null && p.fecha)
+    if (conFecha.length === 0) return null
+    return conFecha.sort((a, b) => a.fecha.toMillis() - b.fecha.toMillis())[0].fecha
+  }
+
+  // Ya se llego (o paso) el horario de esta Fecha y todavia no esta
+  // completa - la pastilla parpadea para llamar la atencion (ver
+  // animate-pulse mas abajo, mismo criterio que TabFechasPublica).
+  function horaLlegada(f) {
+    const horario = horarioMasBajoDe(f)
+    return horario != null && horario.toMillis() <= ahora && !fechaCompleta(f)
+  }
+
   // Si una fecha es toda "vuelta" (revancha de una fecha anterior),
   // toda "ida", o mixta/sin revancha - se deduce de los cruces (ver
   // calcularLegPartido), no de como se genero el fixture.
@@ -577,6 +619,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                   const completa = fechaCompleta(f)
                   const empezada = !completa && fechaEmpezada(f)
                   const activa = fechaSeleccionada === f
+                  const enHora = horaLlegada(f)
                   const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
                   return (
                     <div key={f} className="flex shrink-0 items-center gap-1.5">
@@ -585,13 +628,17 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                         data-fecha={f}
                         onClick={() => setFechaSeleccionada(f)}
                         className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
+                          enHora ? 'animate-pulse' : ''
+                        } ${
                           activa
                             ? 'border-brand bg-brand text-white shadow-sm'
                             : completa
                               ? 'border-danger/30 bg-danger-soft text-danger'
                               : empezada
                                 ? 'border-warning/30 bg-warning-soft text-warning'
-                                : 'border-line bg-surface text-ink-soft'
+                                : enHora
+                                  ? 'border-success/30 bg-success-soft text-success'
+                                  : 'border-line bg-surface text-ink-soft'
                         }`}
                       >
                         Fecha {f}{completa ? ' ✓' : ''}
