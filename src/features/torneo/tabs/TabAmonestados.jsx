@@ -19,12 +19,20 @@ import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 // por fecha (ver abajo) como en la lista plana de resultados de
 // busqueda.
 function FilaTarjeta({ tarjeta, nombreJugador, nombreEquipo, onEliminar, eliminando }) {
-  const estilo = TIPO_TARJETA_STYLES[tarjeta.tipo]
+  // tipoEfectivo puede diferir de tipo (ej. la 2da amarilla del mismo
+  // partido se procesa como roja, ver finalizarTarjetasPartido en
+  // torneoTarjetasService) - hay que mostrar el efecto REAL que tuvo la
+  // tarjeta, si no una expulsion por doble amarilla queda mostrada como
+  // una amarilla mas. Las tarjetas todavia sin procesar (en borrador,
+  // partido no finalizado) no tienen tipoEfectivo todavia - ahi se cae
+  // al tipo tal cual se cargo.
+  const tipoMostrado = tarjeta.tipoEfectivo || tarjeta.tipo
+  const estilo = TIPO_TARJETA_STYLES[tipoMostrado]
   return (
     <li className="flex items-center justify-between gap-2 px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${estilo.fondo} ${estilo.texto}`}>
-          {TIPO_TARJETA_LABELS[tarjeta.tipo]}
+          {TIPO_TARJETA_LABELS[tipoMostrado]}
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">{nombreJugador(tarjeta.jugadorId)}</p>
@@ -34,6 +42,14 @@ function FilaTarjeta({ tarjeta, nombreJugador, nombreEquipo, onEliminar, elimina
             {tarjeta.fecha?.toDate?.().toLocaleDateString('es-PE') || ''}
             {tarjeta.motivo && ` · ${tarjeta.motivo}`}
           </p>
+          {/* Tarjeta "en borrador": se cargo desde Cancha pero el
+              partido nunca se finalizo, asi que todavia no le toco
+              nada al contador del jugador (ver registrarTarjetaPartido) */}
+          {tarjeta.procesada === false && (
+            <p className="mt-0.5 text-xs font-semibold text-warning">
+              ⚠ Sin finalizar el partido - todavía no afecta al jugador
+            </p>
+          )}
         </div>
       </div>
       <button
