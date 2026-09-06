@@ -310,13 +310,14 @@ function SelectorAlineacion({
 // Fila de la CANCHA (abajo): solo jugadores en cancha ahora mismo
 // (titulares, no expulsados) - aca se cargan los eventos del partido.
 // Tocar el nombre abre el selector de cambio (decidido por el padre).
-function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, onGol, onAmarilla, onRoja }) {
+function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, onTocar, onGol, onAmarilla, onRoja }) {
   return (
     <li className="px-2.5 py-2">
       <button
         onClick={onTocar}
-        className="flex w-full items-center justify-between gap-1.5 text-left"
-        title="Tocar para sacarlo y elegir reemplazo"
+        disabled={bloqueado}
+        className="flex w-full items-center justify-between gap-1.5 text-left disabled:opacity-60"
+        title={bloqueado ? 'Arrancá el partido primero' : 'Tocar para sacarlo y elegir reemplazo'}
       >
         <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
           {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
@@ -334,21 +335,21 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, onTocar, on
       <div className="mt-1.5 flex gap-1">
         <button
           onClick={onGol}
-          disabled={procesando}
+          disabled={procesando || bloqueado}
           className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] disabled:opacity-50"
         >
           ⚽
         </button>
         <button
           onClick={onAmarilla}
-          disabled={procesando}
+          disabled={procesando || bloqueado}
           className="flex-1 rounded-md border-2 border-warning bg-warning/25 py-1 text-[11px] disabled:opacity-50"
         >
           🟨
         </button>
         <button
           onClick={onRoja}
-          disabled={procesando}
+          disabled={procesando || bloqueado}
           className="flex-1 rounded-md border-2 border-danger bg-danger/25 py-1 text-[11px] disabled:opacity-50"
         >
           🟥
@@ -1195,6 +1196,13 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             </div>
           )}
 
+          {horaInicio == null && (
+            <p className="mb-3 rounded-lg bg-warning-soft px-3 py-2 text-center text-xs font-medium text-warning">
+              🔒 Todavía no arrancaste el partido - tocá "▶ Arrancar partido" arriba para poder cargar goles y
+              tarjetas.
+            </p>
+          )}
+
           {/* Fondo verde tipo cancha, con las dos alineaciones separadas
               por una linea central - no es un campo tactico con
               posiciones reales, es un agrupamiento visual simple. Solo
@@ -1216,6 +1224,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                     nGoles={golesDe(j.id)}
                     amarillasPartido={tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length}
                     procesando={procesando}
+                    bloqueado={horaInicio == null}
                     onTocar={() => handleTocarTitular('local', j)}
                     onGol={() => handleGol(j, partido.equipoLocalId)}
                     onAmarilla={() => handleTarjeta(j, partido.equipoLocalId, TIPO_TARJETA.AMARILLA)}
@@ -1243,6 +1252,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                     nGoles={golesDe(j.id)}
                     amarillasPartido={tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length}
                     procesando={procesando}
+                    bloqueado={horaInicio == null}
                     onTocar={() => handleTocarTitular('visitante', j)}
                     onGol={() => handleGol(j, partido.equipoVisitanteId)}
                     onAmarilla={() => handleTarjeta(j, partido.equipoVisitanteId, TIPO_TARJETA.AMARILLA)}
