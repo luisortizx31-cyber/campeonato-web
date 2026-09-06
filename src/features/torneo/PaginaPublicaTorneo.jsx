@@ -92,9 +92,19 @@ export default function PaginaPublicaTorneo() {
       setMostrarLoginDelegado(false)
       setEmailDelegado('')
       setPasswordDelegado('')
+      // Cambia a la pestaña "Mi equipo" de una vez - si no, el login
+      // exitoso solo se nota porque aparece una pestaña nueva en la
+      // barra, facil de no ver si se quedan mirando la pestaña actual.
+      setTabActiva('miequipo')
     } catch (err) {
       console.error('[PaginaPublicaTorneo] handleLoginDelegado', err)
-      setErrorLogin('Correo o contraseña incorrectos.')
+      if (err.code === 'auth/too-many-requests') {
+        setErrorLogin('Demasiados intentos fallidos - esperá un momento y volvé a probar.')
+      } else if (err.code === 'auth/network-request-failed') {
+        setErrorLogin('Sin conexión a internet - revisá tu señal e intentá de nuevo.')
+      } else {
+        setErrorLogin('Correo o contraseña incorrectos.')
+      }
     } finally {
       setEnviandoLogin(false)
     }
@@ -223,7 +233,11 @@ export default function PaginaPublicaTorneo() {
                 className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus-visible:border-brand"
               />
             </div>
-            {errorLogin && <p className="mb-2 text-xs text-danger">{errorLogin}</p>}
+            {errorLogin && (
+              <p className="mb-2 rounded-lg bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+                ⚠ {errorLogin}
+              </p>
+            )}
             <button
               type="submit"
               disabled={enviandoLogin}
