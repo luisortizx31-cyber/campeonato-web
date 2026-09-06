@@ -177,11 +177,11 @@ export default function PaginaPublicaTorneo() {
   return (
     <div className="min-h-screen bg-paper pb-10">
       <header className="border-b border-line bg-surface px-4 py-4">
-        <p className="font-mono text-xs tracking-widest text-ink-soft uppercase">
+        <p className="truncate text-xl font-bold tracking-tight text-ink">
           {nombreTorneo || 'Campeonato'}
         </p>
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-lg font-semibold text-ink">{tab.label}</h1>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <h1 className="text-sm font-medium text-ink-soft">{tab.label}</h1>
           <div className="flex shrink-0 items-center gap-2">
             {basesUrl && (
               <a
