@@ -390,6 +390,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [alineacionAbiertaLocal, setAlineacionAbiertaLocal] = useState(partido.alineacionAbiertaLocal || false)
   const [alineacionAbiertaVisitante, setAlineacionAbiertaVisitante] = useState(partido.alineacionAbiertaVisitante || false)
   const [cambiandoAperturaDelegado, setCambiandoAperturaDelegado] = useState(null) // 'local' | 'visitante' | null
+  const [errorDelegados, setErrorDelegados] = useState(null)
   // Que pestaña (Alineación/Cancha) se ve para ESTE partido puntual -
   // se guarda en sessionStorage para que un refresh de pagina no
   // vuelva siempre a Alineación. Si no hay nada guardado: directo a
@@ -448,6 +449,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         // que no aparece el boton de habilitar delegado.
         listarDelegadosPorEquipos([partido.equipoLocalId, partido.equipoVisitanteId]).catch((err) => {
           console.error('[ControlPartido] listarDelegadosPorEquipos', err)
+          setErrorDelegados(err.code || err.message || 'error desconocido')
           return []
         }),
       ])
@@ -928,6 +930,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       <div {...swipeVista}>
       {vista === 'alineacion' ? (
         <div className="space-y-2">
+          {errorDelegados && (
+            <p className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
+              ⚠ No se pudo revisar si hay delegados asignados ({errorDelegados}). El botón de
+              habilitar delegado no va a aparecer hasta que esto se resuelva.
+            </p>
+          )}
           {delegadoLocal && (
             <button
               onClick={() => handleAlternarAperturaDelegado('local')}
