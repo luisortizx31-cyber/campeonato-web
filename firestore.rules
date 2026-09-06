@@ -62,6 +62,18 @@ service cloud.firestore {
       return perfilDe(request.auth.uid).equipoId;
     }
 
+    // Datos del jugador PADRE de un doc /privado/{docId} (ver mas abajo,
+    // /torneo_jugadores/{jugadorId}/privado) - se leen con un solo
+    // get() y Firestore cachea el resultado dentro de la misma
+    // evaluacion, asi que usar esto dos veces (equipoId y categoria) no
+    // sale por dos lecturas.
+    function jugadorDe(jugadorId) {
+      return get(/databases/$(database)/documents/torneo_jugadores/$(jugadorId)).data;
+    }
+    function esDelegadoDelJugador(jugadorId) {
+      return esDelegado() && jugadorDe(jugadorId).equipoId == miEquipoIdDelegado();
+    }
+
     // El Maestro habilita/cierra, partido por partido, que el delegado
     // de CADA equipo pueda armar su propia alineacion (ver
     // ControlPartido -> boton "Habilitar/Cerrar delegado" y
@@ -210,7 +222,14 @@ service cloud.firestore {
                         && resource.data.equipoId == miEquipoIdDelegado()
                         && request.resource.data.equipoId == resource.data.equipoId
                         && !inscripcionesCerradas(resource.data.torneoId, resource.data.categoria));
-      allow delete: if esMaestroDe(resource.data.torneoId);
+      // El delegado puede borrar un jugador de su equipo igual que el
+      // Maestro (ver eliminarJugador, que ya bloquea el borrado si el
+      // jugador tiene tarjetas) mientras las inscripciones sigan
+      // abiertas - una vez cerradas, vuelve a ser solo del Maestro.
+      allow delete: if esMaestroDe(resource.data.torneoId)
+                    || (esDelegado()
+                        && resource.data.equipoId == miEquipoIdDelegado()
+                        && !inscripcionesCerradas(resource.data.torneoId, resource.data.categoria));
 
       // El doc /privado/datos es OPCIONAL (solo se crea si el jugador
       // tiene DNI o telefono cargado, ver registrarJugador) - para un
@@ -222,18 +241,20 @@ service cloud.firestore {
       // (aunque el jugador sea del propio Maestro) porque resource.data
       // no se puede leer de un resource null.
       match /privado/{docId} {
-        allow get: if esMaestro() && (resource == null || resource.data.torneoId == miTorneoId());
-        // El delegado puede CREAR el DNI/telefono de un jugador nuevo de
-        // su equipo (mismo formulario que el Maestro, ver
-        // ModalInscribirJugadorDelegado) pero no leerlo ni editarlo
-        // despues - "Ver datos"/"Editar" siguen siendo solo del Maestro,
-        // desde TabJugadores.
+        // El delegado puede ver/crear/editar/borrar el DNI-telefono de
+        // un jugador de SU equipo igual que el Maestro (para poder
+        // editarlo hace falta poder leerlo primero, ver
+        // ModalInscribirJugadorDelegado en modo edicion) mientras las
+        // inscripciones sigan abiertas - cerradas, vuelve a ser de
+        // "solo lectura" del Maestro como antes.
+        allow get: if (esMaestro() && (resource == null || resource.data.torneoId == miTorneoId()))
+                   || (esDelegadoDelJugador(jugadorId) && !inscripcionesCerradas(jugadorDe(jugadorId).torneoId, jugadorDe(jugadorId).categoria));
         allow create: if (esMaestro() && request.resource.data.torneoId == miTorneoId())
-                      || (esDelegado()
+                      || (esDelegadoDelJugador(jugadorId)
                           && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
-                          && get(/databases/$(database)/documents/torneo_jugadores/$(jugadorId)).data.equipoId == miEquipoIdDelegado()
-                          && !inscripcionesCerradas(request.resource.data.torneoId, get(/databases/$(database)/documents/torneo_jugadores/$(jugadorId)).data.categoria));
-        allow update, delete: if esMaestro() && (resource == null || resource.data.torneoId == miTorneoId());
+                          && !inscripcionesCerradas(request.resource.data.torneoId, jugadorDe(jugadorId).categoria));
+        allow update, delete: if (esMaestro() && (resource == null || resource.data.torneoId == miTorneoId()))
+                              || (esDelegadoDelJugador(jugadorId) && !inscripcionesCerradas(jugadorDe(jugadorId).torneoId, jugadorDe(jugadorId).categoria));
       }
     }
 

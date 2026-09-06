@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
-import { listarJugadoresPorEquipo } from '../../../services/torneoJugadoresService'
+import { listarJugadoresPorEquipo, eliminarJugador } from '../../../services/torneoJugadoresService'
 import { obtenerEquipo, listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { obtenerConfigCategoria } from '../../../services/torneoConfigService'
@@ -24,11 +24,13 @@ export default function TabMiEquipoDelegado() {
   const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(11)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  const [modalNuevo, setModalNuevo] = useState(false)
+  const [modal, setModal] = useState(null) // null | 'nuevo' | jugador a editar
   const [partidoAbiertoId, setPartidoAbiertoId] = useState(null)
   const [subTab, setSubTab] = useState('jugadores')
   const [jugadoresAbierto, setJugadoresAbierto] = useState(true)
   const [inscripcionesCerradas, setInscripcionesCerradas] = useState(false)
+  const [eliminando, setEliminando] = useState(null)
+  const [errorAccion, setErrorAccion] = useState(null)
 
   async function cargarJugadores() {
     try {
@@ -36,6 +38,21 @@ export default function TabMiEquipoDelegado() {
       setJugadores(js.filter((j) => !j.eliminado))
     } catch (err) {
       console.error('[TabMiEquipoDelegado] cargarJugadores', err)
+    }
+  }
+
+  async function handleEliminar(jugador) {
+    if (!confirm(`¿Eliminar a "${jugador.nombre}"?`)) return
+    setEliminando(jugador.id)
+    setErrorAccion(null)
+    try {
+      await eliminarJugador(jugador.id)
+      await cargarJugadores()
+    } catch (err) {
+      console.error('[TabMiEquipoDelegado] handleEliminar', err)
+      setErrorAccion(err.message || 'No se pudo eliminar el jugador.')
+    } finally {
+      setEliminando(null)
     }
   }
 
@@ -152,6 +169,9 @@ export default function TabMiEquipoDelegado() {
 
       {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
+      {errorAccion && (
+        <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorAccion}</p>
+      )}
 
       {!cargando && !error && subTabEfectiva === 'jugadores' && (
         <>
@@ -191,6 +211,23 @@ export default function TabMiEquipoDelegado() {
                         </div>
                       )}
                     </div>
+                    {!inscripcionesCerradas && (
+                      <div className="flex shrink-0 gap-1.5">
+                        <button
+                          onClick={() => setModal(j)}
+                          className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleEliminar(j)}
+                          disabled={eliminando === j.id}
+                          className="rounded-lg border border-danger/30 px-2.5 py-1 text-xs text-danger disabled:opacity-50"
+                        >
+                          {eliminando === j.id ? '…' : 'Eliminar'}
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
                 {jugadoresOrdenados.length === 0 && (
@@ -208,7 +245,7 @@ export default function TabMiEquipoDelegado() {
             </p>
           ) : (
             <button
-              onClick={() => setModalNuevo(true)}
+              onClick={() => setModal('nuevo')}
               className="w-full rounded-lg bg-brand py-2.5 text-sm font-medium text-white"
             >
               + Inscribir jugador
@@ -239,15 +276,16 @@ export default function TabMiEquipoDelegado() {
         </ul>
       )}
 
-      {modalNuevo && equipo && !inscripcionesCerradas && (
+      {modal && equipo && !inscripcionesCerradas && (
         <ModalInscribirJugadorDelegado
           torneoId={perfil.torneoId}
           categoria={equipo.categoria}
           equipoId={perfil.equipoId}
           jugadores={jugadores}
-          onCerrar={() => setModalNuevo(false)}
+          jugador={modal === 'nuevo' ? null : modal}
+          onCerrar={() => setModal(null)}
           onGuardado={async () => {
-            setModalNuevo(false)
+            setModal(null)
             await cargarJugadores()
           }}
         />

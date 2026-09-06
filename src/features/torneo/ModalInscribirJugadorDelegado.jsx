@@ -1,22 +1,51 @@
-import { useState } from 'react'
-import { registrarJugador } from '../../services/torneoJugadoresService'
+import { useEffect, useState } from 'react'
+import {
+  registrarJugador,
+  actualizarJugador,
+  obtenerDatosPrivadosJugador,
+  actualizarDatosPrivadosJugador,
+} from '../../services/torneoJugadoresService'
 import { consultarDni } from '../../services/dniLookupService'
 
 /**
  * Version para el delegado (ver TabMiEquipoDelegado) de
  * ModalRegistrarJugador: mismos campos que usa el Maestro (DNI y
- * telefono incluidos, con la misma validacion RENIEC), pero sin
- * selector de equipo (siempre el suyo, fijo) y sin el chequeo de DNI
- * duplicado entre equipos - eso queda para cuando el Maestro revise el
- * plantel completo desde Jugadores, para no darle al delegado permiso
- * de leer datos privados de jugadores de otros equipos (ver
- * firestore.rules, /torneo_jugadores/privado).
+ * telefono incluidos, con la misma validacion RENIEC) y sirve tanto
+ * para inscribir como para editar (prop `jugador`), pero sin selector
+ * de equipo (siempre el suyo, fijo) y sin el chequeo de DNI duplicado
+ * entre equipos - eso queda para cuando el Maestro revise el plantel
+ * completo desde Jugadores, para no darle al delegado permiso de leer
+ * datos privados de jugadores de otros equipos (ver firestore.rules,
+ * /torneo_jugadores/privado).
  */
-export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equipoId, jugadores, onCerrar, onGuardado }) {
-  const [form, setForm] = useState({ nombre: '', numeroCamiseta: '', esJale: false, dni: '', telefono: '' })
+export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equipoId, jugadores, jugador, onCerrar, onGuardado }) {
+  const esEdicion = Boolean(jugador)
+  const [form, setForm] = useState({
+    nombre: jugador?.nombre || '',
+    numeroCamiseta: jugador?.numeroCamiseta || '',
+    esJale: jugador?.esJale || false,
+    dni: '',
+    telefono: '',
+  })
+  const [cargandoDni, setCargandoDni] = useState(esEdicion)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const [validacionDni, setValidacionDni] = useState(null) // null | 'cargando' | {data} | 'no_encontrado' | 'error_conexion'
+
+  useEffect(() => {
+    if (!esEdicion) return
+    let cancelado = false
+    obtenerDatosPrivadosJugador(jugador.id)
+      .then(({ dni, telefono }) => {
+        if (!cancelado) setForm((f) => ({ ...f, dni: dni || '', telefono: telefono || '' }))
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoDni(false)
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [esEdicion, jugador?.id])
 
   function actualizar(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }))
@@ -46,7 +75,7 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
 
     if (form.numeroCamiseta) {
       const numero = Number(form.numeroCamiseta)
-      const duplicado = jugadores.find((j) => j.numeroCamiseta === numero)
+      const duplicado = jugadores.find((j) => j.id !== jugador?.id && j.numeroCamiseta === numero)
       if (duplicado) {
         setError(`El número ${numero} ya lo tiene ${duplicado.nombre}.`)
         return
@@ -55,20 +84,25 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
 
     setEnviando(true)
     try {
-      await registrarJugador({
-        torneoId,
-        categoria,
-        equipoId,
-        nombre: form.nombre,
-        numeroCamiseta: form.numeroCamiseta,
-        esJale: form.esJale,
-        dni: form.dni,
-        telefono: form.telefono,
-      })
+      if (esEdicion) {
+        await actualizarJugador(jugador.id, { equipoId, nombre: form.nombre, numeroCamiseta: form.numeroCamiseta, esJale: form.esJale })
+        await actualizarDatosPrivadosJugador(jugador.id, { torneoId, dni: form.dni, telefono: form.telefono })
+      } else {
+        await registrarJugador({
+          torneoId,
+          categoria,
+          equipoId,
+          nombre: form.nombre,
+          numeroCamiseta: form.numeroCamiseta,
+          esJale: form.esJale,
+          dni: form.dni,
+          telefono: form.telefono,
+        })
+      }
       onGuardado()
     } catch (err) {
       console.error('[ModalInscribirJugadorDelegado]', err)
-      setError(err.message || 'No se pudo inscribir al jugador.')
+      setError(err.message || 'No se pudo guardar el jugador.')
     } finally {
       setEnviando(false)
     }
@@ -78,7 +112,7 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4">
       <div className="max-h-[92vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-paper shadow-xl sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-line bg-surface px-5 py-4">
-          <h1 className="text-lg font-semibold text-ink">Inscribir jugador</h1>
+          <h1 className="text-lg font-semibold text-ink">{esEdicion ? 'Editar jugador' : 'Inscribir jugador'}</h1>
           <button onClick={onCerrar} className="text-2xl leading-none text-ink-soft px-1">×</button>
         </div>
 
@@ -89,11 +123,12 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
               type="text"
               inputMode="numeric"
               value={form.dni}
+              disabled={cargandoDni}
               onChange={(e) => handleDni(e.target.value)}
               onBlur={handleBlurDni}
               placeholder="12345678"
               maxLength={8}
-              className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 font-mono text-ink outline-none focus-visible:border-brand"
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 font-mono text-ink outline-none focus-visible:border-brand disabled:opacity-50"
             />
             {validacionDni === 'cargando' && <p className="mt-1 text-xs text-ink-soft">Buscando…</p>}
             {validacionDni === 'no_encontrado' && (
@@ -165,7 +200,7 @@ export default function ModalInscribirJugadorDelegado({ torneoId, categoria, equ
             disabled={enviando}
             className="w-full rounded-lg bg-brand py-2.5 font-medium text-white disabled:opacity-60"
           >
-            {enviando ? 'Guardando…' : 'Inscribir jugador'}
+            {enviando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Inscribir jugador'}
           </button>
         </form>
       </div>
