@@ -14,8 +14,8 @@ import TabBases from './tabs/TabBases'
 import TabConfiguracion from './tabs/TabConfiguracion'
 
 const TABS = [
-  { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechas },
+  { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
   { id: 'posiciones', label: 'Posiciones', icon: '📊', Componente: TabPosiciones },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadores },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },
@@ -26,10 +26,10 @@ const TABS = [
 ]
 
 // Se guarda en sessionStorage (no localStorage: es solo para que un
-// refresh de la pagina no tire al Maestro de nuevo a Equipos, no hace
-// falta que sobreviva a cerrar la pestaña) para que un F5 en medio de
-// cualquier pestaña -incluido el Control de Partido dentro de
-// Fechas, ver TabFechas- deje todo tal cual estaba.
+// refresh de la pagina no tire al Maestro de nuevo a la pestaña por
+// defecto (Fechas), no hace falta que sobreviva a cerrar la pestaña)
+// para que un F5 en medio de cualquier pestaña -incluido el Control
+// de Partido dentro de Fechas, ver TabFechas- deje todo tal cual estaba.
 const TAB_STORAGE_KEY = 'campeonato_tabActiva'
 
 export default function PanelTorneo() {
@@ -37,9 +37,9 @@ export default function PanelTorneo() {
   const [tabActiva, setTabActiva] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
-      return TABS.some((t) => t.id === guardada) ? guardada : 'equipos'
+      return TABS.some((t) => t.id === guardada) ? guardada : 'fechas'
     } catch {
-      return 'equipos'
+      return 'fechas'
     }
   })
   const [linkCopiado, setLinkCopiado] = useState(false)

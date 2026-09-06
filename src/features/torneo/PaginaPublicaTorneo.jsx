@@ -14,8 +14,8 @@ import TabAmonestadosPublica from './tabsPublico/TabAmonestadosPublica'
 import TabMiEquipoDelegado from './tabsPublico/TabMiEquipoDelegado'
 
 const TABS_PUBLICAS = [
-  { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
+  { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadoresPublica },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestadosPublica },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
@@ -24,8 +24,8 @@ const TABS_PUBLICAS = [
 const TAB_MI_EQUIPO = { id: 'miequipo', label: 'Mi equipo', icon: '⭐', Componente: TabMiEquipoDelegado }
 
 // Se guarda en sessionStorage (no localStorage: solo para que un
-// refresh de pagina no vuelva siempre a Tabla de Posiciones) - mismo
-// patron que ya usa PanelTorneo.jsx del lado admin.
+// refresh de pagina no vuelva siempre a la pestaña por defecto,
+// Fechas) - mismo patron que ya usa PanelTorneo.jsx del lado admin.
 const TAB_STORAGE_KEY = 'campeonato_publico_tabActiva'
 
 // Pagina publica de UN torneo (tenant) - sin login, pensada para
@@ -39,9 +39,9 @@ export default function PaginaPublicaTorneo() {
   const [tabActiva, setTabActiva] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
-      return [...TABS_PUBLICAS, TAB_MI_EQUIPO].some((t) => t.id === guardada) ? guardada : 'posiciones'
+      return [...TABS_PUBLICAS, TAB_MI_EQUIPO].some((t) => t.id === guardada) ? guardada : 'fechas'
     } catch {
-      return 'posiciones'
+      return 'fechas'
     }
   })
   const [basesUrl, setBasesUrl] = useState(null)
