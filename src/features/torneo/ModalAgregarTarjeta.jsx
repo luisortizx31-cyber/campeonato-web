@@ -56,15 +56,17 @@ export default function ModalAgregarTarjeta({ torneoId, categoria, equipos, tarj
   // todavia no hay forma de saberlo, asi que queda vacio.
   const fechasJugadas = form.equipoId ? calcularFechasConPartidoJugado(partidos, form.equipoId) : []
 
-  // Un jugador no puede tener dos tarjetas en la misma fecha ni ir
-  // para atras: la siguiente tarjeta tiene que caer despues de la
-  // ultima que ya tiene. Cada vez que cambia el jugador elegido, si el
-  // numero de fecha cargado ya no es valido para el, se corrige solo.
+  // Un jugador no puede tener DOS tarjetas en la misma fecha (eso si
+  // seria un duplicado) - pero si puede tener tarjetas en cualquier
+  // orden entre fechas distintas, porque el partido de un equipo
+  // puede jugarse fuera de orden (se suspendio y se reprogramo para
+  // mas adelante). Cada vez que cambia el jugador elegido, si la fecha
+  // cargada ya no es valida para el (ya tiene tarjeta ahi), se corrige
+  // sola.
   const tarjetasJugador = tarjetas.filter((t) => t.jugadorId === form.jugadorId)
-  const ultimaFechaJugador = tarjetasJugador.reduce((max, t) => Math.max(max, t.fechaNumero || 0), 0)
-  const minimaFechaPermitida = ultimaFechaJugador + 1
+  const fechasConTarjeta = new Set(tarjetasJugador.map((t) => t.fechaNumero))
 
-  const opcionesFecha = fechasJugadas.filter((f) => f >= minimaFechaPermitida)
+  const opcionesFecha = fechasJugadas.filter((f) => !fechasConTarjeta.has(f))
 
   useEffect(() => {
     setForm((f) => {
@@ -212,15 +214,14 @@ export default function ModalAgregarTarjeta({ torneoId, categoria, equipos, tarj
                 >
                   <option value="">Elegir…</option>
                   {fechasJugadas.map((f) => (
-                    <option key={f} value={f} disabled={f < minimaFechaPermitida}>
-                      Fecha {f}{f < minimaFechaPermitida ? ' (ya tiene tarjeta)' : ''}
+                    <option key={f} value={f} disabled={fechasConTarjeta.has(f)}>
+                      Fecha {f}{fechasConTarjeta.has(f) ? ' (ya tiene tarjeta)' : ''}
                     </option>
                   ))}
                 </select>
-                {jugadorSeleccionado && ultimaFechaJugador > 0 ? (
+                {jugadorSeleccionado && fechasConTarjeta.size > 0 ? (
                   <p className="mt-1 text-xs text-ink-soft">
-                    Este jugador ya tiene una tarjeta en la Fecha {ultimaFechaJugador}, así que solo
-                    se pueden elegir fechas posteriores.
+                    Este jugador ya tiene tarjeta en algunas fechas (marcadas arriba) - elegí otra.
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-ink-soft">

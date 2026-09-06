@@ -20,9 +20,11 @@ import {
   OPCIONES_DIFERENCIA_WALKOVER,
   OPCIONES_MAXIMO_JUGADORES_INSCRITOS,
 } from '../../../models/torneo'
+import { listarDelegados, alternarDelegado } from '../../../services/delegadosService'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { useAuth } from '../../../context/AuthContext'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
+import ModalCrearDelegado from '../ModalCrearDelegado'
 import SeccionColegios from './SeccionColegios'
 
 // Agrupa varios ajustes relacionados bajo un mismo titulo (una sola
@@ -62,6 +64,10 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
   const [error, setError] = useState(null)
   const [guardandoCategorias, setGuardandoCategorias] = useState(false)
   const [errorCategorias, setErrorCategorias] = useState(null)
+  const [delegados, setDelegados] = useState([])
+  const [modalDelegado, setModalDelegado] = useState(false)
+  const [procesandoDelegado, setProcesandoDelegado] = useState(null)
+  const [errorDelegados, setErrorDelegados] = useState(null)
 
   async function cargar() {
     setCargando(true)
@@ -85,6 +91,37 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [torneoId, categoria])
+
+  // Los delegados son del torneo entero (no por categoria) - se cargan
+  // una sola vez aparte, no cada vez que se cambia de categoria.
+  async function cargarDelegados() {
+    try {
+      setDelegados(await listarDelegados(torneoId))
+    } catch (err) {
+      console.error('[TabConfiguracion] listarDelegados', err)
+    }
+  }
+
+  useEffect(() => {
+    cargarDelegados()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [torneoId])
+
+  async function handleAlternarDelegado(delegado) {
+    const accion = delegado.deshabilitado ? 'habilitar' : 'deshabilitar'
+    if (!confirm(`¿${accion === 'habilitar' ? 'Habilitar' : 'Deshabilitar'} el acceso de ${delegado.nombreDelegado || delegado.email}?`)) return
+    setProcesandoDelegado(delegado.id)
+    setErrorDelegados(null)
+    try {
+      await alternarDelegado(delegado.id, !delegado.deshabilitado)
+      await cargarDelegados()
+    } catch (err) {
+      console.error('[TabConfiguracion] alternarDelegado', err)
+      setErrorDelegados(err.message || `No se pudo ${accion} el delegado.`)
+    } finally {
+      setProcesandoDelegado(null)
+    }
+  }
 
   async function handleCambiarJugadoresPorEquipo(nuevaCantidad) {
     setConfig((c) => ({ ...c, jugadoresPorEquipo: Number(nuevaCantidad) }))
@@ -211,6 +248,12 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
       setGuardandoCategorias(false)
     }
   }
+
+  // Solo los delegados de un equipo de la categoria que se esta
+  // viendo ahora - mismo criterio que la seccion "Tabla de posiciones"
+  // de arriba, que tambien depende de `equipos` (ya scopeado a esta
+  // categoria).
+  const delegadosDeCategoria = delegados.filter((d) => equipos.some((eq) => eq.id === d.equipoId))
 
   return (
     <div>
@@ -345,6 +388,65 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
                 </FilaConfig>
               </SeccionConfig>
             )}
+
+            <SeccionConfig icono="👤" titulo="Delegados de equipo">
+              <div className="p-4">
+                <button
+                  type="button"
+                  onClick={() => setModalDelegado(true)}
+                  disabled={equipos.length === 0}
+                  className="w-full rounded-lg border border-line py-2 text-sm font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+                >
+                  + Nuevo delegado
+                </button>
+              </div>
+
+              {errorDelegados && (
+                <p className="px-4 pb-2 text-xs text-danger">{errorDelegados}</p>
+              )}
+
+              {delegadosDeCategoria.length === 0 ? (
+                <p className="px-4 pb-4 text-xs text-ink-soft">
+                  Todavía no hay delegados en esta categoría. Un delegado solo puede inscribir
+                  jugadores y ver la alineación de su propio equipo, desde el link público del
+                  torneo.
+                </p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {delegadosDeCategoria.map((d) => (
+                    <li key={d.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-ink">
+                            {d.nombreDelegado || 'Sin nombre'}
+                            {d.deshabilitado && (
+                              <span className="ml-1.5 rounded-full bg-danger-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-danger">
+                                DESHABILITADO
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-ink-soft">{d.equipoNombre}</p>
+                          <p className="mt-1 font-mono text-xs text-ink-soft">
+                            {d.email} · {d.password}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleAlternarDelegado(d)}
+                          disabled={procesandoDelegado === d.id}
+                          className={`shrink-0 rounded-lg border px-2.5 py-1 text-xs disabled:opacity-50 ${
+                            d.deshabilitado
+                              ? 'border-success/30 text-success'
+                              : 'border-danger/30 text-danger'
+                          }`}
+                        >
+                          {procesandoDelegado === d.id ? '…' : d.deshabilitado ? 'Habilitar' : 'Deshabilitar'}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </SeccionConfig>
           </>
         )}
       </div>
@@ -383,6 +485,18 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
       </SeccionConfig>
 
       {esSuperAdmin && <SeccionColegios />}
+
+      {modalDelegado && (
+        <ModalCrearDelegado
+          torneoId={torneoId}
+          equipos={equipos}
+          onCerrar={() => setModalDelegado(false)}
+          onGuardado={async () => {
+            setModalDelegado(false)
+            await cargarDelegados()
+          }}
+        />
+      )}
     </div>
   )
 }

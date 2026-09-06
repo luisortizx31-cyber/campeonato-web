@@ -50,6 +50,18 @@ service cloud.firestore {
       return estaAutenticado() && perfilDe(request.auth.uid).superAdmin == true;
     }
 
+    // Delegado de UN equipo puntual (ver TabConfiguracion -> Delegados
+    // de equipo / PaginaPublicaTorneo). A diferencia del Maestro, solo
+    // puede tocar los jugadores de su propio equipoId - nunca el resto
+    // del torneo.
+    function esDelegado() {
+      return estaAutenticado() && rolDe(request.auth.uid) == 'delegado';
+    }
+
+    function miEquipoIdDelegado() {
+      return perfilDe(request.auth.uid).equipoId;
+    }
+
     // ---------------------------------------------------------------
     // /usuarios - un colegio = un usuario con role:'master' y su
     // torneoId asignado. El alta (Authentication + este doc) la hace
@@ -59,7 +71,13 @@ service cloud.firestore {
     // ---------------------------------------------------------------
     match /usuarios/{uid} {
       allow get: if estaAutenticado() && request.auth.uid == uid;
-      allow create: if esSuperAdmin();
+      // El superAdmin da de alta un colegio (role:'master'). El propio
+      // Maestro puede dar de alta un delegado (role:'delegado') para
+      // SU torneo - el rol queda fijo en 'delegado' aca mismo, para que
+      // un Maestro nunca pueda crearse a si mismo (ni a nadie) como
+      // 'master' de otro torneo por este camino.
+      allow create: if esSuperAdmin()
+                    || (esMaestro() && request.resource.data.role == 'delegado' && request.resource.data.torneoId == miTorneoId());
       allow list, update, delete: if false;
     }
 
@@ -90,6 +108,26 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // /torneo_delegados/{uid}: correo, contraseña y equipo asignado de
+    // cada delegado dado de alta desde Configuracion (ver
+    // delegadosService.crearDelegado) - mismo motivo que /colegios de
+    // arriba (nunca es de lectura publica: guarda la contraseña en
+    // texto plano para que el Maestro se la pueda volver a mostrar).
+    // El propio delegado puede leer SU documento (lo usa para saber si
+    // fue deshabilitado, ver PaginaPublicaTorneo) pero nunca la lista
+    // completa ni el de otro delegado.
+    match /torneo_delegados/{uid} {
+      allow get: if (estaAutenticado() && request.auth.uid == uid) || (esMaestro() && resource.data.torneoId == miTorneoId());
+      allow list: if esMaestro() && resource.data.torneoId == miTorneoId();
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow update: if esMaestroDe(resource.data.torneoId);
+      // No se puede des-crear la cuenta de Authentication desde el
+      // cliente (requeriria Admin SDK) - "eliminar" un delegado en
+      // realidad lo deshabilita (campo `deshabilitado`, ver
+      // delegadosService.alternarDelegado), nunca se borra el doc.
+      allow delete: if false;
+    }
+
     // ---------------------------------------------------------------
     // Modulo "Campeonato" (multi-tenant). Lectura PUBLICA sin login en
     // todas estas colecciones - hay un link compartible por torneo
@@ -111,8 +149,19 @@ service cloud.firestore {
     // dato personal.
     match /torneo_jugadores/{jugadorId} {
       allow get, list: if true;
-      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
-      allow update, delete: if esMaestroDe(resource.data.torneoId);
+      // Un delegado solo puede inscribir/editar jugadores de SU propio
+      // equipo (equipoId fijo, no lo puede cambiar en un update) - el
+      // resto del plantel de otros equipos queda fuera de su alcance.
+      allow create: if (esMaestro() && request.resource.data.torneoId == miTorneoId())
+                    || (esDelegado()
+                        && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
+                        && request.resource.data.equipoId == miEquipoIdDelegado());
+      allow update: if esMaestroDe(resource.data.torneoId)
+                    || (esDelegado()
+                        && resource.data.torneoId == perfilDe(request.auth.uid).torneoId
+                        && resource.data.equipoId == miEquipoIdDelegado()
+                        && request.resource.data.equipoId == resource.data.equipoId);
+      allow delete: if esMaestroDe(resource.data.torneoId);
 
       // El doc /privado/datos es OPCIONAL (solo se crea si el jugador
       // tiene DNI o telefono cargado, ver registrarJugador) - para un

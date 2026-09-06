@@ -2,20 +2,26 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { obtenerConfigTorneo } from '../../services/torneoConfigService'
 import { obtenerTorneo } from '../../services/torneosService'
+import { login, logout } from '../../services/authService'
+import { obtenerDelegado } from '../../services/delegadosService'
+import { useAuth } from '../../context/AuthContext'
 import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
 import TabPosicionesPublica from './tabsPublico/TabPosicionesPublica'
 import TabFechasPublica from './tabsPublico/TabFechasPublica'
 import TabGoleadoresPublica from './tabsPublico/TabGoleadoresPublica'
 import TabJugadoresPublica from './tabsPublico/TabJugadoresPublica'
 import TabAmonestadosPublica from './tabsPublico/TabAmonestadosPublica'
+import TabMiEquipoDelegado from './tabsPublico/TabMiEquipoDelegado'
 
-const TABS = [
+const TABS_PUBLICAS = [
   { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadoresPublica },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestadosPublica },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
 ]
+
+const TAB_MI_EQUIPO = { id: 'miequipo', label: 'Mi equipo', icon: '⭐', Componente: TabMiEquipoDelegado }
 
 // Se guarda en sessionStorage (no localStorage: solo para que un
 // refresh de pagina no vuelva siempre a Tabla de Posiciones) - mismo
@@ -29,10 +35,11 @@ const TAB_STORAGE_KEY = 'campeonato_publico_tabActiva'
 // escribe en Firestore.
 export default function PaginaPublicaTorneo() {
   const { torneoId } = useParams()
+  const { perfil, usuarioAuth, estaAutenticado } = useAuth()
   const [tabActiva, setTabActiva] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
-      return TABS.some((t) => t.id === guardada) ? guardada : 'posiciones'
+      return [...TABS_PUBLICAS, TAB_MI_EQUIPO].some((t) => t.id === guardada) ? guardada : 'posiciones'
     } catch {
       return 'posiciones'
     }
@@ -42,6 +49,56 @@ export default function PaginaPublicaTorneo() {
   const [nombreTorneo, setNombreTorneo] = useState(null)
   const [torneoNoEncontrado, setTorneoNoEncontrado] = useState(false)
   const [torneoSuspendido, setTorneoSuspendido] = useState(false)
+  const [mostrarLoginDelegado, setMostrarLoginDelegado] = useState(false)
+  const [emailDelegado, setEmailDelegado] = useState('')
+  const [passwordDelegado, setPasswordDelegado] = useState('')
+  const [enviandoLogin, setEnviandoLogin] = useState(false)
+  const [errorLogin, setErrorLogin] = useState(null)
+
+  // Un delegado (ver TabConfiguracion -> Delegados de equipo) inicia
+  // sesion desde este mismo link publico - la misma sesion de
+  // Firebase Auth que usa el panel admin, asi que si en el mismo
+  // navegador habia un Maestro logueado en otra pestaña, esto lo
+  // reemplaza (limitacion aceptada: no vale la pena una segunda
+  // instancia de Firebase solo para esto).
+  const esMiDelegado = estaAutenticado && perfil?.role === 'delegado' && perfil?.torneoId === torneoId
+
+  const [delegadoDeshabilitado, setDelegadoDeshabilitado] = useState(false)
+  useEffect(() => {
+    if (!esMiDelegado || !usuarioAuth) {
+      setDelegadoDeshabilitado(false)
+      return
+    }
+    let cancelado = false
+    obtenerDelegado(usuarioAuth.uid)
+      .then((d) => {
+        if (!cancelado && d?.deshabilitado) {
+          setDelegadoDeshabilitado(true)
+          logout()
+        }
+      })
+      .catch((err) => console.error('[PaginaPublicaTorneo] obtenerDelegado', err))
+    return () => {
+      cancelado = true
+    }
+  }, [esMiDelegado, usuarioAuth])
+
+  async function handleLoginDelegado(e) {
+    e.preventDefault()
+    setErrorLogin(null)
+    setEnviandoLogin(true)
+    try {
+      await login(emailDelegado.trim(), passwordDelegado)
+      setMostrarLoginDelegado(false)
+      setEmailDelegado('')
+      setPasswordDelegado('')
+    } catch (err) {
+      console.error('[PaginaPublicaTorneo] handleLoginDelegado', err)
+      setErrorLogin('Correo o contraseña incorrectos.')
+    } finally {
+      setEnviandoLogin(false)
+    }
+  }
 
   useEffect(() => {
     let cancelado = false
@@ -86,6 +143,8 @@ export default function PaginaPublicaTorneo() {
     }
   }, [tabActiva])
 
+  const mostrarMiEquipo = esMiDelegado && !delegadoDeshabilitado
+  const TABS = mostrarMiEquipo ? [...TABS_PUBLICAS, TAB_MI_EQUIPO] : TABS_PUBLICAS
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
   const Componente = tab.Componente
 
@@ -113,17 +172,67 @@ export default function PaginaPublicaTorneo() {
         </p>
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-lg font-semibold text-ink">{tab.label}</h1>
-          {basesUrl && (
-            <a
-              href={basesUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft"
-            >
-              📄 Bases del torneo
-            </a>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {basesUrl && (
+              <a
+                href={basesUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft"
+              >
+                📄 Bases
+              </a>
+            )}
+            {!mostrarMiEquipo && (
+              <button
+                onClick={() => setMostrarLoginDelegado((v) => !v)}
+                className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink-soft"
+              >
+                🔑 Delegados
+              </button>
+            )}
+          </div>
         </div>
+
+        {delegadoDeshabilitado && (
+          <p className="mt-3 rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">
+            Tu acceso de delegado fue deshabilitado. Contacta al Maestro del torneo.
+          </p>
+        )}
+
+        {mostrarLoginDelegado && !mostrarMiEquipo && (
+          <form onSubmit={handleLoginDelegado} className="mt-3 rounded-xl border border-line bg-paper p-3">
+            <p className="mb-2 text-xs font-semibold text-ink-soft">Acceso de delegados de equipo</p>
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="email"
+                required
+                autoComplete="username"
+                placeholder="Correo"
+                value={emailDelegado}
+                onChange={(e) => setEmailDelegado(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus-visible:border-brand"
+              />
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder="Contraseña"
+                value={passwordDelegado}
+                onChange={(e) => setPasswordDelegado(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus-visible:border-brand"
+              />
+            </div>
+            {errorLogin && <p className="mb-2 text-xs text-danger">{errorLogin}</p>}
+            <button
+              type="submit"
+              disabled={enviandoLogin}
+              className="w-full rounded-lg bg-brand py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {enviandoLogin ? 'Ingresando…' : 'Ingresar'}
+            </button>
+          </form>
+        )}
       </header>
 
       <nav className="flex border-b border-line bg-surface overflow-x-auto">

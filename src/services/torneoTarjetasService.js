@@ -49,8 +49,13 @@ function leerUmbrales(configSnap) {
 // `fechaNumero` es la fecha del fixture en la que se gano la tarjeta
 // (null si la tarjeta no esta atada a ninguna fecha). Cuando viene con
 // fecha:
-//  - no se permite cargar una tarjeta en una fecha igual o anterior a
-//    la ultima que ya tiene ese jugador (tienen que ir en orden).
+//  - no se permite cargar DOS tarjetas de este jugador en la MISMA
+//    fecha (eso si seria un duplicado real) - pero SI se permite en
+//    cualquier orden entre fechas distintas, porque el partido de un
+//    equipo puede jugarse fuera de orden (se suspendio y se
+//    reprogramo para mas adelante, ver ModalReprogramarFecha) sin que
+//    eso le impida despues cargar una tarjeta de una fecha anterior
+//    que se termina jugando mas tarde.
 //  - si la tarjeta dispara una suspension, se calcula automaticamente
 //    desde-hasta (en fechas) para que se active y se levante sola a
 //    medida que se van completando fechas (ver
@@ -63,10 +68,11 @@ export async function registrarTarjeta({ torneoId, jugadorId, equipoId, categori
   const fechaNum = fechaNumero != null ? Number(fechaNumero) : null
 
   if (fechaNum != null) {
-    const anterioresSnap = await getDocs(query(collection(db, 'torneo_tarjetas'), where('jugadorId', '==', jugadorId)))
-    const ultimaFecha = anterioresSnap.docs.reduce((max, d) => Math.max(max, d.data().fechaNumero ?? 0), 0)
-    if (fechaNum <= ultimaFecha) {
-      throw new Error(`Este jugador ya tiene una tarjeta en la Fecha ${ultimaFecha}. Elige la Fecha ${ultimaFecha + 1} o una posterior.`)
+    const duplicadaSnap = await getDocs(
+      query(collection(db, 'torneo_tarjetas'), where('jugadorId', '==', jugadorId), where('fechaNumero', '==', fechaNum))
+    )
+    if (!duplicadaSnap.empty) {
+      throw new Error(`Este jugador ya tiene una tarjeta registrada en la Fecha ${fechaNum}.`)
     }
   }
 

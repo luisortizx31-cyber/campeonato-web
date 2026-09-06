@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'
  * barrera.
  */
 export function ProtectedRoute({ children }) {
-  const { cargando, estaAutenticado, torneoId, torneoSuspendido, esSuperAdmin } = useAuth()
+  const { cargando, estaAutenticado, role, torneoId, torneoSuspendido, esSuperAdmin } = useAuth()
 
   if (cargando) {
     return (
@@ -20,6 +20,14 @@ export function ProtectedRoute({ children }) {
 
   if (!estaAutenticado) {
     return <Navigate to="/login" replace />
+  }
+
+  // Un delegado (ver TabConfiguracion -> Delegados de equipo) inicia
+  // sesion desde el link publico de su torneo, no desde este panel -
+  // su acceso queda restringido a su propio equipo (ver
+  // PaginaPublicaTorneo), nunca al panel admin completo.
+  if (role === 'delegado') {
+    return <Navigate to={torneoId ? `/campeonato/${torneoId}` : '/login'} replace />
   }
 
   // Multi-tenant: todo usuario administrador tiene que tener un

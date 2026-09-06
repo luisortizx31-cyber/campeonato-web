@@ -4,12 +4,21 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
   getDocs,
   query,
   where,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
+
+// Un solo equipo por id - lo usa TabMiEquipoDelegado (ver
+// PaginaPublicaTorneo) para saber la categoria del equipo del
+// delegado logueado, sin tener que traer toda la categoria.
+export async function obtenerEquipo(equipoId) {
+  const snap = await getDoc(doc(db, 'torneo_equipos', equipoId))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
 
 export async function crearEquipo({ torneoId, categoria, nombre, delegadoNombre, delegadoTelefono, subdelegadoNombre, subdelegadoTelefono }) {
   const ref = await addDoc(collection(db, 'torneo_equipos'), {
