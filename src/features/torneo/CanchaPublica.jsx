@@ -123,8 +123,12 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
     (j) => partido.titularesVisitante?.includes(j.id) && !estaExpulsadoEnPartido(j.id)
   )
 
-  const abandonoLocal = minimoJugadoresCancha != null && enCanchaLocal.length < minimoJugadoresCancha
-  const abandonoVisitante = minimoJugadoresCancha != null && enCanchaVisitante.length < minimoJugadoresCancha
+  // Exige que el partido ya haya arrancado (ver ControlPartido ->
+  // "Arrancar partido") - si no, un equipo con la alineacion todavia
+  // sin armar (0 titulares, no por expulsiones) disparaba el aviso de
+  // walkover antes de tiempo.
+  const abandonoLocal = partido.horaInicio != null && minimoJugadoresCancha != null && enCanchaLocal.length < minimoJugadoresCancha
+  const abandonoVisitante = partido.horaInicio != null && minimoJugadoresCancha != null && enCanchaVisitante.length < minimoJugadoresCancha
 
   const colorLocal = colorEquipo(nombreEquipo(partido.equipoLocalId))
   const colorVisitante = colorEquipo(nombreEquipo(partido.equipoVisitanteId))

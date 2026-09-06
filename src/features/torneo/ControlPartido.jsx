@@ -565,9 +565,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   // el minimo configurado (ver Configuracion), se puede cerrar el
   // partido dandole vencedor al otro con el marcador fijo configurado
   // - ver handleFinalizarPorAbandono. null en minimoJugadoresCancha
-  // significa que la regla no aplica.
-  const abandonoLocal = minimoJugadoresCancha != null && enCanchaLocal.length < minimoJugadoresCancha
-  const abandonoVisitante = minimoJugadoresCancha != null && enCanchaVisitante.length < minimoJugadoresCancha
+  // significa que la regla no aplica. Tambien exige que el partido ya
+  // haya arrancado (ver "Arrancar partido") - si no, un equipo con la
+  // alineacion todavia sin armar (0 titulares cargados, no por
+  // expulsiones) disparaba el aviso de walkover antes de tiempo.
+  const abandonoLocal = horaInicio != null && minimoJugadoresCancha != null && enCanchaLocal.length < minimoJugadoresCancha
+  const abandonoVisitante = horaInicio != null && minimoJugadoresCancha != null && enCanchaVisitante.length < minimoJugadoresCancha
 
   // El numero de camiseta con el que se registro al jugador se puede
   // corregir directo desde la alineacion (no hace falta ir hasta
