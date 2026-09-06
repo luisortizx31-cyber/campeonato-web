@@ -178,10 +178,13 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
         ● Titulares ({listaTitulares.length})
       </h2>
       <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {listaTitulares.map((j) => (
+        {listaTitulares.map((j, i) => (
           <li key={j.id} className="flex items-center gap-2 px-3 py-2">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">
+              {i + 1}
+            </span>
             <button onClick={() => setCambio(j)} className="min-w-0 flex-1 text-left text-sm text-ink">
-              ● {j.nombre}
+              {j.nombre}
             </button>
             <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
           </li>
