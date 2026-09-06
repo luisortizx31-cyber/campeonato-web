@@ -668,6 +668,18 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setCambio(null)
   }
 
+  // A diferencia de "sacarlo sin reemplazo" (que lo deja disponible
+  // como suplente, banca), esto lo saca por completo de la
+  // convocatoria de hoy - vuelve a la seccion "Jugadores" (pool), para
+  // el caso de una lesion o que se tenga que ir del partido. Cualquier
+  // string que no sea 'titular' ni 'suplente' alcanza para que
+  // moverJugadorA lo saque de ambas listas.
+  function handleVolverAJugadores() {
+    if (!cambio) return
+    moverJugadorA(cambio.equipo, cambio.saliente.id, 'pool')
+    setCambio(null)
+  }
+
   // Check manual de "trajo el DNI hoy" (aparte del dato que ya se
   // guarda en la ficha del jugador) - ver actualizarDniConfirmado.
   async function handleCambiarDni(equipo, jugadorId, confirmado) {
@@ -1262,12 +1274,18 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 </li>
               ))}
             </ul>
-            <div className="p-4">
+            <div className="space-y-2 p-4">
               <button
                 onClick={handleSacarSinReemplazo}
                 className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
               >
-                Sacarlo sin reemplazo
+                Pasa al banco (suplente)
+              </button>
+              <button
+                onClick={handleVolverAJugadores}
+                className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
+              >
+                Sale del partido (vuelve a Jugadores)
               </button>
             </div>
           </div>
