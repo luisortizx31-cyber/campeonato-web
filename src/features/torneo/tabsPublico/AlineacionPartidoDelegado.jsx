@@ -65,6 +65,12 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
   // jugadoresLocal/Visitante en ControlPartido.
   const [jugadores, setJugadores] = useState(jugadoresIniciales)
   const [error, setError] = useState(null)
+  // Titular tocado - en vez de mandarlo directo a Suplente, abre un
+  // selector con las dos opciones (mismo criterio que "Pasa al banco" /
+  // "Sale del partido" del cambio en ControlPartido), para no perder de
+  // vista a alguien que en realidad no sigue convocado para este
+  // partido.
+  const [cambio, setCambio] = useState(null)
 
   async function mover(jugadorId, nuevoEstado) {
     const nuevosTitulares = nuevoEstado === 'titular' ? [...new Set([...titulares, jugadorId])] : titulares.filter((id) => id !== jugadorId)
@@ -107,6 +113,13 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
     }
   }
 
+  async function handleMoverDesdeCambio(nuevoEstado) {
+    if (!cambio) return
+    const jugadorId = cambio.id
+    setCambio(null)
+    await mover(jugadorId, nuevoEstado)
+  }
+
   const listaTitulares = jugadores.filter((j) => titulares.includes(j.id)).sort(porNombre)
   const listaSuplentes = jugadores.filter((j) => suplentes.includes(j.id)).sort(porNombre)
   const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
@@ -132,47 +145,9 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
       {error && <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
       <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
-        ● Titulares ({listaTitulares.length})
-      </h2>
-      <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {listaTitulares.map((j) => (
-          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
-            <button onClick={() => mover(j.id, 'suplente')} className="min-w-0 flex-1 text-left text-sm text-ink">
-              ● {j.nombre}
-            </button>
-            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
-          </li>
-        ))}
-        {listaTitulares.length === 0 && (
-          <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin titulares todavía</li>
-        )}
-      </ul>
-
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
-        ○ Suplentes ({listaSuplentes.length})
-      </h2>
-      <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {listaSuplentes.map((j) => (
-          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
-            <button
-              onClick={() => mover(j.id, 'titular')}
-              disabled={completo}
-              className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
-            >
-              ○ {j.nombre}
-            </button>
-            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
-          </li>
-        ))}
-        {listaSuplentes.length === 0 && (
-          <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin suplentes todavía</li>
-        )}
-      </ul>
-
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
         ◌ Jugadores ({listaPool.length})
       </h2>
-      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+      <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
         {listaPool.map((j) => (
           <li key={j.id} className="flex items-center gap-2 px-3 py-2.5">
             <span className="min-w-0 flex-1 truncate text-sm text-ink">{j.nombre}</span>
@@ -198,6 +173,69 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: 
           <li className="px-3 py-3 text-center text-xs text-ink-soft">Ya asignaste a todo el plantel</li>
         )}
       </ul>
+
+      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
+        ● Titulares ({listaTitulares.length})
+      </h2>
+      <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        {listaTitulares.map((j) => (
+          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
+            <button onClick={() => setCambio(j)} className="min-w-0 flex-1 text-left text-sm text-ink">
+              ● {j.nombre}
+            </button>
+            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+          </li>
+        ))}
+        {listaTitulares.length === 0 && (
+          <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin titulares todavía</li>
+        )}
+      </ul>
+
+      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
+        ○ Suplentes ({listaSuplentes.length})
+      </h2>
+      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+        {listaSuplentes.map((j) => (
+          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
+            <button
+              onClick={() => mover(j.id, 'titular')}
+              disabled={completo}
+              className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
+            >
+              ○ {j.nombre}
+            </button>
+            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+          </li>
+        ))}
+        {listaSuplentes.length === 0 && (
+          <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin suplentes todavía</li>
+        )}
+      </ul>
+
+      {cambio && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="w-full max-w-sm overflow-hidden rounded-t-3xl bg-paper shadow-xl sm:rounded-3xl">
+            <div className="flex items-center justify-between border-b border-line bg-surface px-5 py-4">
+              <h1 className="text-base font-semibold text-ink">¿Qué hacemos con {cambio.nombre}?</h1>
+              <button onClick={() => setCambio(null)} className="text-2xl leading-none text-ink-soft px-1">×</button>
+            </div>
+            <div className="space-y-2 p-4">
+              <button
+                onClick={() => handleMoverDesdeCambio('suplente')}
+                className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
+              >
+                Pasa a Suplente
+              </button>
+              <button
+                onClick={() => handleMoverDesdeCambio('pool')}
+                className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
+              >
+                Vuelve a Jugadores
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
