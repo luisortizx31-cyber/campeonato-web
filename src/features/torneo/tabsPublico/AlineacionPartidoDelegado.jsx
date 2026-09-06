@@ -1,8 +1,45 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { actualizarTitular, actualizarSuplente } from '../../../services/torneoPartidosService'
+import { actualizarNumeroCamiseta } from '../../../services/torneoJugadoresService'
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
+}
+
+// Input de numero de camiseta con estado local propio (igual que
+// FilaAlineacion en ControlPartido) - asi cada tecla que se escribe no
+// depende de un re-render del padre, y onBlur recien ahi dispara el
+// guardado. Si el guardado falla (ej. numero repetido en el equipo, o
+// el Maestro cerro las inscripciones), vuelve al valor anterior.
+function InputCamiseta({ jugador, onGuardar }) {
+  const [numero, setNumero] = useState(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
+
+  useEffect(() => {
+    setNumero(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
+  }, [jugador.numeroCamiseta])
+
+  async function guardar() {
+    const actual = jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : ''
+    if (numero.trim() === actual) return
+    const ok = await onGuardar(jugador.id, numero.trim())
+    if (!ok) setNumero(actual)
+  }
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      value={numero}
+      onChange={(e) => setNumero(e.target.value)}
+      onBlur={guardar}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.target.blur()
+      }}
+      placeholder="#"
+      title="Número de camiseta"
+      className="no-spinner w-12 shrink-0 rounded-md border border-line bg-paper px-1 py-1.5 text-center text-sm font-medium text-ink outline-none focus-visible:border-brand"
+    />
+  )
 }
 
 /**
@@ -16,13 +53,17 @@ function porNombre(a, b) {
  * ControlPartido y firestore.rules) - si la cierra en el medio, el
  * proximo intento de guardar simplemente falla con un error.
  */
-export default function AlineacionPartidoDelegado({ partido, equipo, jugadores, jugadoresPorEquipo, nombreRival, onVolver }) {
+export default function AlineacionPartidoDelegado({ partido, equipo, jugadores: jugadoresIniciales, jugadoresPorEquipo, nombreRival, onVolver }) {
   const [titulares, setTitulares] = useState(
     (equipo === 'local' ? partido.titularesLocal : partido.titularesVisitante) || []
   )
   const [suplentes, setSuplentes] = useState(
     (equipo === 'local' ? partido.suplentesLocal : partido.suplentesVisitante) || []
   )
+  // Copia local (no la prop directo) para poder reflejar al toque un
+  // numero de camiseta recien guardado - mismo motivo que
+  // jugadoresLocal/Visitante en ControlPartido.
+  const [jugadores, setJugadores] = useState(jugadoresIniciales)
   const [error, setError] = useState(null)
 
   async function mover(jugadorId, nuevoEstado) {
@@ -39,6 +80,30 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores, 
     } catch (err) {
       console.error('[AlineacionPartidoDelegado]', err)
       setError('No se pudo guardar - puede que el Maestro haya cerrado el acceso. Volvé a intentar o consultale.')
+    }
+  }
+
+  // No puede repetirse un numero dentro del propio equipo - mismo
+  // chequeo que ControlPartido, optimista con reversion si falla (ver
+  // InputCamiseta).
+  async function handleGuardarCamiseta(jugadorId, valor) {
+    const numero = valor === '' ? null : Number(valor)
+    if (numero != null) {
+      const duplicado = jugadores.find((j) => j.id !== jugadorId && j.numeroCamiseta === numero)
+      if (duplicado) {
+        setError(`El número ${numero} ya lo tiene ${duplicado.nombre}.`)
+        return false
+      }
+    }
+    setError(null)
+    setJugadores((js) => js.map((j) => (j.id === jugadorId ? { ...j, numeroCamiseta: numero } : j)))
+    try {
+      await actualizarNumeroCamiseta(jugadorId, numero)
+      return true
+    } catch (err) {
+      console.error('[AlineacionPartidoDelegado] handleGuardarCamiseta', err)
+      setError('No se pudo guardar el número de camiseta - puede que el Maestro haya cerrado las inscripciones.')
+      return false
     }
   }
 
@@ -71,10 +136,11 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores, 
       </h2>
       <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
         {listaTitulares.map((j) => (
-          <li key={j.id}>
-            <button onClick={() => mover(j.id, 'suplente')} className="w-full px-3 py-2.5 text-left text-sm text-ink">
+          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
+            <button onClick={() => mover(j.id, 'suplente')} className="min-w-0 flex-1 text-left text-sm text-ink">
               ● {j.nombre}
             </button>
+            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
           </li>
         ))}
         {listaTitulares.length === 0 && (
@@ -87,14 +153,15 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores, 
       </h2>
       <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
         {listaSuplentes.map((j) => (
-          <li key={j.id}>
+          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
             <button
               onClick={() => mover(j.id, 'titular')}
               disabled={completo}
-              className="w-full px-3 py-2.5 text-left text-sm text-ink-soft disabled:opacity-50"
+              className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
             >
               ○ {j.nombre}
             </button>
+            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
           </li>
         ))}
         {listaSuplentes.length === 0 && (
@@ -107,8 +174,9 @@ export default function AlineacionPartidoDelegado({ partido, equipo, jugadores, 
       </h2>
       <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
         {listaPool.map((j) => (
-          <li key={j.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
-            <span className="min-w-0 truncate text-sm text-ink">{j.nombre}</span>
+          <li key={j.id} className="flex items-center gap-2 px-3 py-2.5">
+            <span className="min-w-0 flex-1 truncate text-sm text-ink">{j.nombre}</span>
+            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
             <div className="flex shrink-0 gap-1.5">
               <button
                 onClick={() => mover(j.id, 'titular')}
