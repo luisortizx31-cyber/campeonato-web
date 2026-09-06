@@ -47,6 +47,18 @@ const STORAGE_PARTIDO_CONTROL_ID = 'campeonato_fechas_partidoControlId'
 // 1996".
 const STORAGE_FECHA_SELECCIONADA_PREFIJO = 'campeonato_fechas_fechaSeleccionada_'
 
+// Variable de MODULO (no de React ni sessionStorage) a proposito: un
+// refresh real de pagina recarga el modulo entero, asi que vuelve sola
+// a `false` - pero cambiar a otra pestaña del panel (Equipos,
+// Posiciones, etc) y volver a Fechas NO recarga el modulo, solo
+// desmonta/remonta este componente, asi que se mantiene en `true`.
+// Sirve para distinguir esos dos casos, que tienen que comportarse
+// distinto: un F5 vuelve a la MISMA fecha que se tenia elegida (ver
+// sessionStorage arriba), pero volver desde otra pestaña del panel
+// tiene que recalcular la fecha mas cercana a jugarse, no quedarse
+// pegado a la que se habia mirado antes de irse.
+let seEntroAFechasEnEstaCarga = false
+
 export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones }) {
   const [categoria, setCategoria] = useState(() => {
     try {
@@ -66,6 +78,11 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [errorGenerar, setErrorGenerar] = useState(null)
 
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
+    // Si ya se habia entrado a Fechas en esta misma carga de pagina
+    // (se volvio desde otra pestaña del panel), arranca en null a
+    // proposito para que cargar() calcule la fecha mas cercana a
+    // jugarse en vez de restaurar la ultima que se habia mirado.
+    if (seEntroAFechasEnEstaCarga) return null
     try {
       const guardada = sessionStorage.getItem(STORAGE_FECHA_SELECCIONADA_PREFIJO + categoria)
       return guardada != null ? Number(guardada) : null
@@ -103,6 +120,10 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   useEffect(() => {
     const id = setInterval(() => setAhora(Date.now()), 60000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    seEntroAFechasEnEstaCarga = true
   }, [])
 
   const barraFechasRef = useRef(null)
