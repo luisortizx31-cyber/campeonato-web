@@ -979,15 +979,17 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         ) : (
           <button
             onClick={abrirEdicionHorario}
-            className={`text-[11px] font-medium ${partido.fecha ? 'text-ink-soft' : 'text-brand'}`}
+            className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors ${
+              partido.fecha ? 'bg-paper text-ink-soft hover:bg-line/40' : 'bg-brand-soft text-brand hover:bg-brand/20'
+            }`}
           >
             {partido.fecha ? `🗓 ${formatearFechaProgramada(partido.fecha)}` : '+ Programar horario'}
           </button>
         )}
       </div>
 
-      <div className="space-y-1.5 px-3 pb-3 pt-1">
-        <div className="flex items-center gap-2">
+      <div className="mx-3 mb-3 mt-1.5 overflow-hidden rounded-xl border border-line/70 bg-paper">
+        <div className="flex items-center gap-2.5 px-3 py-2">
           <EscudoEquipo nombre={nombreLocal} />
           <span
             className={`min-w-0 flex-1 truncate text-sm ${
@@ -1001,13 +1003,15 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
             min="0"
             inputMode="numeric"
             value={golesLocal}
+            placeholder="–"
             onChange={(e) => onChange(partido.id, 'golesLocal', e.target.value)}
-            className={`money w-12 shrink-0 rounded-lg border py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand ${
-              jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-paper'
+            className={`money h-10 w-14 shrink-0 rounded-lg border-2 text-center text-lg font-extrabold text-ink outline-none placeholder:text-ink-soft/30 focus-visible:border-brand ${
+              jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-surface'
             }`}
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="border-t border-line/70" />
+        <div className="flex items-center gap-2.5 px-3 py-2">
           <EscudoEquipo nombre={nombreVisitante} />
           <span
             className={`min-w-0 flex-1 truncate text-sm ${
@@ -1021,9 +1025,10 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
             min="0"
             inputMode="numeric"
             value={golesVisitante}
+            placeholder="–"
             onChange={(e) => onChange(partido.id, 'golesVisitante', e.target.value)}
-            className={`money w-12 shrink-0 rounded-lg border py-1.5 text-center text-base font-bold text-ink outline-none focus-visible:border-brand ${
-              jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-paper'
+            className={`money h-10 w-14 shrink-0 rounded-lg border-2 text-center text-lg font-extrabold text-ink outline-none placeholder:text-ink-soft/30 focus-visible:border-brand ${
+              jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-surface'
             }`}
           />
         </div>
