@@ -143,8 +143,16 @@ service cloud.firestore {
     // equipo (lo usa para saber si fue deshabilitado, ver
     // PaginaPublicaTorneo) comparando el campo `uid` guardado adentro,
     // ya que el id del documento ya no es su uid.
+    //
+    // Un equipo SIN delegado todavia no tiene este doc creado - hay
+    // que contemplar `resource == null` explicitamente (mismo patron
+    // que /torneo_jugadores/privado mas abajo), si no CUALQUIER get()
+    // a un equipo sin delegado (ej. ControlPartido revisando los dos
+    // lados de un partido) revienta la regla entera al intentar leer
+    // resource.data de un documento que no existe.
     match /torneo_delegados/{equipoId} {
-      allow get: if (estaAutenticado() && resource.data.uid == request.auth.uid) || (esMaestro() && resource.data.torneoId == miTorneoId());
+      allow get: if (estaAutenticado() && (resource == null || resource.data.uid == request.auth.uid))
+                 || (esMaestro() && (resource == null || resource.data.torneoId == miTorneoId()));
       allow list: if esMaestro() && resource.data.torneoId == miTorneoId();
       allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
       allow update: if esMaestroDe(resource.data.torneoId);
