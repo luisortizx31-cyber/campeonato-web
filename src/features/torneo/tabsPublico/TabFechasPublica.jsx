@@ -259,13 +259,15 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                   </div>
 
                   {!jugado && p.fecha && (
-                    <p className="px-4 pb-1 text-[11px] font-medium text-ink-soft">
-                      🗓 {formatearFechaProgramada(p.fecha)}
+                    <p className="px-4 pb-1">
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-paper px-2 py-1 text-[11px] font-medium text-ink-soft">
+                        🗓 {formatearFechaProgramada(p.fecha)}
+                      </span>
                     </p>
                   )}
 
-                  <div className="space-y-1.5 px-4 pb-3 pt-1">
-                    <div className="flex items-center gap-2">
+                  <div className="mx-4 mb-3 mt-1.5 overflow-hidden rounded-xl border border-line/70 bg-paper">
+                    <div className="flex items-center gap-2.5 px-3 py-2">
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${colorLocal.bg} ${colorLocal.text}`}
                       >
@@ -279,14 +281,15 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                         {nombreLocal}
                       </span>
                       <span
-                        className={`money w-10 shrink-0 rounded-lg py-1.5 text-center text-base font-bold text-ink ${
-                          jugado ? 'bg-success-soft' : enVivo ? 'bg-danger-soft' : 'bg-paper text-ink-soft'
+                        className={`money flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border-2 text-center text-lg font-extrabold text-ink ${
+                          jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-surface text-ink-soft/30'
                         }`}
                       >
                         {jugado ? p.golesLocal : enVivo ? p.golesLocalEnVivo ?? 0 : '–'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="border-t border-line/70" />
+                    <div className="flex items-center gap-2.5 px-3 py-2">
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${colorVisitante.bg} ${colorVisitante.text}`}
                       >
@@ -300,8 +303,8 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                         {nombreVisitante}
                       </span>
                       <span
-                        className={`money w-10 shrink-0 rounded-lg py-1.5 text-center text-base font-bold text-ink ${
-                          jugado ? 'bg-success-soft' : enVivo ? 'bg-danger-soft' : 'bg-paper text-ink-soft'
+                        className={`money flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border-2 text-center text-lg font-extrabold text-ink ${
+                          jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-surface text-ink-soft/30'
                         }`}
                       >
                         {jugado ? p.golesVisitante : enVivo ? p.golesVisitanteEnVivo ?? 0 : '–'}
