@@ -12,6 +12,7 @@ import {
   cambiarFechaDePartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
+import { suscribirSolicitudesPendientesPorCategoria } from '../../../services/torneoSolicitudesCambioService'
 import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
@@ -73,6 +74,12 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const [partidos, setPartidos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  // Pedidos de cambio de alineacion de los delegados (ver "Arrancar
+  // partido" en ControlPartido) - en vivo para toda la categoria, no
+  // solo el partido que se este mirando en ese momento, para que el
+  // aviso aparezca sin importar en que pantalla de Fechas este el
+  // Maestro ni que tenga que refrescar.
+  const [solicitudesPendientes, setSolicitudesPendientes] = useState([])
 
   const [idaYVuelta, setIdaYVuelta] = useState(false)
   const [generando, setGenerando] = useState(false)
@@ -247,6 +254,11 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
 
   useEffect(() => {
     cargar()
+  }, [torneoId, categoria])
+
+  useEffect(() => {
+    const desuscribir = suscribirSolicitudesPendientesPorCategoria(torneoId, categoria, setSolicitudesPendientes)
+    return desuscribir
   }, [torneoId, categoria])
 
   async function handleGenerar() {
@@ -595,6 +607,34 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   return (
     <div>
       <SelectorCategoria categorias={categoriasActivas} activa={categoria} onCambiar={setCategoria} />
+
+      {solicitudesPendientes.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {solicitudesPendientes.map((s) => {
+            const p = partidos.find((pp) => pp.id === s.partidoId)
+            const rivalId = p && (p.equipoLocalId === s.equipoId ? p.equipoVisitanteId : p.equipoLocalId)
+            return (
+              <div
+                key={s.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning-soft px-3 py-2.5"
+              >
+                <p className="min-w-0 text-xs font-medium text-warning">
+                  ⚠ El delegado de {nombreEquipo(s.equipoId)} pidió un cambio
+                  {p ? ` - Fecha ${p.fechaNumero} vs ${nombreEquipo(rivalId)}` : ''}
+                </p>
+                {p && (
+                  <button
+                    onClick={() => handleAbrirControl(p)}
+                    className="shrink-0 rounded-lg bg-warning px-3 py-1.5 text-xs font-medium text-white"
+                  >
+                    Revisar
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {cargando && <p className="text-sm text-ink-soft">Cargando…</p>}
       {error && <p className="text-sm text-danger">{error}</p>}

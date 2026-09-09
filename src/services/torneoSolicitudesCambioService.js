@@ -35,6 +35,20 @@ export function suscribirSolicitudesPendientesPorPartido(partidoId, onCambio) {
   return onSnapshot(q, (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
 }
 
+// La usa TabFechas para avisar de un pedido pendiente aunque el
+// Maestro no tenga abierto ESE partido puntual en Control de Partido -
+// sin esto, el aviso de ControlPartido solo se ve si por casualidad ya
+// se esta mirando el partido correcto.
+export function suscribirSolicitudesPendientesPorCategoria(torneoId, categoria, onCambio) {
+  const q = query(
+    collection(db, 'torneo_solicitudes_cambio'),
+    where('torneoId', '==', torneoId),
+    where('categoria', '==', categoria),
+    where('estado', '==', 'pendiente')
+  )
+  return onSnapshot(q, (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+}
+
 // La usa AlineacionPartidoDelegado para que el delegado vea si su
 // pedido ya fue aprobado o rechazado, sin tener que preguntarle al
 // Maestro.
