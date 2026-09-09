@@ -16,7 +16,7 @@ function porNombre(a, b) {
 // depende de un re-render del padre, y onBlur recien ahi dispara el
 // guardado. Si el guardado falla (ej. numero repetido en el equipo, o
 // el Maestro cerro las inscripciones), vuelve al valor anterior.
-function InputCamiseta({ jugador, onGuardar }) {
+function InputCamiseta({ jugador, onGuardar, disabled }) {
   const [numero, setNumero] = useState(jugador.numeroCamiseta != null ? String(jugador.numeroCamiseta) : '')
 
   useEffect(() => {
@@ -40,9 +40,10 @@ function InputCamiseta({ jugador, onGuardar }) {
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.target.blur()
       }}
+      disabled={disabled}
       placeholder="#"
       title="Número de camiseta"
-      className="no-spinner w-12 shrink-0 rounded-md border border-line bg-paper px-1 py-1.5 text-center text-sm font-medium text-ink outline-none focus-visible:border-brand"
+      className="no-spinner w-12 shrink-0 rounded-md border border-line bg-paper px-1 py-1.5 text-center text-sm font-medium text-ink outline-none focus-visible:border-brand disabled:opacity-60"
     />
   )
 }
@@ -128,6 +129,11 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   }, [rivalId])
 
   const enVivo = partido.horaInicio != null && partido.golesLocal == null
+  // Terminado el partido, la alineacion queda como historial - ya no
+  // se puede tocar nada, ni siquiera con la via "directa" de antes de
+  // arrancar (que si no, volveria a estar disponible sola apenas
+  // termina, porque en ese momento enVivo pasa a false).
+  const finalizado = partido.golesLocal != null
   const solicitudesPendientes = solicitudes.filter((s) => s.estado === 'pendiente')
   const solicitudesResueltas = solicitudes.filter(
     (s) => s.estado !== 'pendiente' && !s.vistoPorDelegado && !solicitudesDescartadas.includes(s.id)
@@ -141,6 +147,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   }
 
   async function mover(jugadorId, nuevoEstado) {
+    if (finalizado) return
     const nuevosTitulares = nuevoEstado === 'titular' ? [...new Set([...titulares, jugadorId])] : titulares.filter((id) => id !== jugadorId)
     const nuevosSuplentes = nuevoEstado === 'suplente' ? [...new Set([...suplentes, jugadorId])] : suplentes.filter((id) => id !== jugadorId)
     setTitulares(nuevosTitulares)
@@ -161,6 +168,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   // chequeo que ControlPartido, optimista con reversion si falla (ver
   // InputCamiseta).
   async function handleGuardarCamiseta(jugadorId, valor) {
+    if (finalizado) return false
     const numero = valor === '' ? null : Number(valor)
     if (numero != null) {
       const duplicado = jugadores.find((j) => j.id !== jugadorId && j.numeroCamiseta != null && Number(j.numeroCamiseta) === numero)
@@ -196,7 +204,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   // quedaba sin ninguna forma de sacar a un titular una vez en vivo si
   // no habia suplentes, a diferencia del Maestro que siempre puede.
   async function handlePedirCambio(jugadorEntraId) {
-    if (!cambio) return
+    if (!cambio || finalizado) return
     // Ninguno de los dos jugadores del pedido puede estar YA metido en
     // otro pedido pendiente - sin esto, se podia mandar "entra LUIS"
     // varias veces para reemplazar a titulares distintos, y LUIS solo
@@ -289,6 +297,12 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
         </p>
       )}
 
+      {finalizado && (
+        <p className="mb-3 rounded-lg bg-ink-soft/10 px-3 py-2 text-xs font-medium text-ink-soft">
+          🏁 Partido finalizado - esto queda como historial, ya no se pueden hacer más cambios.
+        </p>
+      )}
+
       {solicitudesResueltas.length > 0 && (
         <div className="mb-3 space-y-1.5">
           {solicitudesResueltas.map((s) => (
@@ -337,18 +351,19 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             {listaPool.map((j) => (
               <li key={j.id} className="flex items-center gap-2 px-3 py-2.5">
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{j.nombre}</span>
-                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} disabled={finalizado} />
                 <div className="flex shrink-0 gap-1.5">
                   <button
                     onClick={() => mover(j.id, 'titular')}
-                    disabled={completo}
+                    disabled={completo || finalizado}
                     className="rounded-md border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Titular
                   </button>
                   <button
                     onClick={() => mover(j.id, 'suplente')}
-                    className="rounded-md border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft"
+                    disabled={finalizado}
+                    className="rounded-md border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Suplente
                   </button>
@@ -369,10 +384,14 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">
                   {i + 1}
                 </span>
-                <button onClick={() => setCambio(j)} className="min-w-0 flex-1 text-left text-sm text-ink">
+                <button
+                  onClick={() => setCambio(j)}
+                  disabled={finalizado}
+                  className="min-w-0 flex-1 text-left text-sm text-ink disabled:opacity-70"
+                >
                   {j.nombre}
                 </button>
-                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} disabled={finalizado} />
               </li>
             ))}
             {listaTitulares.length === 0 && (
@@ -388,12 +407,12 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
               <li key={j.id} className="flex items-center gap-2 px-3 py-2">
                 <button
                   onClick={() => mover(j.id, 'titular')}
-                  disabled={completo}
+                  disabled={completo || finalizado}
                   className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
                 >
                   ○ {j.nombre}
                 </button>
-                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} disabled={finalizado} />
               </li>
             ))}
             {listaSuplentes.length === 0 && (
@@ -414,7 +433,11 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             <ul className="divide-y-2 divide-ink-soft/20">
               {listaTitulares.map((j) => (
                 <li key={j.id} className="px-2.5 py-2">
-                  <button onClick={() => setCambio(j)} className="flex w-full items-center gap-1.5 text-left text-xs">
+                  <button
+                    onClick={() => setCambio(j)}
+                    disabled={finalizado}
+                    className="flex w-full items-center gap-1.5 text-left text-xs disabled:opacity-70"
+                  >
                     {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
                     <span className="min-w-0 flex-1 truncate font-medium text-ink">{j.nombre}</span>
                   </button>
