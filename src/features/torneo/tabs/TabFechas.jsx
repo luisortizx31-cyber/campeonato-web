@@ -9,6 +9,7 @@ import {
   reiniciarPartidoCompleto,
   actualizarFechaProgramada,
   eliminarPartido,
+  cambiarFechaDePartido,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
@@ -108,6 +109,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
 
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
   const [reiniciandoPartido, setReiniciandoPartido] = useState(null)
+  const [cambiandoFechaPartido, setCambiandoFechaPartido] = useState(null)
 
   const [partidoControl, setPartidoControl] = useState(null)
   const restauroPartidoControl = useRef(false)
@@ -390,6 +392,23 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
       setErrorGuardar(err.message || 'No se pudo eliminar el partido.')
     } finally {
       setEliminandoPartido(null)
+    }
+  }
+
+  // Mueve un partido puntual a otra Fecha (ver icono 📅 en la fila) -
+  // para el caso de una fecha que se posterga y termina jugandose
+  // junto con la siguiente.
+  async function handleCambiarFechaPartido(partido, nuevaFecha) {
+    setCambiandoFechaPartido(partido.id)
+    setErrorGuardar(null)
+    try {
+      await cambiarFechaDePartido(torneoId, categoria, partido.id, nuevaFecha, partido.equipoLocalId, partido.equipoVisitanteId)
+      await cargar()
+    } catch (err) {
+      console.error('[TabFechas]', err)
+      setErrorGuardar(err.message || 'No se pudo cambiar la fecha del partido.')
+    } finally {
+      setCambiandoFechaPartido(null)
     }
   }
 
@@ -748,6 +767,9 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={handleAbrirControl}
                     bloqueadoPor={partidoBloqueadoPor(p)}
+                    fechasDisponibles={fechasDisponibles}
+                    onCambiarFecha={handleCambiarFechaPartido}
+                    cambiandoFecha={cambiandoFechaPartido === p.id}
                   />
                 ))}
               </ul>
@@ -779,6 +801,9 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={handleAbrirControl}
                     bloqueadoPor={partidoBloqueadoPor(p)}
+                    fechasDisponibles={fechasDisponibles}
+                    onCambiarFecha={handleCambiarFechaPartido}
+                    cambiandoFecha={cambiandoFechaPartido === p.id}
                   />
                 ))}
               </ul>
@@ -862,10 +887,34 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl, bloqueadoPor }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl, bloqueadoPor, fechasDisponibles, onCambiarFecha, cambiandoFecha }) {
   const [editandoHorario, setEditandoHorario] = useState(false)
   const [horarioDraft, setHorarioDraft] = useState(null) // Date | null
   const [guardandoHorario, setGuardandoHorario] = useState(false)
+  const [editandoFecha, setEditandoFecha] = useState(false)
+  const [fechaDraft, setFechaDraft] = useState(partido.fechaNumero)
+
+  // Fechas para elegir en el selector: las que ya existen en el
+  // fixture mas una nueva al final (por si se pospone para una fecha
+  // que todavia no se creo, ej. "Fecha 11" si el fixture llega hasta
+  // la 10).
+  const opcionesFecha = fechasDisponibles
+    ? [...new Set([...fechasDisponibles, Math.max(0, ...fechasDisponibles) + 1])].sort((a, b) => a - b)
+    : []
+
+  function abrirCambioFecha() {
+    setFechaDraft(partido.fechaNumero)
+    setEditandoFecha(true)
+  }
+
+  async function confirmarCambioFecha() {
+    if (Number(fechaDraft) === partido.fechaNumero) {
+      setEditandoFecha(false)
+      return
+    }
+    await onCambiarFecha(partido, fechaDraft)
+    setEditandoFecha(false)
+  }
 
   function abrirEdicionHorario() {
     setHorarioDraft(partido.fecha ? partido.fecha.toDate() : null)
@@ -944,6 +993,16 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
             📋 Control
           </button>
         )}
+        {onCambiarFecha && (
+          <button
+            onClick={abrirCambioFecha}
+            disabled={cambiandoFecha}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm text-ink-soft/60 transition-colors hover:bg-brand-soft hover:text-brand disabled:opacity-50"
+            title="Cambiar este partido de fecha"
+          >
+            {cambiandoFecha ? '…' : '🔀'}
+          </button>
+        )}
         <button
           onClick={() => onReiniciar(partido)}
           disabled={reiniciando}
@@ -961,6 +1020,36 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
           {eliminando ? '…' : '×'}
         </button>
       </div>
+
+      {editandoFecha && (
+        <div className="flex items-center gap-1.5 px-3 pb-2">
+          <span className="text-[11px] text-ink-soft">Mover a</span>
+          <select
+            value={fechaDraft}
+            onChange={(e) => setFechaDraft(Number(e.target.value))}
+            disabled={cambiandoFecha}
+            className="rounded-lg border border-line bg-paper px-2 py-1 text-xs text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+          >
+            {opcionesFecha.map((f) => (
+              <option key={f} value={f}>Fecha {f}</option>
+            ))}
+          </select>
+          <button
+            onClick={confirmarCambioFecha}
+            disabled={cambiandoFecha}
+            className="shrink-0 rounded-lg bg-brand px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
+          >
+            {cambiandoFecha ? '…' : 'Confirmar'}
+          </button>
+          <button
+            onClick={() => setEditandoFecha(false)}
+            disabled={cambiandoFecha}
+            className="shrink-0 rounded-lg border border-line px-2 py-1 text-[11px] text-ink-soft disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
 
       <div className="px-3 pb-1">
         {editandoHorario ? (

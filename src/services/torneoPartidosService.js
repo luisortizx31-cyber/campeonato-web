@@ -154,6 +154,39 @@ export async function agregarPartidoManual({ torneoId, categoria, fechaNumero, e
   return ref.id
 }
 
+// Mueve UN partido puntual a otra Fecha (jornada) - para el caso de
+// una fecha que se posterga y termina jugandose junto con la
+// siguiente, sin tener que borrar y volver a cargar el cruce a mano.
+// A diferencia de reprogramarFecha (que solo cambia el dia/hora
+// programado y deja el fechaNumero intacto), esto cambia el numero de
+// Fecha en si - el dia/hora programado, si tenia uno, se mantiene tal
+// cual (el Maestro lo corrige aparte si hace falta). Mismo chequeo de
+// "equipo ya ocupado en esa fecha" que agregarPartidoManual.
+export async function cambiarFechaDePartido(torneoId, categoria, partidoId, nuevoFechaNumero, equipoLocalId, equipoVisitanteId) {
+  const fechaNum = Number(nuevoFechaNumero)
+  const existentesSnap = await getDocs(
+    query(
+      collection(db, 'torneo_partidos'),
+      where('torneoId', '==', torneoId),
+      where('categoria', '==', categoria),
+      where('fechaNumero', '==', fechaNum)
+    )
+  )
+  const ocupados = new Set(
+    existentesSnap.docs
+      .filter((d) => d.id !== partidoId)
+      .flatMap((d) => [d.data().equipoLocalId, d.data().equipoVisitanteId])
+  )
+  if (ocupados.has(equipoLocalId) || ocupados.has(equipoVisitanteId)) {
+    throw new Error('Uno de los dos equipos ya tiene un partido programado en esa fecha.')
+  }
+
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    fechaNumero: fechaNum,
+    jornada: `Fecha ${fechaNum}`,
+  })
+}
+
 // Carga (o corrige) el resultado de un partido del fixture. No toca
 // fecha/jornada - esos ya vienen fijados por generarFixture o
 // agregarPartidoManual. Deja asentada la hora real de finalizacion
