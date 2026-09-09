@@ -106,9 +106,19 @@ export default function TabMiEquipoDelegado() {
     return equipos.find((e) => e.id === id)?.nombre || '—'
   }
 
+  // Ademas de mientras el Maestro tenga el toggle manual de "habilitar
+  // alineacion" activo, esta pestaña tiene que seguir visible sola
+  // mientras el partido este EN VIVO - aunque el Maestro haya cerrado
+  // ese toggle (ej. justo antes de arrancar), el delegado sigue
+  // necesitando ver/pedir cambios; una vez arrancado ya no se edita
+  // libre, todo pasa por la solicitud al Maestro (ver
+  // AlineacionPartidoDelegado), asi que no hace falta el toggle para
+  // proteger nada.
   const partidosConAlineacionAbierta = partidos.filter((p) => {
     const esLocal = p.equipoLocalId === perfil.equipoId
-    return esLocal ? p.alineacionAbiertaLocal : p.alineacionAbiertaVisitante
+    const abierta = esLocal ? p.alineacionAbiertaLocal : p.alineacionAbiertaVisitante
+    const enVivo = p.horaInicio != null && p.golesLocal == null
+    return abierta || enVivo
   })
 
   // La pestaña "Alineación" solo existe mientras el Maestro tenga
@@ -263,16 +273,21 @@ export default function TabMiEquipoDelegado() {
           {partidosConAlineacionAbierta.map((p) => {
             const esLocal = p.equipoLocalId === perfil.equipoId
             const rivalId = esLocal ? p.equipoVisitanteId : p.equipoLocalId
+            const enVivo = p.horaInicio != null && p.golesLocal == null
             return (
               <li key={p.id}>
                 <button
                   onClick={() => setPartidoAbiertoId(p.id)}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-success/30 bg-success-soft px-4 py-3 text-left"
+                  className={`flex w-full items-center justify-between gap-2 rounded-xl border px-4 py-3 text-left ${
+                    enVivo ? 'border-danger/30 bg-danger-soft' : 'border-success/30 bg-success-soft'
+                  }`}
                 >
-                  <span className="min-w-0 truncate text-sm font-semibold text-success">
-                    🔓 Fecha {p.fechaNumero} vs {nombreEquipo(rivalId)} — Armar alineación
+                  <span className={`min-w-0 truncate text-sm font-semibold ${enVivo ? 'text-danger' : 'text-success'}`}>
+                    {enVivo
+                      ? `🔴 Fecha ${p.fechaNumero} vs ${nombreEquipo(rivalId)} — En vivo, pedir cambios`
+                      : `🔓 Fecha ${p.fechaNumero} vs ${nombreEquipo(rivalId)} — Armar alineación`}
                   </span>
-                  <span className="shrink-0 text-success">›</span>
+                  <span className={`shrink-0 ${enVivo ? 'text-danger' : 'text-success'}`}>›</span>
                 </button>
               </li>
             )
