@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { listarJugadoresPorEquipo, eliminarJugador } from '../../../services/torneoJugadoresService'
 import { obtenerEquipo, listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
@@ -6,6 +6,13 @@ import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosS
 import { obtenerConfigCategoria } from '../../../services/torneoConfigService'
 import ModalInscribirJugadorDelegado from '../ModalInscribirJugadorDelegado'
 import AlineacionPartidoDelegado from './AlineacionPartidoDelegado'
+
+// sessionStorage (no localStorage, es solo navegacion efimera dentro
+// de la sesion) para que un refresh de pagina mientras se esta armando
+// la alineacion de un partido puntual no tire al delegado de vuelta a
+// la lista de Jugadores (mismo patron que TabFechas/partidoControl,
+// del lado del Maestro).
+const STORAGE_PARTIDO_ABIERTO_ID = 'campeonato_miequipo_partidoAbiertoId'
 
 /**
  * Vista del delegado logueado desde la pagina publica (ver
@@ -26,6 +33,8 @@ export default function TabMiEquipoDelegado() {
   const [error, setError] = useState(null)
   const [modal, setModal] = useState(null) // null | 'nuevo' | jugador a editar
   const [partidoAbiertoId, setPartidoAbiertoId] = useState(null)
+  const [partidosListos, setPartidosListos] = useState(false)
+  const restauroPartidoAbierto = useRef(false)
   const [subTab, setSubTab] = useState('jugadores')
   const [jugadoresAbierto, setJugadoresAbierto] = useState(true)
   const [inscripcionesCerradas, setInscripcionesCerradas] = useState(false)
@@ -98,9 +107,43 @@ export default function TabMiEquipoDelegado() {
     if (!equipo) return
     const desuscribir = suscribirPartidosPorCategoria(perfil.torneoId, equipo.categoria, (ps) => {
       setPartidos(ps.filter((p) => p.equipoLocalId === perfil.equipoId || p.equipoVisitanteId === perfil.equipoId))
+      setPartidosListos(true)
     })
     return desuscribir
   }, [perfil.torneoId, perfil.equipoId, equipo])
+
+  // OJO: este efecto no puede escribir en sessionStorage hasta que se
+  // haya intentado restaurar (ver mas abajo) - partidoAbiertoId arranca
+  // en null en el primer render, asi que si escribiera desde el
+  // principio borraria el id guardado ANTES de que el efecto de
+  // restauracion llegara a leerlo.
+  useEffect(() => {
+    if (!restauroPartidoAbierto.current) return
+    try {
+      if (partidoAbiertoId) sessionStorage.setItem(STORAGE_PARTIDO_ABIERTO_ID, partidoAbiertoId)
+      else sessionStorage.removeItem(STORAGE_PARTIDO_ABIERTO_ID)
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no persiste.
+    }
+  }, [partidoAbiertoId])
+
+  // Una sola vez, apenas la suscripcion de partidos entrega su primera
+  // tanda: si el delegado tenia un partido abierto antes del refresh,
+  // lo reabre con el partido ya actualizado (no con una copia vieja).
+  useEffect(() => {
+    if (restauroPartidoAbierto.current || !partidosListos) return
+    try {
+      const idGuardado = sessionStorage.getItem(STORAGE_PARTIDO_ABIERTO_ID)
+      if (idGuardado) {
+        const encontrado = partidos.find((p) => p.id === idGuardado)
+        if (encontrado) setPartidoAbiertoId(idGuardado)
+      }
+    } catch {
+      // Sin sessionStorage (modo privado, etc) simplemente no restaura.
+    } finally {
+      restauroPartidoAbierto.current = true
+    }
+  }, [partidosListos, partidos])
 
   function nombreEquipo(id) {
     return equipos.find((e) => e.id === id)?.nombre || '—'
