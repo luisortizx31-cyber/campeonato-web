@@ -83,6 +83,10 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   const [cambio, setCambio] = useState(null)
   const [solicitudes, setSolicitudes] = useState([])
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false)
+  // Pedidos ya resueltos (aprobados/rechazados) que el delegado ya vio
+  // y cerro con la "x" - sin esto, cada pedido viejo de este partido
+  // quedaria mostrando su aviso para siempre.
+  const [solicitudesDescartadas, setSolicitudesDescartadas] = useState([])
 
   // El partido puede seguir actualizandose (ver TabMiEquipoDelegado,
   // suscrito en vivo) mientras esta pantalla queda abierta - sin esto,
@@ -100,6 +104,9 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
 
   const enVivo = partido.horaInicio != null && partido.golesLocal == null
   const solicitudesPendientes = solicitudes.filter((s) => s.estado === 'pendiente')
+  const solicitudesResueltas = solicitudes.filter(
+    (s) => s.estado !== 'pendiente' && !solicitudesDescartadas.includes(s.id)
+  )
 
   async function mover(jugadorId, nuevoEstado) {
     const nuevosTitulares = nuevoEstado === 'titular' ? [...new Set([...titulares, jugadorId])] : titulares.filter((id) => id !== jugadorId)
@@ -205,6 +212,30 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
         <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
           🔴 El partido ya arrancó - para sacar a un titular ahora tenés que pedirle el cambio al Maestro.
         </p>
+      )}
+
+      {solicitudesResueltas.length > 0 && (
+        <div className="mb-3 space-y-1.5">
+          {solicitudesResueltas.map((s) => (
+            <div
+              key={s.id}
+              className={`flex items-start justify-between gap-2 rounded-lg px-3 py-2 text-xs font-medium ${
+                s.estado === 'aprobada' ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger'
+              }`}
+            >
+              <span>
+                {s.estado === 'aprobada' ? '✅ El Maestro aprobó tu pedido' : '❌ El Maestro rechazó tu pedido'}: sale{' '}
+                {nombreJugador(s.jugadorSaleId)}, entra {nombreJugador(s.jugadorEntraId)}.
+              </span>
+              <button
+                onClick={() => setSolicitudesDescartadas((d) => [...d, s.id])}
+                className="shrink-0 text-sm leading-none opacity-70"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {solicitudesPendientes.length > 0 && (
