@@ -366,5 +366,15 @@ service cloud.firestore {
       allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
       allow delete: if esMaestroDe(resource.data.torneoId);
     }
+
+    // Estado del cuadro eliminatorio (liguilla) de una categoria - un
+    // solo doc por torneo+categoria (id "{torneoId}_{categoria}", mismo
+    // patron que torneo_config) con el snapshot de clasificados/bye
+    // congelado al iniciar la Ronda 1 (ver torneoLiguillaService.js).
+    match /torneo_liguilla/{docId} {
+      allow get, list: if true;
+      allow create, update: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow delete: if esMaestroDe(resource.data.torneoId);
+    }
   }
 }

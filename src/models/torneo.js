@@ -98,3 +98,9 @@ export const OPCIONES_DIFERENCIA_WALKOVER = [1, 2, 3, 4, 5]
 // null (o "Sin límite" en Configuracion) significa que no hay tope,
 // que es el comportamiento por defecto.
 export const OPCIONES_MAXIMO_JUGADORES_INSCRITOS = [10, 12, 15, 18, 20, 25, 30]
+
+// Marca un /torneo_partidos como parte del cuadro eliminatorio (ver
+// TabLiguilla, liguillaTorneo.js/torneoLiguillaService.js) en vez de
+// la temporada regular. Ausente = temporada regular, sin cambios en
+// los partidos existentes.
+export const FASE_LIGUILLA = 'liguilla'

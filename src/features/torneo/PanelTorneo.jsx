@@ -6,6 +6,7 @@ import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
 import TabEquipos from './tabs/TabEquipos'
 import TabFechas from './tabs/TabFechas'
 import TabPosiciones from './tabs/TabPosiciones'
+import TabLiguilla from './tabs/TabLiguilla'
 import TabGoleadores from './tabs/TabGoleadores'
 import TabJugadores from './tabs/TabJugadores'
 import TabAmonestados from './tabs/TabAmonestados'
@@ -16,6 +17,7 @@ import TabConfiguracion from './tabs/TabConfiguracion'
 const TABS = [
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechas },
   { id: 'posiciones', label: 'Posiciones', icon: '📊', Componente: TabPosiciones },
+  { id: 'liguilla', label: 'Liguilla', icon: '🏆', Componente: TabLiguilla },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadores },
   { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestados },
   { id: 'reclamos', label: 'Reclamos', icon: '📢', Componente: TabReclamos },
