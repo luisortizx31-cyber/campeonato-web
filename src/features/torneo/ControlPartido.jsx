@@ -491,7 +491,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   }, [partido.id])
 
   useEffect(() => {
-    const desuscribir = suscribirSolicitudesPendientesPorPartido(partido.id, setSolicitudesPendientes)
+    const desuscribir = suscribirSolicitudesPendientesPorPartido(partido.id, setSolicitudesPendientes, (err) =>
+      setError(`No se pudo escuchar los pedidos de cambio en vivo (${err.code || err.message}) - refrescá la página.`)
+    )
     return desuscribir
   }, [partido.id])
 

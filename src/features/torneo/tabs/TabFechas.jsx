@@ -257,7 +257,9 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   }, [torneoId, categoria])
 
   useEffect(() => {
-    const desuscribir = suscribirSolicitudesPendientesPorCategoria(torneoId, categoria, setSolicitudesPendientes)
+    const desuscribir = suscribirSolicitudesPendientesPorCategoria(torneoId, categoria, setSolicitudesPendientes, (err) =>
+      console.error('[TabFechas] suscribirSolicitudesPendientesPorCategoria', err)
+    )
     return desuscribir
   }, [torneoId, categoria])
 

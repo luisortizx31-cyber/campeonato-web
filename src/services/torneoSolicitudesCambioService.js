@@ -26,39 +26,63 @@ export async function crearSolicitudCambio({ torneoId, categoria, partidoId, equ
 
 // La usa ControlPartido para mostrar el aviso de "solicitud pendiente"
 // apenas aparece una, sin que el Maestro tenga que refrescar.
-export function suscribirSolicitudesPendientesPorPartido(partidoId, onCambio) {
+// `onError` es opcional - sin el, un permission-denied (o cualquier
+// otro error) en el listener queda mudo: el aviso se congela con datos
+// viejos sin ningun indicio de que algo se rompio.
+export function suscribirSolicitudesPendientesPorPartido(partidoId, onCambio, onError) {
   const q = query(
     collection(db, 'torneo_solicitudes_cambio'),
     where('partidoId', '==', partidoId),
     where('estado', '==', 'pendiente')
   )
-  return onSnapshot(q, (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  return onSnapshot(
+    q,
+    (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('[suscribirSolicitudesPendientesPorPartido]', err)
+      onError?.(err)
+    }
+  )
 }
 
 // La usa TabFechas para avisar de un pedido pendiente aunque el
 // Maestro no tenga abierto ESE partido puntual en Control de Partido -
 // sin esto, el aviso de ControlPartido solo se ve si por casualidad ya
 // se esta mirando el partido correcto.
-export function suscribirSolicitudesPendientesPorCategoria(torneoId, categoria, onCambio) {
+export function suscribirSolicitudesPendientesPorCategoria(torneoId, categoria, onCambio, onError) {
   const q = query(
     collection(db, 'torneo_solicitudes_cambio'),
     where('torneoId', '==', torneoId),
     where('categoria', '==', categoria),
     where('estado', '==', 'pendiente')
   )
-  return onSnapshot(q, (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  return onSnapshot(
+    q,
+    (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('[suscribirSolicitudesPendientesPorCategoria]', err)
+      onError?.(err)
+    }
+  )
 }
 
 // La usa AlineacionPartidoDelegado para que el delegado vea si su
 // pedido ya fue aprobado o rechazado, sin tener que preguntarle al
 // Maestro.
-export function suscribirSolicitudesPorPartidoYEquipo(partidoId, equipoId, onCambio) {
+export function suscribirSolicitudesPorPartidoYEquipo(partidoId, equipoId, onCambio, onError) {
   const q = query(
     collection(db, 'torneo_solicitudes_cambio'),
     where('partidoId', '==', partidoId),
     where('equipoId', '==', equipoId)
   )
-  return onSnapshot(q, (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  return onSnapshot(
+    q,
+    (snap) => onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.error('[suscribirSolicitudesPorPartidoYEquipo]', err)
+      onError?.(err)
+    }
+  )
 }
 
 // Aplica el cambio de verdad (el saliente vuelve a Jugadores, el
