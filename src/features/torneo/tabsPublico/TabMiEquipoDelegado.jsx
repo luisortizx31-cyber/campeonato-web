@@ -173,7 +173,16 @@ export default function TabMiEquipoDelegado() {
 
   const jugadoresOrdenados = [...jugadores].sort((a, b) => a.nombre.localeCompare(b.nombre))
 
-  const partidoAbierto = partidoAbiertoId ? partidos.find((p) => p.id === partidoAbiertoId) : null
+  // Los partidos llegan por una suscripcion aparte (ver mas arriba),
+  // independiente de `cargando` (que sigue el plantel/equipo/config) -
+  // sin el `!cargando` de aca, sobre todo justo al restaurar el
+  // partido abierto despues de un refresh (ver STORAGE_PARTIDO_ABIERTO_ID),
+  // esta pantalla se podia abrir con el plantel todavia vacio si la
+  // suscripcion de partidos contestaba mas rapido que la carga del
+  // plantel - AlineacionPartidoDelegado arranca su lista de jugadores
+  // desde este prop UNA sola vez (useState), asi que quedaba vacia para
+  // siempre hasta salir y volver a entrar.
+  const partidoAbierto = partidoAbiertoId && !cargando ? partidos.find((p) => p.id === partidoAbiertoId) : null
 
   if (partidoAbierto) {
     const equipoDelPartido = partidoAbierto.equipoLocalId === perfil.equipoId ? 'local' : 'visitante'
