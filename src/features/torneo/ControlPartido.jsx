@@ -665,7 +665,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setSuplentes((s) => s.filter((id) => id !== solicitud.jugadorEntraId))
     } catch (err) {
       console.error('[ControlPartido] handleAprobarSolicitud', err)
-      setError('No se pudo aprobar el cambio.')
+      setError(`No se pudo aprobar el cambio (${err.code || err.message || 'error desconocido'}).`)
     } finally {
       setProcesandoSolicitud(null)
     }
@@ -678,7 +678,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       await rechazarSolicitud(solicitud.id)
     } catch (err) {
       console.error('[ControlPartido] handleRechazarSolicitud', err)
-      setError('No se pudo rechazar el pedido.')
+      setError(`No se pudo rechazar el pedido (${err.code || err.message || 'error desconocido'}).`)
     } finally {
       setProcesandoSolicitud(null)
     }
