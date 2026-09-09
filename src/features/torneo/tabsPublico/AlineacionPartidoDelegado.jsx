@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { actualizarTitular, actualizarSuplente } from '../../../services/torneoPartidosService'
 import { actualizarNumeroCamiseta } from '../../../services/torneoJugadoresService'
-import { crearSolicitudCambio, suscribirSolicitudesPorPartidoYEquipo } from '../../../services/torneoSolicitudesCambioService'
+import {
+  crearSolicitudCambio,
+  suscribirSolicitudesPorPartidoYEquipo,
+  marcarSolicitudVista,
+} from '../../../services/torneoSolicitudesCambioService'
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -83,9 +87,10 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   const [cambio, setCambio] = useState(null)
   const [solicitudes, setSolicitudes] = useState([])
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false)
-  // Pedidos ya resueltos (aprobados/rechazados) que el delegado ya vio
-  // y cerro con la "x" - sin esto, cada pedido viejo de este partido
-  // quedaria mostrando su aviso para siempre.
+  // Optimista - la marca real (vistoPorDelegado) queda guardada en el
+  // propio doc de Firestore al tocar la "x" (ver handleCerrarAviso),
+  // para que un pedido ya visto no vuelva a aparecer al salir y volver
+  // a entrar a esta pantalla, o desde otro dispositivo.
   const [solicitudesDescartadas, setSolicitudesDescartadas] = useState([])
 
   // El partido puede seguir actualizandose (ver TabMiEquipoDelegado,
@@ -105,8 +110,15 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   const enVivo = partido.horaInicio != null && partido.golesLocal == null
   const solicitudesPendientes = solicitudes.filter((s) => s.estado === 'pendiente')
   const solicitudesResueltas = solicitudes.filter(
-    (s) => s.estado !== 'pendiente' && !solicitudesDescartadas.includes(s.id)
+    (s) => s.estado !== 'pendiente' && !s.vistoPorDelegado && !solicitudesDescartadas.includes(s.id)
   )
+
+  function handleCerrarAviso(solicitudId) {
+    setSolicitudesDescartadas((d) => [...d, solicitudId])
+    marcarSolicitudVista(solicitudId).catch((err) =>
+      console.error('[AlineacionPartidoDelegado] marcarSolicitudVista', err)
+    )
+  }
 
   async function mover(jugadorId, nuevoEstado) {
     const nuevosTitulares = nuevoEstado === 'titular' ? [...new Set([...titulares, jugadorId])] : titulares.filter((id) => id !== jugadorId)
@@ -243,7 +255,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                 {nombreJugador(s.jugadorSaleId)}, entra {nombreJugador(s.jugadorEntraId)}.
               </span>
               <button
-                onClick={() => setSolicitudesDescartadas((d) => [...d, s.id])}
+                onClick={() => handleCerrarAviso(s.id)}
                 className="shrink-0 text-sm leading-none opacity-70"
               >
                 ×

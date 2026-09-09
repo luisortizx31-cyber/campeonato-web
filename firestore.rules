@@ -310,7 +310,15 @@ service cloud.firestore {
                     && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
                     && request.resource.data.equipoId == miEquipoIdDelegado()
                     && request.resource.data.estado == 'pendiente';
-      allow update: if esMaestroDe(resource.data.torneoId);
+      // El Maestro puede tocar cualquier campo (aprobar/rechazar). El
+      // delegado del equipo dueño del pedido solo puede marcarlo como
+      // visto (ver AlineacionPartidoDelegado, boton "x" del aviso de
+      // aprobado/rechazado) - asi el aviso se cierra para siempre, sin
+      // volver a aparecer cada vez que reabra la pantalla.
+      allow update: if esMaestroDe(resource.data.torneoId)
+                    || (esDelegado()
+                        && resource.data.equipoId == miEquipoIdDelegado()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vistoPorDelegado']));
       // Solo el Maestro, y solo como parte de un reinicio de la
       // categoria (ver reiniciarResultadosTodasLasFechas/
       // reiniciarTemporadaCompleta) - un delegado nunca puede borrar su

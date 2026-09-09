@@ -115,3 +115,13 @@ export async function rechazarSolicitud(solicitudId) {
     resueltoEn: serverTimestamp(),
   })
 }
+
+// El delegado cierra el aviso de "aprobado/rechazado" con la "x" (ver
+// AlineacionPartidoDelegado) - queda guardado en el propio doc (no en
+// el celular) para que no vuelva a aparecer si sale y vuelve a entrar,
+// o si mira desde otro dispositivo.
+export async function marcarSolicitudVista(solicitudId) {
+  await updateDoc(doc(db, 'torneo_solicitudes_cambio', solicitudId), {
+    vistoPorDelegado: true,
+  })
+}
