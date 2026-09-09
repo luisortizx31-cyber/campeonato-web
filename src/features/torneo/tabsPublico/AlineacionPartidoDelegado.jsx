@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { actualizarTitular, actualizarSuplente } from '../../../services/torneoPartidosService'
 import { actualizarNumeroCamiseta, listarJugadoresPorEquipo } from '../../../services/torneoJugadoresService'
+import { suscribirGolesPorPartido } from '../../../services/torneoGolesService'
+import { suscribirTarjetasPorPartido } from '../../../services/torneoTarjetasService'
 import {
   crearSolicitudCambio,
   suscribirSolicitudesPorPartidoYEquipo,
   marcarSolicitudVista,
 } from '../../../services/torneoSolicitudesCambioService'
+import { TIPO_TARJETA } from '../../../models/torneo'
+import { colorEquipo } from '../../../utils/colorEquipo'
+import { nombreCorto } from '../../../utils/nombreJugador'
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -77,6 +82,8 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   )
   const rivalId = equipo === 'local' ? partido.equipoVisitanteId : partido.equipoLocalId
   const [jugadoresRival, setJugadoresRival] = useState([])
+  const [goles, setGoles] = useState([])
+  const [tarjetas, setTarjetas] = useState([])
   const [titulares, setTitulares] = useState(
     (equipo === 'local' ? partido.titularesLocal : partido.titularesVisitante) || []
   )
@@ -127,6 +134,16 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
       cancelado = true
     }
   }, [rivalId])
+
+  // Marcador, goleadores y tarjetas en vivo para la vista Cancha (ver
+  // mas abajo) - mismo patron que CanchaPublica/ControlPartido.
+  useEffect(() => {
+    return suscribirGolesPorPartido(partido.id, setGoles)
+  }, [partido.id])
+
+  useEffect(() => {
+    return suscribirTarjetasPorPartido(partido.id, setTarjetas)
+  }, [partido.id])
 
   const enVivo = partido.horaInicio != null && partido.golesLocal == null
   // Terminado el partido, la alineacion queda como historial - ya no
@@ -245,11 +262,56 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
 
-  // Vista Cancha: quienes estan jugando ahora mismo de cada lado -
-  // tocar a uno de mi equipo abre el mismo selector de cambio que en
+  function golesDe(jugadorId) {
+    return goles.filter((g) => g.jugadorId === jugadorId).reduce((s, g) => s + (g.cantidad || 0), 0)
+  }
+  function tarjetasDe(jugadorId) {
+    return tarjetas.filter((t) => t.jugadorId === jugadorId)
+  }
+  function estaExpulsadoEnPartido(jugadorId) {
+    const cartas = tarjetasDe(jugadorId)
+    const amarillas = cartas.filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length
+    const roja = cartas.some((t) => t.tipo === TIPO_TARJETA.ROJA)
+    return roja || amarillas >= 2
+  }
+
+  // Vista Cancha: quienes estan jugando ahora mismo de cada lado (ya
+  // sin los expulsados, que pasan a su propia lista aparte) - tocar a
+  // uno de mi equipo abre el mismo selector de cambio que en
   // Alineación (setCambio); el rival solo se muestra, nunca se toca.
   const titularesRivalIds = equipo === 'local' ? partido.titularesVisitante : partido.titularesLocal
-  const enCanchaRival = jugadoresRival.filter((j) => titularesRivalIds?.includes(j.id)).sort(porNombre)
+  const enCanchaPropio = listaTitulares.filter((j) => !estaExpulsadoEnPartido(j.id))
+  const enCanchaRival = jugadoresRival
+    .filter((j) => titularesRivalIds?.includes(j.id) && !estaExpulsadoEnPartido(j.id))
+    .sort(porNombre)
+
+  const expulsadosPropio = listaTitulares.filter((j) => estaExpulsadoEnPartido(j.id))
+  const expulsadosRival = jugadoresRival.filter((j) => titularesRivalIds?.includes(j.id) && estaExpulsadoEnPartido(j.id))
+  const amarillasPropio = listaTitulares.filter(
+    (j) => !estaExpulsadoEnPartido(j.id) && tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)
+  )
+  const amarillasRival = jugadoresRival.filter(
+    (j) => titularesRivalIds?.includes(j.id) && !estaExpulsadoEnPartido(j.id) && tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)
+  )
+  const goleadoresPropio = jugadores.filter((j) => golesDe(j.id) > 0)
+  const goleadoresRival = jugadoresRival.filter((j) => golesDe(j.id) > 0)
+
+  const golesPropioCount = goles.filter((g) => g.equipoId === equipoId).reduce((s, g) => s + (g.cantidad || 0), 0)
+  const golesRivalCount = goles.filter((g) => g.equipoId === rivalId).reduce((s, g) => s + (g.cantidad || 0), 0)
+  const golesPropioFinal = equipo === 'local' ? partido.golesLocal : partido.golesVisitante
+  const golesRivalFinal = equipo === 'local' ? partido.golesVisitante : partido.golesLocal
+  const colorPropio = colorEquipo(nombreEquipoPropio || '')
+  const colorRival = colorEquipo(nombreRival || '')
+
+  function formatearHora(valor) {
+    const d = valor?.toDate ? valor.toDate() : valor
+    if (!d) return ''
+    let horas = d.getHours() % 12
+    if (horas === 0) horas = 12
+    const minutos = String(d.getMinutes()).padStart(2, '0')
+    const meridiano = d.getHours() >= 12 ? 'pm' : 'am'
+    return `${horas}:${minutos} ${meridiano}`
+  }
 
   function nombreJugador(jugadorId) {
     return jugadores.find((j) => j.id === jugadorId)?.nombre || '—'
@@ -266,6 +328,30 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
         </button>
         <p className="truncate text-xs text-ink-soft">Fecha {partido.fechaNumero} vs {nombreRival}</p>
       </div>
+
+      {(partido.horaInicio != null || finalizado) && (
+        <>
+          <div className="mb-2 rounded-2xl border border-line bg-brand-dark p-4 text-center text-white">
+            <p className="text-[10px] uppercase tracking-widest text-white/70">
+              {finalizado ? 'Resultado final' : 'Marcador en vivo'}
+            </p>
+            <p className="mt-1 text-3xl font-bold">
+              {finalizado ? golesPropioFinal : golesPropioCount} — {finalizado ? golesRivalFinal : golesRivalCount}
+            </p>
+            <p className="mt-1 truncate text-xs text-white/70">
+              {nombreEquipoPropio} vs {nombreRival}
+            </p>
+          </div>
+
+          {(partido.horaInicio || partido.horaFin) && (
+            <p className="mb-3 rounded-lg bg-success-soft px-3 py-2 text-center text-xs font-medium text-success">
+              🕐 {partido.horaInicio ? `Arrancó a las ${formatearHora(partido.horaInicio)}` : ''}
+              {partido.horaInicio && partido.horaFin ? ' · ' : ''}
+              {partido.horaFin ? `Terminó a las ${formatearHora(partido.horaFin)}` : ''}
+            </p>
+          )}
+        </>
+      )}
 
       <div className="mb-3 flex overflow-hidden rounded-xl border border-line">
         <button
@@ -425,25 +511,34 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
         // de mi equipo abre el mismo selector de cambio de arriba
         // (setCambio), pedirle un cambio a la OTRA promo no es una
         // opcion en ningun lado de esta pantalla.
-        <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
+        <>
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
           <div className="overflow-hidden rounded-xl border border-line bg-surface">
             <div className="truncate bg-brand-soft px-2 py-1.5 text-center text-[11px] font-bold text-ink">
-              {nombreEquipoPropio || 'Mi equipo'} ({listaTitulares.length})
+              {nombreEquipoPropio || 'Mi equipo'} ({enCanchaPropio.length})
             </div>
             <ul className="divide-y-2 divide-ink-soft/20">
-              {listaTitulares.map((j) => (
-                <li key={j.id} className="px-2.5 py-2">
+              {enCanchaPropio.map((j) => (
+                <li key={j.id} className="flex items-center justify-between gap-1.5 px-2.5 py-2">
                   <button
                     onClick={() => setCambio(j)}
                     disabled={finalizado}
-                    className="flex w-full items-center gap-1.5 text-left text-xs disabled:opacity-70"
+                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-70"
                   >
                     {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
-                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{j.nombre}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{nombreCorto(j.nombre)}</span>
                   </button>
+                  {(golesDe(j.id) > 0 || tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)) && (
+                    <span className="flex shrink-0 items-center gap-1 text-[11px]">
+                      {golesDe(j.id) > 0 && <span className="font-semibold text-brand">⚽{golesDe(j.id)}</span>}
+                      {tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).map((_, i) => (
+                        <span key={i}>🟨</span>
+                      ))}
+                    </span>
+                  )}
                 </li>
               ))}
-              {listaTitulares.length === 0 && (
+              {enCanchaPropio.length === 0 && (
                 <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Elegí titulares en Alineación</li>
               )}
             </ul>
@@ -454,9 +549,19 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             </div>
             <ul className="divide-y-2 divide-ink-soft/20">
               {enCanchaRival.map((j) => (
-                <li key={j.id} className="px-2.5 py-2 text-xs">
-                  {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
-                  <span className="font-medium text-ink">{j.nombre}</span>
+                <li key={j.id} className="flex items-center justify-between gap-1.5 px-2.5 py-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate font-medium text-ink">
+                    {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
+                    {nombreCorto(j.nombre)}
+                  </span>
+                  {(golesDe(j.id) > 0 || tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)) && (
+                    <span className="flex shrink-0 items-center gap-1 text-[11px]">
+                      {golesDe(j.id) > 0 && <span className="font-semibold text-brand">⚽{golesDe(j.id)}</span>}
+                      {tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).map((_, i) => (
+                        <span key={i}>🟨</span>
+                      ))}
+                    </span>
+                  )}
                 </li>
               ))}
               {enCanchaRival.length === 0 && (
@@ -465,6 +570,62 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             </ul>
           </div>
         </div>
+
+        {[
+          { key: 'propio', nombre: nombreEquipoPropio, color: colorPropio, expulsados: expulsadosPropio, amarillas: amarillasPropio, goleadores: goleadoresPropio },
+          { key: 'rival', nombre: nombreRival, color: colorRival, expulsados: expulsadosRival, amarillas: amarillasRival, goleadores: goleadoresRival },
+        ].map(({ key, nombre, color, expulsados, amarillas, goleadores }) => (
+          (expulsados.length > 0 || amarillas.length > 0 || goleadores.length > 0) && (
+            <div key={key} className="mb-3 overflow-hidden rounded-2xl border border-line bg-surface">
+              <p className={`truncate px-3 py-1.5 text-center text-xs font-bold ${color.bg} ${color.text}`}>{nombre}</p>
+              <div className="divide-y divide-line">
+                {expulsados.length > 0 && (
+                  <div className="px-3 py-2">
+                    <p className="mb-1 text-[11px] font-semibold text-danger">🟥 Expulsados</p>
+                    <ul className="space-y-1">
+                      {expulsados.map((j) => {
+                        const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
+                        return (
+                          <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                            <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
+                {amarillas.length > 0 && (
+                  <div className="px-3 py-2">
+                    <p className="mb-1 text-[11px] font-semibold text-warning">🟨 Amarillas</p>
+                    <ul className="space-y-1">
+                      {amarillas.map((j) => (
+                        <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                          <span className="shrink-0 text-warning">1 amarilla</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {goleadores.length > 0 && (
+                  <div className="px-3 py-2">
+                    <p className="mb-1 text-[11px] font-semibold text-brand">⚽ Goleadores</p>
+                    <ul className="space-y-1">
+                      {goleadores.map((j) => (
+                        <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                          <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        ))}
+        </>
       )}
 
       {cambio && (
