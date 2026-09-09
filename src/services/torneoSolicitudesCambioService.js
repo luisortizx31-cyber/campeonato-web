@@ -85,14 +85,21 @@ export function suscribirSolicitudesPorPartidoYEquipo(partidoId, equipoId, onCam
   )
 }
 
-// Aplica el cambio de verdad (el saliente vuelve a Jugadores, el
-// entrante pasa a Titular) y recien ahi marca la solicitud como
+// Aplica el cambio de verdad y recien ahi marca la solicitud como
 // aprobada - si el cambio fallara, la solicitud queda pendiente para
 // reintentar en vez de marcarse como resuelta sin haberse aplicado.
-export async function aprobarSolicitud(solicitud) {
+//
+// A donde vuelve el que "sale" depende de la config de la categoria
+// (ver torneoConfigService.sustitucionesIlimitadas, TabConfiguracion):
+// - false (por defecto, "definitiva"): vuelve a "Jugadores" - no
+//   puede volver a entrar en este partido, igual que una sustitucion
+//   real de futbol.
+// - true ("ilimitadas"): vuelve a "Suplente", asi puede ser elegido
+//   de nuevo en otro pedido mas adelante.
+export async function aprobarSolicitud(solicitud, { sustitucionesIlimitadas = false } = {}) {
   await Promise.all([
     actualizarTitular(solicitud.partidoId, solicitud.equipo, solicitud.jugadorSaleId, false),
-    actualizarSuplente(solicitud.partidoId, solicitud.equipo, solicitud.jugadorSaleId, false),
+    actualizarSuplente(solicitud.partidoId, solicitud.equipo, solicitud.jugadorSaleId, sustitucionesIlimitadas),
     actualizarTitular(solicitud.partidoId, solicitud.equipo, solicitud.jugadorEntraId, true),
     actualizarSuplente(solicitud.partidoId, solicitud.equipo, solicitud.jugadorEntraId, false),
   ])

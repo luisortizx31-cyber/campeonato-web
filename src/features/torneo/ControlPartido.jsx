@@ -384,6 +384,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [jugadoresPorEquipo, setJugadoresPorEquipo] = useState(JUGADORES_POR_EQUIPO_DEFAULT)
   const [minimoJugadoresCancha, setMinimoJugadoresCancha] = useState(null)
   const [diferenciaWalkover, setDiferenciaWalkover] = useState(DIFERENCIA_WALKOVER_DEFAULT)
+  // Al aprobar un pedido de cambio del delegado, si el que sale vuelve
+  // a Suplente (puede volver a entrar despues) o a Jugadores (no
+  // vuelve mas) - ver TabConfiguracion y torneoSolicitudesCambioService.
+  const [sustitucionesIlimitadas, setSustitucionesIlimitadas] = useState(false)
   const [alineacionAbierta, setAlineacionAbierta] = useState({ local: true, visitante: true })
   // Delegado activo (no deshabilitado) de cada equipo, si tiene uno
   // asignado (ver Configuracion -> Delegados de equipo) - solo si
@@ -475,6 +479,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setJugadoresPorEquipo(cfg.jugadoresPorEquipo)
       setMinimoJugadoresCancha(cfg.minimoJugadoresCancha)
       setDiferenciaWalkover(cfg.diferenciaWalkover)
+      setSustitucionesIlimitadas(cfg.sustitucionesIlimitadas)
       setDelegadoLocal(delegados.local)
       setDelegadoVisitante(delegados.visitante)
     } catch (err) {
@@ -673,11 +678,15 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     setProcesandoSolicitud(solicitud.id)
     setError(null)
     try {
-      await aprobarSolicitud(solicitud)
+      await aprobarSolicitud(solicitud, { sustitucionesIlimitadas })
       const setTitulares = solicitud.equipo === 'local' ? setTitularesLocal : setTitularesVisitante
       const setSuplentes = solicitud.equipo === 'local' ? setSuplentesLocal : setSuplentesVisitante
       setTitulares((t) => [...new Set([...t.filter((id) => id !== solicitud.jugadorSaleId), solicitud.jugadorEntraId])])
-      setSuplentes((s) => s.filter((id) => id !== solicitud.jugadorEntraId))
+      setSuplentes((s) =>
+        sustitucionesIlimitadas
+          ? [...new Set([...s.filter((id) => id !== solicitud.jugadorEntraId), solicitud.jugadorSaleId])]
+          : s.filter((id) => id !== solicitud.jugadorEntraId)
+      )
     } catch (err) {
       console.error('[ControlPartido] handleAprobarSolicitud', err)
       setError(`No se pudo aprobar el cambio (${err.code || err.message || 'error desconocido'}).`)

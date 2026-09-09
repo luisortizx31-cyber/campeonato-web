@@ -10,6 +10,7 @@ import {
   actualizarDiferenciaWalkover,
   actualizarMaximoJugadoresInscritos,
   actualizarCategoriasActivas,
+  actualizarSustitucionesIlimitadas,
 } from '../../../services/torneoConfigService'
 import {
   CATEGORIA_TORNEO_LABELS,
@@ -181,6 +182,21 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
     }
   }
 
+  async function handleCambiarSustitucionesIlimitadas(nuevoValor) {
+    const ilimitadas = nuevoValor === 'true'
+    setConfig((c) => ({ ...c, sustitucionesIlimitadas: ilimitadas }))
+    setGuardando(true)
+    setError(null)
+    try {
+      await actualizarSustitucionesIlimitadas(torneoId, categoria, ilimitadas)
+    } catch (err) {
+      console.error('[TabConfiguracion]', err)
+      setError('No se pudo guardar la regla de sustituciones.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   async function handleCambiarUmbralAmarillas(nuevoUmbral) {
     setConfig((c) => ({ ...c, umbralAmarillas: Number(nuevoUmbral) }))
     setGuardando(true)
@@ -317,6 +333,26 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
                   {config.diferenciaWalkover}-0 a favor del otro equipo.
                 </p>
               )}
+
+              <FilaConfig htmlFor="sustituciones-ilimitadas" label="Jugador sustituido en pleno partido">
+                <select
+                  id="sustituciones-ilimitadas"
+                  value={config?.sustitucionesIlimitadas ? 'true' : 'false'}
+                  disabled={!config || guardando}
+                  onChange={(e) => handleCambiarSustitucionesIlimitadas(e.target.value)}
+                  className="rounded-lg border border-line bg-paper px-2 py-1.5 text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+                >
+                  <option value="false">No puede volver a entrar</option>
+                  <option value="true">Puede volver a entrar</option>
+                </select>
+              </FilaConfig>
+              <p className="px-4 py-2.5 text-xs text-ink-soft">
+                Cuando el Maestro aprueba un pedido de cambio del delegado (ver "Arrancar partido" en
+                Control de Partido) para sacar a un titular una vez que el partido ya arrancó: con "No
+                puede volver a entrar" el que sale queda en "Jugadores" para el resto del partido (igual
+                que una sustitución real de fútbol); con "Puede volver a entrar" queda en "Suplente" y se
+                lo puede convocar de nuevo más adelante.
+              </p>
             </SeccionConfig>
 
             <SeccionConfig icono="🟨" titulo="Tarjetas y disciplina">

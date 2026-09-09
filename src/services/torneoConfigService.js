@@ -103,6 +103,16 @@ export async function actualizarCategoriasActivas(torneoId, categorias) {
 //    puedan inscribir jugadores nuevos o editar los que ya tienen en
 //    esta categoria (ver TabJugadores y firestore.rules,
 //    funcion inscripcionesCerradas) - false por defecto (abiertas).
+//  - sustitucionesIlimitadas: que pasa con el jugador que "sale" al
+//    aprobarse un pedido de cambio del delegado (ver ControlPartido ->
+//    "Arrancar partido" y torneoSolicitudesCambioService.
+//    aprobarSolicitud). false (por defecto, "definitiva"): el que sale
+//    vuelve a "Jugadores" y no puede volver a entrar en ese partido -
+//    mismo criterio que una sustitucion real de futbol. true
+//    ("ilimitadas"): el que sale vuelve a "Suplente" en vez de
+//    "Jugadores", asi puede volver a entrar mas adelante con otro
+//    pedido - para categorias/formatos que permiten rotar el plantel
+//    libremente durante el partido.
 export async function obtenerConfigCategoria(torneoId, categoria) {
   const snap = await getDoc(doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)))
   const data = snap.exists() ? snap.data() : {}
@@ -115,6 +125,7 @@ export async function obtenerConfigCategoria(torneoId, categoria) {
     diferenciaWalkover: data.diferenciaWalkover || DIFERENCIA_WALKOVER_DEFAULT,
     maximoJugadoresInscritos: data.maximoJugadoresInscritos || null,
     inscripcionesCerradas: Boolean(data.inscripcionesCerradas),
+    sustitucionesIlimitadas: Boolean(data.sustitucionesIlimitadas),
   }
 }
 
@@ -178,6 +189,14 @@ export async function actualizarInscripcionesCerradas(torneoId, categoria, cerra
   await setDoc(
     doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
     { torneoId, inscripcionesCerradas: Boolean(cerradas) },
+    { merge: true }
+  )
+}
+
+export async function actualizarSustitucionesIlimitadas(torneoId, categoria, ilimitadas) {
+  await setDoc(
+    doc(db, 'torneo_config', idConfigCategoria(torneoId, categoria)),
+    { torneoId, sustitucionesIlimitadas: Boolean(ilimitadas) },
     { merge: true }
   )
 }
