@@ -10,9 +10,11 @@ import {
   actualizarFechaProgramada,
   eliminarPartido,
   cambiarFechaDePartido,
+  alternarAlineacionAbierta,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { suscribirSolicitudesPendientesPorCategoria } from '../../../services/torneoSolicitudesCambioService'
+import { obtenerDelegadosDePartido } from '../../../services/delegadosService'
 import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
@@ -501,12 +503,41 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     return `Primero terminá el partido de ${nombreEquipo(bloqueante.equipoLocalId)} vs ${nombreEquipo(bloqueante.equipoVisitanteId)} (Fecha ${bloqueante.fechaNumero}) antes de seguir con la Fecha ${fechaDestino}.`
   }
 
-  function handleAbrirControl(partido) {
+  // Antes esto era un boton aparte adentro de Control de Partido - se
+  // movio a este punto de entrada (una sola pregunta, no un toggle que
+  // hay que acordarse de prender) para que no haga falta reabrir
+  // Control para habilitar al delegado. Si ya esta habilitado (o el
+  // equipo no tiene delegado asignado) no pregunta nada, entra directo.
+  async function ofrecerHabilitarDelegados(partido) {
+    let delegados
+    try {
+      delegados = await obtenerDelegadosDePartido(partido.equipoLocalId, partido.equipoVisitanteId)
+    } catch (err) {
+      console.error('[TabFechas] ofrecerHabilitarDelegados', err)
+      return
+    }
+    const faltaLocal = delegados.local && !partido.alineacionAbiertaLocal
+    const faltaVisitante = delegados.visitante && !partido.alineacionAbiertaVisitante
+    if (!faltaLocal && !faltaVisitante) return
+    if (!confirm('¿Habilitar a los delegados para que hagan su alineación?')) return
+    try {
+      await Promise.all([
+        faltaLocal ? alternarAlineacionAbierta(partido.id, 'local', true) : null,
+        faltaVisitante ? alternarAlineacionAbierta(partido.id, 'visitante', true) : null,
+      ])
+    } catch (err) {
+      console.error('[TabFechas] ofrecerHabilitarDelegados', err)
+      setErrorGuardar('No se pudo habilitar a los delegados.')
+    }
+  }
+
+  async function handleAbrirControl(partido) {
     const bloqueante = partidoBloqueadoPor(partido)
     if (bloqueante) {
       setErrorGuardar(mensajeBloqueo(bloqueante, partido.fechaNumero))
       return
     }
+    await ofrecerHabilitarDelegados(partido)
     setPartidoControl(partido)
   }
 
