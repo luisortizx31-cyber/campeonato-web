@@ -301,9 +301,7 @@ service cloud.firestore {
                     && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
                     && request.resource.data.equipoId == miEquipoIdDelegado()
                     && request.resource.data.estado == 'pendiente';
-      allow update: if esMaestroDe(resource.data.torneoId)
-                    && resource.data.estado == 'pendiente'
-                    && (request.resource.data.estado == 'aprobada' || request.resource.data.estado == 'rechazada');
+      allow update: if esMaestroDe(resource.data.torneoId);
       // Solo el Maestro, y solo como parte de un reinicio de la
       // categoria (ver reiniciarResultadosTodasLasFechas/
       // reiniciarTemporadaCompleta) - un delegado nunca puede borrar su
