@@ -304,7 +304,11 @@ service cloud.firestore {
       allow update: if esMaestroDe(resource.data.torneoId)
                     && resource.data.estado == 'pendiente'
                     && (request.resource.data.estado == 'aprobada' || request.resource.data.estado == 'rechazada');
-      allow delete: if false;
+      // Solo el Maestro, y solo como parte de un reinicio de la
+      // categoria (ver reiniciarResultadosTodasLasFechas/
+      // reiniciarTemporadaCompleta) - un delegado nunca puede borrar su
+      // propio pedido, para que quede registro de que lo mando.
+      allow delete: if esMaestroDe(resource.data.torneoId);
     }
 
     // Las tarjetas tambien actualizan los contadores del jugador

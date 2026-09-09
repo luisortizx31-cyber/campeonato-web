@@ -239,6 +239,11 @@ export async function reiniciarPartido(partidoId) {
     golesVisitante: null,
     golesLocalEnVivo: null,
     golesVisitanteEnVivo: null,
+    // horaInicio NO se toca a proposito: esto es para corregir un
+    // error puntual (un gol/tarjeta mal cargado), no para "empezar de
+    // nuevo" el partido - si se borrara, la Cancha se volveria a
+    // bloquear (ver ControlPartido) y habria que tocar "Arrancar
+    // partido" de nuevo solo para cargar la correccion.
   })
 }
 
@@ -422,10 +427,18 @@ export async function reiniciarResultadosTodasLasFechas(torneoId, categoria) {
       dniConfirmadoVisitante: [],
       alineacionAbiertaLocal: false,
       alineacionAbiertaVisitante: false,
+      // Tambien vuelve a "no arrancado" (ver ControlPartido -> "Arrancar
+      // partido") - si no, quedaba marcado como en vivo para siempre.
+      horaInicio: null,
+      horaFin: null,
     })
   )
   goles.forEach((g) => batch.delete(doc(db, 'torneo_goles', g.id)))
   tarjetas.forEach((t) => batch.delete(doc(db, 'torneo_tarjetas', t.id)))
+  const solicitudesSnap = await getDocs(
+    query(collection(db, 'torneo_solicitudes_cambio'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))
+  )
+  solicitudesSnap.docs.forEach((d) => batch.delete(d.ref))
   jugadoresSnap.docs.forEach((d) =>
     batch.update(d.ref, {
       amarillasAcumuladas: 0,
@@ -453,15 +466,17 @@ export async function reiniciarResultadosTodasLasFechas(torneoId, categoria) {
 // cargadas: es la opcion para cuando el Maestro quiere empezar de
 // cero sin ir borrando partido por partido.
 export async function reiniciarTemporadaCompleta(torneoId, categoria) {
-  const [partidosSnap, tarjetasSnap, jugadoresSnap] = await Promise.all([
+  const [partidosSnap, tarjetasSnap, jugadoresSnap, solicitudesSnap] = await Promise.all([
     getDocs(query(collection(db, 'torneo_partidos'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
     getDocs(query(collection(db, 'torneo_tarjetas'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
     getDocs(query(collection(db, 'torneo_jugadores'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
+    getDocs(query(collection(db, 'torneo_solicitudes_cambio'), where('torneoId', '==', torneoId), where('categoria', '==', categoria))),
   ])
 
   const batch = writeBatch(db)
   partidosSnap.docs.forEach((d) => batch.delete(d.ref))
   tarjetasSnap.docs.forEach((d) => batch.delete(d.ref))
+  solicitudesSnap.docs.forEach((d) => batch.delete(d.ref))
   jugadoresSnap.docs.forEach((d) => {
     batch.update(d.ref, {
       amarillasAcumuladas: 0,
