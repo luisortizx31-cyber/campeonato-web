@@ -163,8 +163,13 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
     )
   }
 
+  // Una vez arrancado el partido la convocatoria queda fija - ni
+  // meter a alguien del pool como suplente, ni promover un suplente a
+  // titular directo, porque eso pasaria por al lado del pedido de
+  // cambio que tiene que aprobar el Maestro (ver mas abajo, el modal
+  // de "cambio" que se abre al tocar a un titular).
   async function mover(jugadorId, nuevoEstado) {
-    if (finalizado) return
+    if (finalizado || enVivo) return
     const nuevosTitulares = nuevoEstado === 'titular' ? [...new Set([...titulares, jugadorId])] : titulares.filter((id) => id !== jugadorId)
     const nuevosSuplentes = nuevoEstado === 'suplente' ? [...new Set([...suplentes, jugadorId])] : suplentes.filter((id) => id !== jugadorId)
     setTitulares(nuevosTitulares)
@@ -379,7 +384,8 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
 
       {enVivo && (
         <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
-          🔴 El partido ya arrancó - para sacar a un titular ahora tenés que pedirle el cambio al Maestro.
+          🔴 El partido ya arrancó - la convocatoria quedó fija, para cualquier cambio ahora tenés que pedírselo al
+          Maestro tocando al titular.
         </p>
       )}
 
@@ -441,14 +447,14 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                 <div className="flex shrink-0 gap-1.5">
                   <button
                     onClick={() => mover(j.id, 'titular')}
-                    disabled={completo || finalizado}
+                    disabled={completo || finalizado || enVivo}
                     className="rounded-md border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Titular
                   </button>
                   <button
                     onClick={() => mover(j.id, 'suplente')}
-                    disabled={finalizado}
+                    disabled={finalizado || enVivo}
                     className="rounded-md border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Suplente
@@ -493,7 +499,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
               <li key={j.id} className="flex items-center gap-2 px-3 py-2">
                 <button
                   onClick={() => mover(j.id, 'titular')}
-                  disabled={completo || finalizado}
+                  disabled={completo || finalizado || enVivo}
                   className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
                 >
                   ○ {j.nombre}
