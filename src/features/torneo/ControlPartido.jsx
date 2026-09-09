@@ -655,6 +655,19 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   }
 
   async function handleAprobarSolicitud(solicitud) {
+    // El pedido es "sale uno, entra otro" - si el que sale YA no es
+    // titular (ej. otro pedido lo saco antes) aprobar esto sumaria un
+    // titular de mas sin sacar a nadie. Un swap normal (el que sale
+    // sigue siendo titular) siempre da neto cero, asi que nunca se
+    // bloquea por el maximo.
+    const titulares = solicitud.equipo === 'local' ? titularesLocal : titularesVisitante
+    const esSwapNormal = titulares.includes(solicitud.jugadorSaleId) || titulares.includes(solicitud.jugadorEntraId)
+    if (!esSwapNormal && titulares.length >= jugadoresPorEquipo) {
+      setError(
+        `No se puede aprobar: ${nombreJugadorDe(solicitud.jugadorSaleId)} ya no es titular (puede que otro pedido ya lo haya sacado) y el equipo ya está en el máximo de ${jugadoresPorEquipo} titulares. Rechazá este pedido o ajustá la alineación a mano.`
+      )
+      return
+    }
     setProcesandoSolicitud(solicitud.id)
     setError(null)
     try {
