@@ -1460,7 +1460,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                     onClick={() => handleConfirmarCambio(s.id)}
                     className="flex w-full items-center justify-between gap-2 px-5 py-3 text-left text-sm text-ink hover:bg-surface"
                   >
-                    {s.nombre}
+                    <span className="min-w-0 truncate">
+                      {s.numeroCamiseta != null && <span className="text-ink-soft">#{s.numeroCamiseta} </span>}
+                      {s.nombre}
+                    </span>
                     <span className="shrink-0 text-xs font-medium text-brand">Entra →</span>
                   </button>
                 </li>

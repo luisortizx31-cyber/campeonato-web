@@ -352,7 +352,10 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                             disabled={enviandoSolicitud}
                             className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm text-ink disabled:opacity-50"
                           >
-                            {s.nombre}
+                            <span className="min-w-0 truncate">
+                              {s.numeroCamiseta != null && <span className="text-ink-soft">#{s.numeroCamiseta} </span>}
+                              {s.nombre}
+                            </span>
                             <span className="shrink-0 text-xs font-medium text-brand">Pedir cambio ›</span>
                           </button>
                         </li>
