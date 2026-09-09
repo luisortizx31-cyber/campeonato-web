@@ -96,13 +96,23 @@ export function suscribirSolicitudesPorPartidoYEquipo(partidoId, equipoId, onCam
 //   real de futbol.
 // - true ("ilimitadas"): vuelve a "Suplente", asi puede ser elegido
 //   de nuevo en otro pedido mas adelante.
+//
+// jugadorEntraId puede venir null - "sacarlo sin reemplazo" (el
+// delegado no tiene suplentes convocados, o simplemente quiere jugar
+// con uno menos). En ese caso no hay a quien meter, solo se saca al
+// que sale.
 export async function aprobarSolicitud(solicitud, { sustitucionesIlimitadas = false } = {}) {
-  await Promise.all([
+  const acciones = [
     actualizarTitular(solicitud.partidoId, solicitud.equipo, solicitud.jugadorSaleId, false),
     actualizarSuplente(solicitud.partidoId, solicitud.equipo, solicitud.jugadorSaleId, sustitucionesIlimitadas),
-    actualizarTitular(solicitud.partidoId, solicitud.equipo, solicitud.jugadorEntraId, true),
-    actualizarSuplente(solicitud.partidoId, solicitud.equipo, solicitud.jugadorEntraId, false),
-  ])
+  ]
+  if (solicitud.jugadorEntraId) {
+    acciones.push(
+      actualizarTitular(solicitud.partidoId, solicitud.equipo, solicitud.jugadorEntraId, true),
+      actualizarSuplente(solicitud.partidoId, solicitud.equipo, solicitud.jugadorEntraId, false)
+    )
+  }
+  await Promise.all(acciones)
   await updateDoc(doc(db, 'torneo_solicitudes_cambio', solicitud.id), {
     estado: 'aprobada',
     resueltoEn: serverTimestamp(),

@@ -190,7 +190,11 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
 
   // El partido ya arranco - en vez de aplicar el cambio directo, queda
   // pedido para que el Maestro lo apruebe desde ControlPartido (ver
-  // torneoSolicitudesCambioService.aprobarSolicitud).
+  // torneoSolicitudesCambioService.aprobarSolicitud). jugadorEntraId
+  // puede venir null - "sacarlo sin reemplazo", para cuando no hay
+  // (o no se quiere usar) un suplente convocado; sin esto el delegado
+  // quedaba sin ninguna forma de sacar a un titular una vez en vivo si
+  // no habia suplentes, a diferencia del Maestro que siempre puede.
   async function handlePedirCambio(jugadorEntraId) {
     if (!cambio) return
     // Ninguno de los dos jugadores del pedido puede estar YA metido en
@@ -201,8 +205,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
       (s) =>
         s.jugadorSaleId === cambio.id ||
         s.jugadorEntraId === cambio.id ||
-        s.jugadorSaleId === jugadorEntraId ||
-        s.jugadorEntraId === jugadorEntraId
+        (jugadorEntraId != null && (s.jugadorSaleId === jugadorEntraId || s.jugadorEntraId === jugadorEntraId))
     )
     if (yaTienePedidoPendiente) {
       setError('Ya hay un pedido pendiente con uno de estos dos jugadores - esperá a que el Maestro lo resuelva antes de mandar otro.')
@@ -297,7 +300,8 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             >
               <span>
                 {s.estado === 'aprobada' ? '✅ El Maestro aprobó tu pedido' : '❌ El Maestro rechazó tu pedido'}: sale{' '}
-                {nombreJugador(s.jugadorSaleId)}, entra {nombreJugador(s.jugadorEntraId)}.
+                {nombreJugador(s.jugadorSaleId)}
+                {s.jugadorEntraId ? `, entra ${nombreJugador(s.jugadorEntraId)}.` : ' (sin reemplazo).'}
               </span>
               <button
                 onClick={() => handleCerrarAviso(s.id)}
@@ -314,7 +318,9 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
         <div className="mb-3 space-y-1.5">
           {solicitudesPendientes.map((s) => (
             <p key={s.id} className="rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
-              ⏳ Pedido pendiente: sale {nombreJugador(s.jugadorSaleId)}, entra {nombreJugador(s.jugadorEntraId)} - esperando que el Maestro lo apruebe.
+              ⏳ Pedido pendiente: sale {nombreJugador(s.jugadorSaleId)}
+              {s.jugadorEntraId ? `, entra ${nombreJugador(s.jugadorEntraId)}` : ' (sin reemplazo)'} - esperando que el
+              Maestro lo apruebe.
             </p>
           ))}
         </div>
@@ -451,17 +457,17 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                   <p className="rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
                     Ya hay un pedido pendiente para sacar a {cambio.nombre} - esperá a que el Maestro lo apruebe.
                   </p>
-                ) : listaSuplentes.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-line px-3 py-3 text-center text-sm text-ink-soft">
-                    No tenés suplentes convocados para reemplazarlo. Avisale al Maestro directamente.
-                  </p>
                 ) : (
                   <>
                     <p className="mb-3 text-xs text-ink-soft">
-                      El partido ya arrancó - elegí quién entra por él. Esto le queda pedido al Maestro, no se aplica
-                      hasta que lo apruebe.
+                      El partido ya arrancó - esto le queda pedido al Maestro, no se aplica hasta que lo apruebe.
                     </p>
-                    <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+                    <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line">
+                      {listaSuplentes.length === 0 && (
+                        <li className="px-4 py-3 text-center text-xs text-ink-soft">
+                          No tenés suplentes convocados para reemplazarlo.
+                        </li>
+                      )}
                       {listaSuplentes.map((s) => {
                         // Ya metido en otro pedido pendiente (como el
                         // que sale o el que entra) - no se puede
@@ -491,6 +497,13 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                         )
                       })}
                     </ul>
+                    <button
+                      onClick={() => handlePedirCambio(null)}
+                      disabled={enviandoSolicitud}
+                      className="w-full rounded-lg border border-line bg-paper px-3 py-2.5 text-sm font-medium text-ink-soft disabled:opacity-50"
+                    >
+                      Sacarlo sin reemplazo (jugar con uno menos)
+                    </button>
                   </>
                 )}
               </div>

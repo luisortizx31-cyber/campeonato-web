@@ -691,13 +691,17 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   }
 
   async function handleAprobarSolicitud(solicitud) {
-    // El pedido es "sale uno, entra otro" - si el que sale YA no es
-    // titular (ej. otro pedido lo saco antes) aprobar esto sumaria un
-    // titular de mas sin sacar a nadie. Un swap normal (el que sale
-    // sigue siendo titular) siempre da neto cero, asi que nunca se
-    // bloquea por el maximo.
+    // El pedido es "sale uno, entra otro" (o sale uno solo, sin
+    // reemplazo, si jugadorEntraId vino null - ver
+    // AlineacionPartidoDelegado "Sacarlo sin reemplazo"). Si el que
+    // sale YA no es titular (ej. otro pedido lo saco antes) aprobar
+    // esto sumaria un titular de mas sin sacar a nadie. Un swap normal
+    // (el que sale sigue siendo titular) o un pedido sin reemplazo
+    // (nunca suma titulares) siempre dan neto cero o negativo, asi que
+    // nunca se bloquean por el maximo.
     const titulares = solicitud.equipo === 'local' ? titularesLocal : titularesVisitante
-    const esSwapNormal = titulares.includes(solicitud.jugadorSaleId) || titulares.includes(solicitud.jugadorEntraId)
+    const esSwapNormal =
+      !solicitud.jugadorEntraId || titulares.includes(solicitud.jugadorSaleId) || titulares.includes(solicitud.jugadorEntraId)
     if (!esSwapNormal && titulares.length >= jugadoresPorEquipo) {
       setError(
         `No se puede aprobar: ${nombreJugadorDe(solicitud.jugadorSaleId)} ya no es titular (puede que otro pedido ya lo haya sacado) y el equipo ya está en el máximo de ${jugadoresPorEquipo} titulares. Rechazá este pedido o ajustá la alineación a mano.`
@@ -710,12 +714,15 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       await aprobarSolicitud(solicitud, { sustitucionesIlimitadas })
       const setTitulares = solicitud.equipo === 'local' ? setTitularesLocal : setTitularesVisitante
       const setSuplentes = solicitud.equipo === 'local' ? setSuplentesLocal : setSuplentesVisitante
-      setTitulares((t) => [...new Set([...t.filter((id) => id !== solicitud.jugadorSaleId), solicitud.jugadorEntraId])])
-      setSuplentes((s) =>
-        sustitucionesIlimitadas
-          ? [...new Set([...s.filter((id) => id !== solicitud.jugadorEntraId), solicitud.jugadorSaleId])]
-          : s.filter((id) => id !== solicitud.jugadorEntraId)
+      setTitulares((t) =>
+        solicitud.jugadorEntraId
+          ? [...new Set([...t.filter((id) => id !== solicitud.jugadorSaleId), solicitud.jugadorEntraId])]
+          : t.filter((id) => id !== solicitud.jugadorSaleId)
       )
+      setSuplentes((s) => {
+        const sinEntrante = solicitud.jugadorEntraId ? s.filter((id) => id !== solicitud.jugadorEntraId) : s
+        return sustitucionesIlimitadas ? [...new Set([...sinEntrante, solicitud.jugadorSaleId])] : sinEntrante
+      })
     } catch (err) {
       console.error('[ControlPartido] handleAprobarSolicitud', err)
       setError(`No se pudo aprobar el cambio (${err.code || err.message || 'error desconocido'}).`)
@@ -1095,8 +1102,15 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
           {solicitudesPendientes.map((s) => (
             <div key={s.id} className="rounded-lg bg-paper p-2.5">
               <p className="text-sm text-ink">
-                Sale <strong>{nombreJugadorDe(s.jugadorSaleId)}</strong>, entra{' '}
-                <strong>{nombreJugadorDe(s.jugadorEntraId)}</strong> ({nombreEquipo(s.equipoId)})
+                Sale <strong>{nombreJugadorDe(s.jugadorSaleId)}</strong>
+                {s.jugadorEntraId ? (
+                  <>
+                    , entra <strong>{nombreJugadorDe(s.jugadorEntraId)}</strong>
+                  </>
+                ) : (
+                  ' (sin reemplazo)'
+                )}{' '}
+                ({nombreEquipo(s.equipoId)})
               </p>
               <div className="mt-2 flex gap-2">
                 <button
