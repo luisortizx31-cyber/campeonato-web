@@ -31,14 +31,24 @@ import SeccionColegios from './SeccionColegios'
 // Agrupa varios ajustes relacionados bajo un mismo titulo (una sola
 // tarjeta con separadores adentro) en vez de una fila suelta con su
 // propio borde por cada ajuste - mismo dato, mucho mas facil de
-// escanear de un vistazo.
+// escanear de un vistazo. Se puede contraer (arranca abierta) para que
+// la pantalla entera no se sienta amontonada cuando ya se reviso una
+// seccion - el estado es propio de cada tarjeta, no hace falta que el
+// padre sepa cual esta abierta.
 function SeccionConfig({ icono, titulo, children }) {
+  const [abierto, setAbierto] = useState(true)
   return (
     <div className="mb-3 overflow-hidden rounded-2xl border border-line bg-surface">
-      <p className="border-b border-line bg-ink-soft/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
-        {icono} {titulo}
-      </p>
-      <div className="divide-y divide-line">{children}</div>
+      <button
+        onClick={() => setAbierto((a) => !a)}
+        className={`flex w-full items-center justify-between gap-2 bg-ink-soft/10 px-4 py-2 text-left ${abierto ? 'border-b border-line' : ''}`}
+      >
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+          {icono} {titulo}
+        </span>
+        <span className={`text-ink-soft transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
+      </button>
+      {abierto && <div className="divide-y divide-line">{children}</div>}
     </div>
   )
 }
