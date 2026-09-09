@@ -59,6 +59,16 @@ export function suscribirPartidosPorCategoria(torneoId, categoria, onCambio) {
   })
 }
 
+// UN solo partido en tiempo real - la usa ControlPartido para que la
+// alineacion (titulares/suplentes/DNI confirmado) se actualice sola
+// cuando el delegado la va armando desde su celular, sin que el
+// Maestro tenga que refrescar la pagina para verla.
+export function suscribirPartido(partidoId, onCambio) {
+  return onSnapshot(doc(db, 'torneo_partidos', partidoId), (snap) => {
+    if (snap.exists()) onCambio({ id: snap.id, ...snap.data() })
+  })
+}
+
 // Genera el fixture completo "todos contra todos" de una categoria
 // (ver utils/fixtureTorneo.generarRondas) y crea un partido SIN
 // resultado (golesLocal/golesVisitante null) por cada enfrentamiento.

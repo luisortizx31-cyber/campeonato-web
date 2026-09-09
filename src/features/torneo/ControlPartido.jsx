@@ -10,6 +10,7 @@ import {
   actualizarMarcadorEnVivo,
   alternarAlineacionAbierta,
   arrancarPartido,
+  suscribirPartido,
 } from '../../services/torneoPartidosService'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
@@ -493,6 +494,23 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   useEffect(() => {
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partido.id])
+
+  // La alineacion (titulares/suplentes/DNI confirmado) puede seguir
+  // cambiando desde OTRO dispositivo mientras esta pantalla queda
+  // abierta - el delegado armando su equipo desde el celular, o el
+  // Maestro mismo en otra pestaña. Sin esto, solo se veian los cambios
+  // propios (los que se hacen desde aca) hasta refrescar la pagina.
+  useEffect(() => {
+    const desuscribir = suscribirPartido(partido.id, (p) => {
+      setTitularesLocal(p.titularesLocal || [])
+      setTitularesVisitante(p.titularesVisitante || [])
+      setSuplentesLocal(p.suplentesLocal || [])
+      setSuplentesVisitante(p.suplentesVisitante || [])
+      setDniConfirmadoLocal(p.dniConfirmadoLocal || [])
+      setDniConfirmadoVisitante(p.dniConfirmadoVisitante || [])
+    })
+    return desuscribir
   }, [partido.id])
 
   useEffect(() => {
