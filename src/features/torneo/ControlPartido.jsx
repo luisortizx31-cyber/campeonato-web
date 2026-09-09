@@ -371,7 +371,7 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, 
  * partido". Antes de eso el partido sigue viendose "Pendiente" en el
  * resto de la app.
  */
-export default function ControlPartido({ torneoId, categoria, partido, nombreEquipo, onVolver, onFinalizado }) {
+export default function ControlPartido({ torneoId, categoria, partido, nombreEquipo, onVolver }) {
   const [jugadoresLocal, setJugadoresLocal] = useState([])
   const [jugadoresVisitante, setJugadoresVisitante] = useState([])
   const [goles, setGoles] = useState([])
@@ -408,7 +408,15 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   // la alineacion directo y sus cambios quedan como solicitud (ver
   // torneoSolicitudesCambioService y AlineacionPartidoDelegado).
   const [horaInicio, setHoraInicio] = useState(partido.horaInicio || null)
+  const [horaFin, setHoraFin] = useState(partido.horaFin || null)
   const [arrancando, setArrancando] = useState(false)
+  // Si el resultado ya quedo guardado (partido "Jugado") - copia LOCAL
+  // (no el prop `partido`, que es estatico) sincronizada en vivo (ver
+  // suscribirPartido mas abajo), para que al finalizar el partido esta
+  // misma pantalla se actualice sola (badge "Jugado", boton
+  // "Actualizar resultado final", hora de fin) sin tener que salir a
+  // Fechas y volver a entrar.
+  const [golesLocalGuardado, setGolesLocalGuardado] = useState(partido.golesLocal)
   const [solicitudesPendientes, setSolicitudesPendientes] = useState([])
   const [procesandoSolicitud, setProcesandoSolicitud] = useState(null)
   // Que pestaña (Alineación/Cancha) se ve para ESTE partido puntual -
@@ -509,6 +517,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setSuplentesVisitante(p.suplentesVisitante || [])
       setDniConfirmadoLocal(p.dniConfirmadoLocal || [])
       setDniConfirmadoVisitante(p.dniConfirmadoVisitante || [])
+      setHoraInicio(p.horaInicio || null)
+      setHoraFin(p.horaFin || null)
+      setGolesLocalGuardado(p.golesLocal)
     })
     return desuscribir
   }, [partido.id])
@@ -956,10 +967,13 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         golesLocal: equipoAbandona === 'local' ? 0 : diferenciaWalkover,
         golesVisitante: equipoAbandona === 'visitante' ? 0 : diferenciaWalkover,
       })
-      onFinalizado()
+      // Se queda en esta misma pantalla (no navega a Fechas) - el
+      // marcador, la hora de fin y el boton se actualizan solos via la
+      // suscripcion en vivo de mas arriba.
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError(err.message || 'No se pudo finalizar el partido.')
+    } finally {
       setFinalizando(false)
     }
   }
@@ -973,10 +987,13 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       // los contadores de temporada de cada jugador.
       await finalizarTarjetasPartido({ torneoId, categoria, partidoId: partido.id, fechaNumero: partido.fechaNumero })
       await registrarResultadoPartido(partido.id, { golesLocal: golesLocalCount, golesVisitante: golesVisitanteCount })
-      onFinalizado()
+      // Se queda en esta misma pantalla (no navega a Fechas) - el
+      // marcador, la hora de fin y el boton se actualizan solos via la
+      // suscripcion en vivo de mas arriba.
     } catch (err) {
       console.error('[ControlPartido]', err)
       setError(err.message || 'No se pudo finalizar el partido.')
+    } finally {
       setFinalizando(false)
     }
   }
@@ -1009,7 +1026,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
   const colorLocal = colorEquipo(nombreEquipo(partido.equipoLocalId))
   const colorVisitante = colorEquipo(nombreEquipo(partido.equipoVisitanteId))
-  const jugado = partido.golesLocal != null
+  const jugado = golesLocalGuardado != null
 
   function nombreJugadorDe(jugadorId) {
     return [...jugadoresLocal, ...jugadoresVisitante].find((j) => j.id === jugadorId)?.nombre || '—'
@@ -1046,7 +1063,15 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         </p>
       </div>
 
-      {!jugado && (
+      {jugado ? (
+        (horaInicio || horaFin) && (
+          <p className="mb-3 rounded-lg bg-success-soft px-3 py-2 text-center text-xs font-medium text-success">
+            🕐 {horaInicio ? `Arrancó a las ${formatearHora(horaInicio)}` : ''}
+            {horaInicio && horaFin ? ' · ' : ''}
+            {horaFin ? `Terminó a las ${formatearHora(horaFin)}` : ''}
+          </p>
+        )
+      ) : (
         horaInicio ? (
           <p className="mb-3 rounded-lg bg-success-soft px-3 py-2 text-center text-xs font-medium text-success">
             🟢 Partido arrancado a las {formatearHora(horaInicio)}
@@ -1384,7 +1409,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
           >
             {finalizando
               ? 'Finalizando…'
-              : partido.golesLocal != null
+              : jugado
                 ? 'Actualizar resultado final'
                 : 'Finalizar partido'}
           </button>

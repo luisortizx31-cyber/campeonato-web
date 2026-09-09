@@ -597,10 +597,6 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
             setPartidoControl(null)
             await cargar()
           }}
-          onFinalizado={async () => {
-            setPartidoControl(null)
-            await cargar()
-          }}
         />
       </div>
     )
