@@ -119,53 +119,99 @@ export function calcularGrupoQueAvanza({ ganadores, perdedores, bye, posicionPor
   return { avanzan: [...avanzanBase, ...comodines], comodines }
 }
 
-// Ganador/perdedor de cada partido de una ronda, a partir de los docs
-// de /torneo_partidos ya guardados. Un partido sin marcador cargado
-// todavia deja la ronda incompleta. Un empate (golesLocal ===
-// golesVisitante) tambien la deja incompleta hasta que el Maestro
-// defina a mano quien avanza (ver ganadorId, torneoLiguillaService).
-export function resolverResultadosRonda(partidosRonda) {
-  const ganadores = []
-  const perdedores = []
-  let completa = true
+// Agrupa los partidos de una ronda por CRUCE (par de equipos, sin
+// importar quien es local en cada uno) - un cruce normal tiene 1 solo
+// partido; uno "ida y vuelta" tiene 2 (se decide cruce por cruce al
+// armar la ronda, ver TabLiguilla/EditorCruces, no toda la ronda por
+// igual). Devuelve un array, en el mismo orden en que aparece cada
+// cruce por primera vez, con el marcador ya sumado (agregado) sin
+// importar de que lado jugo cada equipo en cada partido.
+export function agruparPorCruce(partidosRonda) {
+  const grupos = new Map()
+  const orden = []
   for (const p of partidosRonda) {
-    if (p.golesLocal == null || p.golesVisitante == null) {
-      completa = false
-      continue
+    const clave = [p.equipoLocalId, p.equipoVisitanteId].sort().join('|')
+    if (!grupos.has(clave)) {
+      grupos.set(clave, [])
+      orden.push(clave)
     }
-    let ganadorId
-    if (p.golesLocal > p.golesVisitante) ganadorId = p.equipoLocalId
-    else if (p.golesVisitante > p.golesLocal) ganadorId = p.equipoVisitanteId
-    else ganadorId = p.ganadorId || null
-    if (!ganadorId) {
-      completa = false
-      continue
-    }
-    ganadores.push(ganadorId)
-    perdedores.push(ganadorId === p.equipoLocalId ? p.equipoVisitanteId : p.equipoLocalId)
+    grupos.get(clave).push(p)
   }
-  return { completa, ganadores, perdedores }
+
+  return orden.map((clave) => {
+    const partidos = [...grupos.get(clave)].sort((a, b) => (a.fechaNumero || 0) - (b.fechaNumero || 0))
+    const [equipoA, equipoB] = clave.split('|')
+
+    let golesA = 0
+    let golesB = 0
+    let completo = true
+    for (const p of partidos) {
+      if (p.golesLocal == null || p.golesVisitante == null) {
+        completo = false
+        continue
+      }
+      golesA += p.equipoLocalId === equipoA ? p.golesLocal : p.golesVisitante
+      golesB += p.equipoLocalId === equipoB ? p.golesLocal : p.golesVisitante
+    }
+
+    // El partido "decisivo" (el unico si es a un partido, o la vuelta
+    // si es ida y vuelta) es el que guarda `ganadorId` cuando el
+    // agregado termina empatado - ver definirGanadorPartidoLiguilla.
+    const partidoDecisivo = partidos[partidos.length - 1]
+    let ganadorId = null
+    if (completo) {
+      if (golesA > golesB) ganadorId = equipoA
+      else if (golesB > golesA) ganadorId = equipoB
+      else ganadorId = partidoDecisivo.ganadorId || null
+    }
+
+    return {
+      equipoIds: [equipoA, equipoB],
+      partidos,
+      idaYVuelta: partidos.length > 1,
+      golesA,
+      golesB,
+      completo: completo && Boolean(ganadorId),
+      empatado: completo && golesA === golesB && !ganadorId,
+      ganadorId,
+      perdedorId: ganadorId ? (ganadorId === equipoA ? equipoB : equipoA) : null,
+      partidoIdDecisivo: partidoDecisivo.id,
+    }
+  })
+}
+
+// Ganador/perdedor de cada CRUCE de una ronda (no de cada partido: un
+// cruce ida y vuelta cuenta una sola vez, por el agregado). Una ronda
+// con algun cruce sin cerrar (falta un resultado, o hay empate en el
+// agregado sin definir a mano) queda incompleta.
+export function resolverResultadosRonda(partidosRonda) {
+  const cruces = agruparPorCruce(partidosRonda)
+  const completa = cruces.every((c) => c.completo)
+  const ganadores = cruces.filter((c) => c.completo).map((c) => c.ganadorId)
+  const perdedores = cruces.filter((c) => c.completo).map((c) => c.perdedorId)
+  return { completa, ganadores, perdedores, cruces }
 }
 
 // Reconstruye TODO el estado del cuadro a partir de los partidos
 // guardados - mismo criterio que calcularTablaPosiciones: nunca se
 // guarda estado derivado, se recalcula siempre desde Firestore. Una
-// ronda = un fechaNumero (ver torneoLiguillaService). `qualifiers` es
-// el snapshot congelado ({equipoId, posicion}[]) guardado al iniciar
-// la liguilla.
+// ronda = un `rondaLiguilla` (NO un fechaNumero: un cruce ida y vuelta
+// ocupa DOS fechas distintas pero es la MISMA ronda del cuadro - ver
+// torneoLiguillaService). `qualifiers` es el snapshot congelado
+// ({equipoId, posicion}[]) guardado al iniciar la liguilla.
 export function reconstruirBracket({ qualifiers, byeEquipoId, partidosLiguilla }) {
   const posicionPorEquipo = new Map(qualifiers.map((q) => [q.equipoId, q.posicion]))
-  const fechas = [...new Set(partidosLiguilla.map((p) => p.fechaNumero))].sort((a, b) => a - b)
+  const numerosRonda = [...new Set(partidosLiguilla.map((p) => p.rondaLiguilla))].sort((a, b) => a - b)
 
   const rondas = []
   let entrantesRondaActual = qualifiers.length
 
-  for (let i = 0; i < fechas.length; i++) {
-    const fechaNumero = fechas[i]
-    const partidosRonda = partidosLiguilla.filter((p) => p.fechaNumero === fechaNumero)
+  for (let i = 0; i < numerosRonda.length; i++) {
+    const rondaLiguilla = numerosRonda[i]
+    const partidosRonda = partidosLiguilla.filter((p) => p.rondaLiguilla === rondaLiguilla)
     const byeDeEstaRonda = i === 0 ? byeEquipoId : null
 
-    const { completa, ganadores, perdedores } = resolverResultadosRonda(partidosRonda)
+    const { completa, ganadores, perdedores, cruces } = resolverResultadosRonda(partidosRonda)
     let avanzan = []
     let comodines = []
     if (completa) {
@@ -178,9 +224,9 @@ export function reconstruirBracket({ qualifiers, byeEquipoId, partidosLiguilla }
     }
 
     rondas.push({
-      fechaNumero,
-      nombreRonda: partidosRonda[0]?.jornada || nombreRonda(entrantesRondaActual),
-      partidos: partidosRonda,
+      rondaLiguilla,
+      nombreRonda: nombreRonda(entrantesRondaActual),
+      cruces,
       bye: byeDeEstaRonda,
       completa,
       ganadores,

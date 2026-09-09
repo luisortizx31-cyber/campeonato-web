@@ -104,3 +104,17 @@ export const OPCIONES_MAXIMO_JUGADORES_INSCRITOS = [10, 12, 15, 18, 20, 25, 30]
 // la temporada regular. Ausente = temporada regular, sin cambios en
 // los partidos existentes.
 export const FASE_LIGUILLA = 'liguilla'
+
+// Formato de la liguilla, elegido por el Maestro al generarla (queda
+// guardado en /torneo_liguilla, ver torneoLiguillaService.js):
+//  - ELIMINACION: cuadro eliminatorio de toda la vida (bye, sorteo,
+//    mejor perdedor - ver liguillaTorneo.js). Cada cruce puede jugarse
+//    a un partido o ida y vuelta, se elige cruce por cruce.
+//  - GRUPO: los clasificados juegan todos contra todos (ida, o ida y
+//    vuelta - una sola eleccion para todo el grupo) y arman una tabla
+//    de posiciones propia (ver calcularTablaPosiciones) en vez de un
+//    cuadro.
+export const FORMATO_LIGUILLA = {
+  ELIMINACION: 'eliminacion',
+  GRUPO: 'grupo',
+}
