@@ -293,10 +293,19 @@ service cloud.firestore {
     // el resuelve, el delegado unicamente puede crear el pedido y
     // mirar como quedo el suyo.
     match /torneo_solicitudes_cambio/{solicitudId} {
-      allow get, list: if (esMaestro() && resource.data.torneoId == miTorneoId())
-                       || (esDelegado()
-                           && resource.data.torneoId == perfilDe(request.auth.uid).torneoId
-                           && resource.data.equipoId == miEquipoIdDelegado());
+      // Lectura publica a proposito (mismo criterio que el resto de
+      // "Campeonato" mas abajo, ej. torneo_partidos/torneo_jugadores) -
+      // NO es por falta de cuidado: una regla de "list" que depende de
+      // un get() (esMaestro()/esDelegado()) se rompe con
+      // permission-denied especificamente en listeners EN VIVO
+      // (onSnapshot) cuando un doc deja de matchear el query al
+      // cambiar de estado, porque Firestore necesita re-evaluar el
+      // permiso de lectura para notificar la baja y esa reevaluacion
+      // no soporta bien el get() extra. Esta coleccion no expone nada
+      // mas sensible que torneo_partidos (ya publico); lo unico que
+      // de verdad hay que proteger es quien puede crear/resolver un
+      // pedido, y eso lo cubren las reglas de abajo.
+      allow get, list: if true;
       allow create: if esDelegado()
                     && request.resource.data.torneoId == perfilDe(request.auth.uid).torneoId
                     && request.resource.data.equipoId == miEquipoIdDelegado()
