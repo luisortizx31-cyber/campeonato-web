@@ -161,6 +161,21 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   // torneoSolicitudesCambioService.aprobarSolicitud).
   async function handlePedirCambio(jugadorEntraId) {
     if (!cambio) return
+    // Ninguno de los dos jugadores del pedido puede estar YA metido en
+    // otro pedido pendiente - sin esto, se podia mandar "entra LUIS"
+    // varias veces para reemplazar a titulares distintos, y LUIS solo
+    // puede ocupar un lugar a la vez.
+    const yaTienePedidoPendiente = solicitudesPendientes.some(
+      (s) =>
+        s.jugadorSaleId === cambio.id ||
+        s.jugadorEntraId === cambio.id ||
+        s.jugadorSaleId === jugadorEntraId ||
+        s.jugadorEntraId === jugadorEntraId
+    )
+    if (yaTienePedidoPendiente) {
+      setError('Ya hay un pedido pendiente con uno de estos dos jugadores - esperá a que el Maestro lo resuelva antes de mandar otro.')
+      return
+    }
     setEnviandoSolicitud(true)
     setError(null)
     try {
@@ -345,21 +360,34 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                       hasta que lo apruebe.
                     </p>
                     <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-                      {listaSuplentes.map((s) => (
-                        <li key={s.id}>
-                          <button
-                            onClick={() => handlePedirCambio(s.id)}
-                            disabled={enviandoSolicitud}
-                            className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm text-ink disabled:opacity-50"
-                          >
-                            <span className="min-w-0 truncate">
-                              {s.numeroCamiseta != null && <span className="text-ink-soft">#{s.numeroCamiseta} </span>}
-                              {s.nombre}
-                            </span>
-                            <span className="shrink-0 text-xs font-medium text-brand">Pedir cambio ›</span>
-                          </button>
-                        </li>
-                      ))}
+                      {listaSuplentes.map((s) => {
+                        // Ya metido en otro pedido pendiente (como el
+                        // que sale o el que entra) - no se puede
+                        // volver a elegir hasta que el Maestro lo
+                        // resuelva, si no un mismo jugador podria
+                        // quedar pedido para entrar por dos titulares
+                        // distintos a la vez.
+                        const yaTienePedido = solicitudesPendientes.some(
+                          (sol) => sol.jugadorEntraId === s.id || sol.jugadorSaleId === s.id
+                        )
+                        return (
+                          <li key={s.id}>
+                            <button
+                              onClick={() => handlePedirCambio(s.id)}
+                              disabled={enviandoSolicitud || yaTienePedido}
+                              className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <span className="min-w-0 truncate">
+                                {s.numeroCamiseta != null && <span className="text-ink-soft">#{s.numeroCamiseta} </span>}
+                                {s.nombre}
+                              </span>
+                              <span className="shrink-0 text-xs font-medium text-brand">
+                                {yaTienePedido ? 'Ya tiene un pedido' : 'Pedir cambio ›'}
+                              </span>
+                            </button>
+                          </li>
+                        )
+                      })}
                     </ul>
                   </>
                 )}
