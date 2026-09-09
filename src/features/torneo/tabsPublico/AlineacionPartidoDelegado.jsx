@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { actualizarTitular, actualizarSuplente } from '../../../services/torneoPartidosService'
-import { actualizarNumeroCamiseta } from '../../../services/torneoJugadoresService'
+import { actualizarNumeroCamiseta, listarJugadoresPorEquipo } from '../../../services/torneoJugadoresService'
 import {
   crearSolicitudCambio,
   suscribirSolicitudesPorPartidoYEquipo,
@@ -67,7 +67,15 @@ function InputCamiseta({ jugador, onGuardar }) {
  * quede sin poder resolverse pero tampoco se meta un cambio sin que el
  * Maestro se entere en medio del partido.
  */
-export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoId, partido, equipo, jugadores: jugadoresIniciales, jugadoresPorEquipo, nombreRival, onVolver }) {
+export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoId, partido, equipo, jugadores: jugadoresIniciales, jugadoresPorEquipo, nombreEquipoPropio, nombreRival, onVolver }) {
+  // Que pestaña se ve - igual que ControlPartido (admin): arranca en
+  // Cancha si la alineacion ya estaba armada (se volvio a abrir un
+  // partido en curso), si no en Alineación, que es el primer paso.
+  const [vista, setVista] = useState(() =>
+    ((equipo === 'local' ? partido.titularesLocal : partido.titularesVisitante)?.length > 0) ? 'cancha' : 'alineacion'
+  )
+  const rivalId = equipo === 'local' ? partido.equipoVisitanteId : partido.equipoLocalId
+  const [jugadoresRival, setJugadoresRival] = useState([])
   const [titulares, setTitulares] = useState(
     (equipo === 'local' ? partido.titularesLocal : partido.titularesVisitante) || []
   )
@@ -106,6 +114,18 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
     const desuscribir = suscribirSolicitudesPorPartidoYEquipo(partido.id, equipoId, setSolicitudes)
     return desuscribir
   }, [partido.id, equipoId])
+
+  // Solo para MOSTRAR en la vista Cancha (ver mas abajo) - el rival se
+  // ve, pero nunca se puede tocar ni pedir cambios de su plantel.
+  useEffect(() => {
+    let cancelado = false
+    listarJugadoresPorEquipo(rivalId).then((js) => {
+      if (!cancelado) setJugadoresRival(js.filter((j) => !j.eliminado))
+    })
+    return () => {
+      cancelado = true
+    }
+  }, [rivalId])
 
   const enVivo = partido.horaInicio != null && partido.golesLocal == null
   const solicitudesPendientes = solicitudes.filter((s) => s.estado === 'pendiente')
@@ -214,6 +234,12 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
   const listaPool = jugadores.filter((j) => !titulares.includes(j.id) && !suplentes.includes(j.id)).sort(porNombre)
   const completo = titulares.length >= jugadoresPorEquipo
 
+  // Vista Cancha: quienes estan jugando ahora mismo de cada lado -
+  // tocar a uno de mi equipo abre el mismo selector de cambio que en
+  // Alineación (setCambio); el rival solo se muestra, nunca se toca.
+  const titularesRivalIds = equipo === 'local' ? partido.titularesVisitante : partido.titularesLocal
+  const enCanchaRival = jugadoresRival.filter((j) => titularesRivalIds?.includes(j.id)).sort(porNombre)
+
   function nombreJugador(jugadorId) {
     return jugadores.find((j) => j.id === jugadorId)?.nombre || '—'
   }
@@ -228,6 +254,25 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
           ← Volver
         </button>
         <p className="truncate text-xs text-ink-soft">Fecha {partido.fechaNumero} vs {nombreRival}</p>
+      </div>
+
+      <div className="mb-3 flex overflow-hidden rounded-xl border border-line">
+        <button
+          onClick={() => setVista('alineacion')}
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${
+            vista === 'alineacion' ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
+          }`}
+        >
+          Alineación
+        </button>
+        <button
+          onClick={() => setVista('cancha')}
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${
+            vista === 'cancha' ? 'bg-brand text-white' : 'bg-surface text-ink-soft'
+          }`}
+        >
+          Cancha
+        </button>
       </div>
 
       <p className="mb-3 text-sm text-ink-soft">
@@ -277,76 +322,121 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
 
       {error && <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
-        ◌ Jugadores ({listaPool.length})
-      </h2>
-      <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {listaPool.map((j) => (
-          <li key={j.id} className="flex items-center gap-2 px-3 py-2.5">
-            <span className="min-w-0 flex-1 truncate text-sm text-ink">{j.nombre}</span>
-            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
-            <div className="flex shrink-0 gap-1.5">
-              <button
-                onClick={() => mover(j.id, 'titular')}
-                disabled={completo}
-                className="rounded-md border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Titular
-              </button>
-              <button
-                onClick={() => mover(j.id, 'suplente')}
-                className="rounded-md border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft"
-              >
-                Suplente
-              </button>
+      {vista === 'alineacion' ? (
+        <>
+          <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
+            ◌ Jugadores ({listaPool.length})
+          </h2>
+          <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            {listaPool.map((j) => (
+              <li key={j.id} className="flex items-center gap-2 px-3 py-2.5">
+                <span className="min-w-0 flex-1 truncate text-sm text-ink">{j.nombre}</span>
+                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    onClick={() => mover(j.id, 'titular')}
+                    disabled={completo}
+                    className="rounded-md border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-medium text-success disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Titular
+                  </button>
+                  <button
+                    onClick={() => mover(j.id, 'suplente')}
+                    className="rounded-md border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft"
+                  >
+                    Suplente
+                  </button>
+                </div>
+              </li>
+            ))}
+            {listaPool.length === 0 && (
+              <li className="px-3 py-3 text-center text-xs text-ink-soft">Ya asignaste a todo el plantel</li>
+            )}
+          </ul>
+
+          <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
+            ● Titulares ({listaTitulares.length})
+          </h2>
+          <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            {listaTitulares.map((j, i) => (
+              <li key={j.id} className="flex items-center gap-2 px-3 py-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">
+                  {i + 1}
+                </span>
+                <button onClick={() => setCambio(j)} className="min-w-0 flex-1 text-left text-sm text-ink">
+                  {j.nombre}
+                </button>
+                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+              </li>
+            ))}
+            {listaTitulares.length === 0 && (
+              <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin titulares todavía</li>
+            )}
+          </ul>
+
+          <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
+            ○ Suplentes ({listaSuplentes.length})
+          </h2>
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            {listaSuplentes.map((j) => (
+              <li key={j.id} className="flex items-center gap-2 px-3 py-2">
+                <button
+                  onClick={() => mover(j.id, 'titular')}
+                  disabled={completo}
+                  className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
+                >
+                  ○ {j.nombre}
+                </button>
+                <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
+              </li>
+            ))}
+            {listaSuplentes.length === 0 && (
+              <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin suplentes todavía</li>
+            )}
+          </ul>
+        </>
+      ) : (
+        // Vista Cancha: solo lectura del lado del rival - tocar a uno
+        // de mi equipo abre el mismo selector de cambio de arriba
+        // (setCambio), pedirle un cambio a la OTRA promo no es una
+        // opcion en ningun lado de esta pantalla.
+        <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
+          <div className="overflow-hidden rounded-xl border border-line bg-surface">
+            <div className="truncate bg-brand-soft px-2 py-1.5 text-center text-[11px] font-bold text-ink">
+              {nombreEquipoPropio || 'Mi equipo'} ({listaTitulares.length})
             </div>
-          </li>
-        ))}
-        {listaPool.length === 0 && (
-          <li className="px-3 py-3 text-center text-xs text-ink-soft">Ya asignaste a todo el plantel</li>
-        )}
-      </ul>
-
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
-        ● Titulares ({listaTitulares.length})
-      </h2>
-      <ul className="mb-3 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {listaTitulares.map((j, i) => (
-          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success text-xs font-bold text-white">
-              {i + 1}
-            </span>
-            <button onClick={() => setCambio(j)} className="min-w-0 flex-1 text-left text-sm text-ink">
-              {j.nombre}
-            </button>
-            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
-          </li>
-        ))}
-        {listaTitulares.length === 0 && (
-          <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin titulares todavía</li>
-        )}
-      </ul>
-
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
-        ○ Suplentes ({listaSuplentes.length})
-      </h2>
-      <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
-        {listaSuplentes.map((j) => (
-          <li key={j.id} className="flex items-center gap-2 px-3 py-2">
-            <button
-              onClick={() => mover(j.id, 'titular')}
-              disabled={completo}
-              className="min-w-0 flex-1 text-left text-sm text-ink-soft disabled:opacity-50"
-            >
-              ○ {j.nombre}
-            </button>
-            <InputCamiseta jugador={j} onGuardar={handleGuardarCamiseta} />
-          </li>
-        ))}
-        {listaSuplentes.length === 0 && (
-          <li className="px-3 py-3 text-center text-xs text-ink-soft">Sin suplentes todavía</li>
-        )}
-      </ul>
+            <ul className="divide-y-2 divide-ink-soft/20">
+              {listaTitulares.map((j) => (
+                <li key={j.id} className="px-2.5 py-2">
+                  <button onClick={() => setCambio(j)} className="flex w-full items-center gap-1.5 text-left text-xs">
+                    {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
+                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{j.nombre}</span>
+                  </button>
+                </li>
+              ))}
+              {listaTitulares.length === 0 && (
+                <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Elegí titulares en Alineación</li>
+              )}
+            </ul>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-line bg-surface">
+            <div className="truncate bg-gold-soft px-2 py-1.5 text-center text-[11px] font-bold text-ink">
+              {nombreRival} ({enCanchaRival.length})
+            </div>
+            <ul className="divide-y-2 divide-ink-soft/20">
+              {enCanchaRival.map((j) => (
+                <li key={j.id} className="px-2.5 py-2 text-xs">
+                  {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
+                  <span className="font-medium text-ink">{j.nombre}</span>
+                </li>
+              ))}
+              {enCanchaRival.length === 0 && (
+                <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Todavía sin titulares</li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {cambio && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4">

@@ -134,6 +134,7 @@ export default function TabMiEquipoDelegado() {
         equipo={equipoDelPartido}
         jugadores={jugadores}
         jugadoresPorEquipo={jugadoresPorEquipo}
+        nombreEquipoPropio={equipo?.nombre}
         nombreRival={nombreEquipo(rivalId)}
         onVolver={() => setPartidoAbiertoId(null)}
       />
