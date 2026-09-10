@@ -15,7 +15,14 @@ import {
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { suscribirSolicitudesPendientesPorCategoria } from '../../../services/torneoSolicitudesCambioService'
 import { obtenerDelegadosDePartido } from '../../../services/delegadosService'
-import { calcularNumeroFechas, calcularLegPartido, formatearFechaProgramada, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import {
+  calcularNumeroFechas,
+  calcularLegPartido,
+  formatearFechaProgramada,
+  formatearDiaCorto,
+  formatearHoraCorta,
+  compararPartidosPorHorario,
+} from '../../../utils/fixtureTorneo'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
@@ -575,10 +582,13 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
       .some((p) => p.golesLocal != null || p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
   }
 
-  // Horario mas temprano entre los partidos PENDIENTES de esta Fecha
-  // (mismo criterio que TabFechasPublica).
+  // Horario mas temprano entre los partidos de esta Fecha (cualquiera
+  // que tenga `fecha` puesto, jugado o no) - se muestra debajo de cada
+  // pastilla "Fecha N" (mismo criterio y misma pastilla que
+  // TabFechasPublica, para que el Maestro vea la programacion igual
+  // que el publico).
   function horarioMasBajoDe(f) {
-    const conFecha = partidos.filter((p) => p.fechaNumero === f && p.golesLocal == null && p.fecha)
+    const conFecha = partidos.filter((p) => p.fechaNumero === f && p.fecha)
     if (conFecha.length === 0) return null
     return conFecha.sort((a, b) => a.fecha.toMillis() - b.fecha.toMillis())[0].fecha
   }
@@ -749,35 +759,44 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                   <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
                 </p>
               )}
-              <div ref={barraFechasRef} className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+              <div ref={barraFechasRef} className="mb-3 flex items-stretch gap-1.5 overflow-x-auto pb-1">
                 {fechasDisponibles.map((f) => {
                   const completa = fechaCompleta(f)
                   const empezada = !completa && fechaEmpezada(f)
                   const activa = fechaSeleccionada === f
                   const enHora = horaLlegada(f)
                   const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
+                  const horarioMasBajo = horarioMasBajoDe(f)
                   return (
-                    <div key={f} className="flex shrink-0 items-center gap-1.5">
-                      {esPrimeraVuelta && <span className="h-6 w-px shrink-0 bg-line" />}
-                      <button
-                        data-fecha={f}
-                        onClick={() => setFechaSeleccionada(f)}
-                        className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
-                          enHora ? 'animate-pulse' : ''
-                        } ${
-                          activa
-                            ? 'border-brand bg-brand text-white shadow-sm'
-                            : completa
-                              ? 'border-danger/30 bg-danger-soft text-danger'
-                              : empezada
-                                ? 'border-warning/30 bg-warning-soft text-warning'
-                                : enHora
-                                  ? 'border-success/30 bg-success-soft text-success'
-                                  : 'border-line bg-surface text-ink-soft'
-                        }`}
-                      >
-                        Fecha {f}{completa ? ' ✓' : ''}
-                      </button>
+                    <div key={f} className="flex shrink-0 items-stretch gap-1.5">
+                      {esPrimeraVuelta && <span className="w-px shrink-0 bg-line" />}
+                      <div className="flex shrink-0 flex-col items-center gap-0.5">
+                        <button
+                          data-fecha={f}
+                          onClick={() => setFechaSeleccionada(f)}
+                          className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
+                            enHora ? 'animate-pulse' : ''
+                          } ${
+                            activa
+                              ? 'border-brand bg-brand text-white shadow-sm'
+                              : completa
+                                ? 'border-danger/30 bg-danger-soft text-danger'
+                                : empezada
+                                  ? 'border-warning/30 bg-warning-soft text-warning'
+                                  : enHora
+                                    ? 'border-success/30 bg-success-soft text-success'
+                                    : 'border-line bg-surface text-ink-soft'
+                          }`}
+                        >
+                          Fecha {f}{completa ? ' ✓' : ''}
+                        </button>
+                        {horarioMasBajo && (
+                          <div className="flex flex-col items-center whitespace-nowrap rounded-lg bg-gold px-2 py-1 leading-tight text-white shadow-sm">
+                            <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
+                            <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
