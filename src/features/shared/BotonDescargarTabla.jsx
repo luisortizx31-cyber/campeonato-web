@@ -1,18 +1,26 @@
 import { useState } from 'react'
-import { toCanvas } from 'html-to-image'
+import html2canvas from 'html2canvas-pro'
 import jsPDF from 'jspdf'
 
 // Descarga una captura del elemento que apunta `targetRef` como imagen
 // (PNG, para compartir por WhatsApp) o PDF. No hay backend en este
 // proyecto, asi que la "foto" se genera enteramente en el navegador.
 //
-// Se usa html-to-image (no html2canvas): serializa el DOM a SVG y deja
-// que el propio navegador lo dibuje en un <canvas>, asi que entiende
-// cualquier color CSS moderno tal cual el navegador lo renderiza.
-// html2canvas trae su propio parser de colores y no soporta oklab/
-// oklch/color-mix - justo los que usa Tailwind v4 para los modificadores
-// de opacidad (ej. "bg-danger-soft/40"), y tiraba
-// "unsupported color function oklab".
+// Se usa html2canvas-pro (fork mantenido de html2canvas, no
+// html-to-image): redibuja el DOM a mano sobre un <canvas> usando
+// primitivas de canvas (rects, texto, bordes), en vez de serializar
+// todo a un <img> con un SVG que contiene un <foreignObject> y despues
+// dibujar ESE <img> sobre un canvas. Chrome/Chromium recientes
+// bloquean por seguridad el contenido de un <foreignObject> cuando se
+// dibuja asi (el <img> "carga" bien pero el canvas queda 100% en
+// blanco al rasterizarlo) - eso es lo que rompia la descarga con
+// html-to-image, sin tirar ningun error (ver commit que cambio esto).
+// El html2canvas original quedo descartado en su momento porque su
+// parser de colores no entendia oklab/oklch/color-mix (los que usa
+// Tailwind v4 en modificadores de opacidad, ej. "bg-danger-soft/40")
+// y tiraba "unsupported color function oklab" - html2canvas-pro es
+// exactamente el mismo html2canvas con soporte agregado para esas
+// funciones de color modernas, asi que resuelve los dos problemas.
 export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
   const [generando, setGenerando] = useState(null) // 'imagen' | 'pdf' | null
   const [abierto, setAbierto] = useState(false)
@@ -49,7 +57,7 @@ export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
 
     document.body.appendChild(clon)
     try {
-      return await toCanvas(clon, { backgroundColor: '#ffffff', pixelRatio: 2 })
+      return await html2canvas(clon, { backgroundColor: '#ffffff', scale: 2 })
     } finally {
       document.body.removeChild(clon)
     }
