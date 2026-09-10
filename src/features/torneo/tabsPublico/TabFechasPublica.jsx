@@ -135,6 +135,16 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     return horario != null && horario.toMillis() <= ahora && !fechaCompleta(f)
   }
 
+  // Para el chip de dia/hora debajo de la pastilla: si el horario
+  // programado ya paso (independiente de si el resultado se cargo o
+  // no) se muestra atenuado en vez de dorado, para diferenciar de un
+  // vistazo las fechas que todavia estan por jugarse (mismo criterio
+  // que TabFechas admin).
+  function horarioYaPaso(f) {
+    const horario = horarioMasBajoDe(f)
+    return horario != null && horario.toMillis() <= ahora
+  }
+
   function fechaLeg(f) {
     const partidosF = partidos.filter((p) => p.fechaNumero === f)
     if (partidosF.length === 0) return null
@@ -184,6 +194,7 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
               const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
               const horarioMasBajo = horarioMasBajoDe(f)
               const enHora = horaLlegada(f)
+              const yaPaso = horarioYaPaso(f)
               return (
                 <div key={f} className="flex shrink-0 items-stretch gap-1.5">
                   {esPrimeraVuelta && <span className="w-px shrink-0 bg-line" />}
@@ -206,7 +217,11 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       Fecha {f}{completa ? ' ✓' : ''}
                     </button>
                     {horarioMasBajo && (
-                      <div className="flex flex-col items-center whitespace-nowrap rounded-lg bg-gold px-2 py-1 leading-tight text-white shadow-sm">
+                      <div
+                        className={`flex flex-col items-center whitespace-nowrap rounded-lg px-2 py-1 leading-tight text-white shadow-sm ${
+                          yaPaso ? 'bg-ink-soft' : 'bg-gold'
+                        }`}
+                      >
                         <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
                         <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
                       </div>
