@@ -493,7 +493,10 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
               </div>
             )}
 
-            {bracket.rondas.map((ronda) => (
+            {bracket.rondas.map((ronda) => {
+              const esUltimaRonda = ronda.rondaLiguilla === bracket.rondas[bracket.rondas.length - 1].rondaLiguilla
+              const puedeCambiarComodin = esUltimaRonda && !bracket.campeonEquipoId && pasoSiguiente == null
+              return (
               <div key={ronda.rondaLiguilla} className="overflow-hidden rounded-2xl border border-line bg-surface">
                 <p className="border-b border-line bg-ink-soft/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
                   {ronda.nombreRonda}
@@ -562,6 +565,14 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
                         {(esComodinA || esComodinB) && (
                           <p className="mt-1 text-[11px] font-medium text-brand">
                             🎟️ {nombreEquipo(esComodinA ? idA : idB)} avanzó como mejor perdedor
+                            {puedeCambiarComodin && (
+                              <button
+                                onClick={iniciarPasoSiguienteRonda}
+                                className="ml-1.5 underline decoration-dotted"
+                              >
+                                Cambiar
+                              </button>
+                            )}
                           </p>
                         )}
                       </li>
@@ -569,7 +580,8 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
                   })}
                 </ul>
               </div>
-            ))}
+              )
+            })}
 
             {errorAccion && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorAccion}</p>}
 
