@@ -12,6 +12,7 @@ import TabGoleadoresPublica from './tabsPublico/TabGoleadoresPublica'
 import TabJugadoresPublica from './tabsPublico/TabJugadoresPublica'
 import TabAmonestadosPublica from './tabsPublico/TabAmonestadosPublica'
 import TabMiEquipoDelegado from './tabsPublico/TabMiEquipoDelegado'
+import { PublicidadBanner } from './PublicidadBanner'
 
 const TABS_PUBLICAS = [
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
@@ -271,6 +272,10 @@ export default function PaginaPublicaTorneo() {
           </button>
         ))}
       </nav>
+
+      <div className="mx-auto max-w-2xl px-4 pt-4">
+        <PublicidadBanner torneoId={torneoId} />
+      </div>
 
       <main className="mx-auto max-w-2xl px-4 py-6">
         <Componente torneoId={torneoId} categoriasActivas={categoriasActivas} />

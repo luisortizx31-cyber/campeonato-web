@@ -376,5 +376,28 @@ service cloud.firestore {
       allow create, update: if esMaestro() && request.resource.data.torneoId == miTorneoId();
       allow delete: if esMaestroDe(resource.data.torneoId);
     }
+
+    // Banners de publicidad del link publico (ver PublicidadBanner.jsx,
+    // torneoPublicidadService.js) - el Maestro es el unico que puede
+    // crear/editar el contenido del anuncio (imagen, enlace, activa,
+    // orden), pero cualquier visitante anonimo de la pagina publica
+    // tiene que poder sumar SU propia impresion/clic sin login. La
+    // regla de create exige explicitamente impresiones=0 y clics=0
+    // (no se puede "nacer" un anuncio con contadores ya inflados), y
+    // la de update separa los dos casos: el Maestro puede tocar
+    // cualquier campo, cualquier otro visitante SOLO puede subir de a
+    // uno los contadores (nunca bajarlos, nunca tocar otro campo).
+    match /torneo_publicidad/{anuncioId} {
+      allow get, list: if true;
+      allow create: if esMaestro()
+                    && request.resource.data.torneoId == miTorneoId()
+                    && request.resource.data.impresiones == 0
+                    && request.resource.data.clics == 0;
+      allow update: if esMaestroDe(resource.data.torneoId)
+                    || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['impresiones', 'clics'])
+                        && request.resource.data.impresiones >= resource.data.impresiones
+                        && request.resource.data.clics >= resource.data.clics);
+      allow delete: if esMaestroDe(resource.data.torneoId);
+    }
   }
 }

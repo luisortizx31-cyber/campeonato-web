@@ -7,14 +7,23 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    function perfilDe(uid) {
-      return firestore.get(/databases/(default)/documents/usuarios/$(uid)).data;
-    }
-
-    function esMaestroDe(torneoId) {
-      return estaAutenticado() &&
-        perfilDe(request.auth.uid).role == 'master' &&
-        perfilDe(request.auth.uid).torneoId == torneoId;
+    // Lo "correcto" seria validar aca (como ya hace firestore.rules)
+    // que quien escribe es el Maestro DE ESE torneo especifico, via
+    // firestore.get(/databases/(default)/documents/usuarios/$(uid)).
+    // Esa consulta cruzada Storage -> Firestore esta rota en este
+    // proyecto (confirmado con un script aislado: el perfil en
+    // Firestore es correcto - role:'master', torneoId correcto - y
+    // aun asi Storage devuelve storage/unauthorized para CUALQUIER
+    // regla que dependa de ella, incluida esta, ya rota desde antes de
+    // tocar nada de publicidad). Sin Cloud Functions en este proyecto
+    // no hay forma de usar custom claims como alternativa. Decision de
+    // Luis (2026-09-10): exigir solo estar autenticado (Maestro o
+    // delegado, de CUALQUIER torneo) hasta resolver la causa de fondo -
+    // el riesgo que queda es que alguien de OTRO colegio sobreescriba
+    // el archivo de este (nunca una fuga de datos privados, que sigue
+    // 100% protegida por firestore.rules).
+    function estaAutenticadoEnElTorneo(torneoId) {
+      return estaAutenticado()
     }
 
     // Documento de "bases" de cada torneo (PDF, un unico archivo activo
@@ -23,9 +32,20 @@ service firebase.storage {
     // /campeonato/{torneoId} es publico.
     match /torneo/{torneoId}/{archivo} {
       allow read: if true;
-      allow write: if esMaestroDe(torneoId) &&
+      allow write: if estaAutenticadoEnElTorneo(torneoId) &&
         request.resource.size < 10 * 1024 * 1024 &&
         request.resource.contentType == 'application/pdf';
+    }
+
+    // Imagenes de los banners de publicidad (ver PublicidadBanner.jsx,
+    // torneoPublicidadService.js) - ya se recomprimen/redimensionan en
+    // el navegador antes de subir, asi que el tope de 4MB es solo un
+    // resguardo, no el tamaño esperado real.
+    match /torneo/{torneoId}/publicidad/{archivo} {
+      allow read: if true;
+      allow write: if estaAutenticadoEnElTorneo(torneoId) &&
+        request.resource.size < 4 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
     }
   }
 }

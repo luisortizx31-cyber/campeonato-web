@@ -12,6 +12,7 @@ import TabJugadores from './tabs/TabJugadores'
 import TabAmonestados from './tabs/TabAmonestados'
 import TabReclamos from './tabs/TabReclamos'
 import TabBases from './tabs/TabBases'
+import TabPublicidad from './tabs/TabPublicidad'
 import TabConfiguracion from './tabs/TabConfiguracion'
 
 const TABS = [
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },
   { id: 'bases', label: 'Bases', icon: '📄', Componente: TabBases },
+  { id: 'publicidad', label: 'Publicidad', icon: '📣', Componente: TabPublicidad },
   { id: 'configuracion', label: 'Configuración', icon: '⚙️', Componente: TabConfiguracion },
 ]
 
