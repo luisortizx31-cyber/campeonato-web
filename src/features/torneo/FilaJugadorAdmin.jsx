@@ -14,6 +14,7 @@ export function FilaJugadorAdmin({ jugador, datosVisible, onVerDatos, onEditar, 
           <AvatarFoto
             fotoUrl={jugador.fotoUrl}
             texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
+            tamanoClase="h-14 w-14"
             onCambiarFoto={onCambiarFoto}
             subiendoFoto={subiendoFoto}
             onQuitarFoto={onQuitarFoto}

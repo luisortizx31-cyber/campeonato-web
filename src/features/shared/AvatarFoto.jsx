@@ -1,11 +1,16 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { VisorFoto } from './VisorFoto'
 
 // Avatar circular con foto (si ya se subio una) o un texto de respaldo
 // (inicial de nombre, etc) mientras tanto - usado para la foto de un
 // jugador (ver FilaJugadorAdmin) y la foto de portada de un equipo/
-// promocion (ver TabEquipos). onCambiarFoto es opcional: sin el (ej.
-// listas de solo lectura del lado publico) el avatar no es clickeable
-// y no aparece el boton de "Quitar".
+// promocion (ver TabEquipos).
+//
+// Si ya hay foto, tocar el circulo la abre en grande (VisorFoto) en vez
+// de subir una nueva - para cambiarla o quitarla estan los links de
+// texto de abajo, que solo aparecen si se paso onCambiarFoto (modo
+// admin). Sin foto y en modo admin, tocar el circulo abre el selector
+// de archivo directo (no hay nada que agrandar todavia).
 export function AvatarFoto({
   fotoUrl,
   texto,
@@ -17,6 +22,7 @@ export function AvatarFoto({
   onQuitarFoto,
 }) {
   const inputRef = useRef(null)
+  const [verGrande, setVerGrande] = useState(false)
 
   const contenido = subiendoFoto ? (
     <span className="text-[9px] text-ink-soft">…</span>
@@ -26,41 +32,58 @@ export function AvatarFoto({
     <span className={`text-xs font-bold ${colorText}`}>{texto}</span>
   )
 
-  if (!onCambiarFoto) {
-    return (
-      <span className={`flex ${tamanoClase} shrink-0 items-center justify-center overflow-hidden rounded-full ${colorBg}`}>
-        {contenido}
-      </span>
-    )
+  function handleClickAvatar() {
+    if (subiendoFoto) return
+    if (fotoUrl) {
+      setVerGrande(true)
+    } else if (onCambiarFoto) {
+      inputRef.current?.click()
+    }
   }
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-1">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) onCambiarFoto(file)
-          e.target.value = ''
-        }}
-      />
+      {onCambiarFoto && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) onCambiarFoto(file)
+            e.target.value = ''
+          }}
+        />
+      )}
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={subiendoFoto}
-        title="Cambiar foto"
-        className={`flex ${tamanoClase} items-center justify-center overflow-hidden rounded-full border border-dashed border-line ${colorBg} disabled:opacity-60`}
+        onClick={handleClickAvatar}
+        disabled={subiendoFoto || (!fotoUrl && !onCambiarFoto)}
+        title={fotoUrl ? 'Ver foto' : onCambiarFoto ? 'Subir foto' : undefined}
+        className={`flex ${tamanoClase} items-center justify-center overflow-hidden rounded-full ${colorBg} ${
+          onCambiarFoto ? 'border border-dashed border-line' : ''
+        } disabled:opacity-60`}
       >
         {contenido}
       </button>
-      {onQuitarFoto && fotoUrl && !subiendoFoto && (
-        <button onClick={onQuitarFoto} className="text-[10px] text-ink-soft underline decoration-dotted">
-          Quitar
-        </button>
+      {onCambiarFoto && (
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="text-[10px] text-ink-soft underline decoration-dotted"
+          >
+            {fotoUrl ? 'Cambiar' : 'Subir'}
+          </button>
+          {onQuitarFoto && fotoUrl && !subiendoFoto && (
+            <button type="button" onClick={onQuitarFoto} className="text-[10px] text-ink-soft underline decoration-dotted">
+              Quitar
+            </button>
+          )}
+        </div>
       )}
+      {verGrande && fotoUrl && <VisorFoto url={fotoUrl} onCerrar={() => setVerGrande(false)} />}
     </div>
   )
 }

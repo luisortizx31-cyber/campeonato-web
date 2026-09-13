@@ -25,7 +25,11 @@ export function FilaJugadorPublica({ jugador, nombreEquipo, className = '' }) {
   return (
     <li className={`flex items-center justify-between gap-2 px-4 py-3 ${className}`}>
       <div className="flex min-w-0 items-center gap-2.5">
-        <AvatarFoto fotoUrl={jugador.fotoUrl} texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'} />
+        <AvatarFoto
+          fotoUrl={jugador.fotoUrl}
+          texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
+          tamanoClase="h-14 w-14"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">
             {jugador.nombre} {jugador.numeroCamiseta && <span className="text-ink-soft">#{jugador.numeroCamiseta}</span>}
