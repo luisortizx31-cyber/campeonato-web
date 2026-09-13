@@ -98,7 +98,7 @@ export function PublicidadBanner({ torneoId, refreshKey, preview = false }) {
       <span className="absolute left-2 top-2 z-10 rounded-full bg-ink/60 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
         Publicidad
       </span>
-      <div className="relative aspect-[3/1] w-full">
+      <div className="relative aspect-[1/1] w-full">
         {anuncios.map((anuncio, i) => (
           <img
             key={anuncio.id}

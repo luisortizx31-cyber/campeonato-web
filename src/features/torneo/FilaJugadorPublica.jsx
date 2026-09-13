@@ -1,18 +1,4 @@
-// Avatar circular de solo lectura: la foto del jugador si tiene, o su
-// inicial mientras tanto - mismo criterio que el avatar admin
-// (FilaJugadorAdmin) pero sin ningun control para cambiarla.
-function AvatarJugadorPublica({ nombre, fotoUrl }) {
-  const inicial = nombre?.trim()?.charAt(0)?.toUpperCase() || '—'
-  return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-paper">
-      {fotoUrl ? (
-        <img src={fotoUrl} alt="" className="h-full w-full object-cover" />
-      ) : (
-        <span className="text-xs font-bold text-ink-soft">{inicial}</span>
-      )}
-    </span>
-  )
-}
+import { AvatarFoto } from '../shared/AvatarFoto'
 
 export function EstadoJugador({ jugador }) {
   if (jugador.eliminado) {
@@ -39,7 +25,7 @@ export function FilaJugadorPublica({ jugador, nombreEquipo, className = '' }) {
   return (
     <li className={`flex items-center justify-between gap-2 px-4 py-3 ${className}`}>
       <div className="flex min-w-0 items-center gap-2.5">
-        <AvatarJugadorPublica nombre={jugador.nombre} fotoUrl={jugador.fotoUrl} />
+        <AvatarFoto fotoUrl={jugador.fotoUrl} texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'} />
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">
             {jugador.nombre} {jugador.numeroCamiseta && <span className="text-ink-soft">#{jugador.numeroCamiseta}</span>}

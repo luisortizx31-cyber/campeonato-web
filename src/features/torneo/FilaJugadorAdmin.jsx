@@ -1,57 +1,6 @@
-import { useRef } from 'react'
 import { construirLinkWhatsapp } from '../../utils/whatsapp'
 import { WhatsappIcon } from '../shared/WhatsappIcon'
-
-// Avatar circular del jugador: su foto si ya subio una (ver
-// DetalleEquipo / torneoJugadoresService.actualizarFotoJugador), o la
-// inicial del nombre mientras tanto - mismo criterio que EscudoEquipo
-// para equipos. onCambiarFoto es opcional: sin el (ej. listas de solo
-// lectura) el avatar no es clickeable.
-function AvatarJugador({ nombre, fotoUrl, onCambiarFoto, subiendoFoto }) {
-  const inputRef = useRef(null)
-  const inicial = nombre?.trim()?.charAt(0)?.toUpperCase() || '—'
-
-  const contenido = subiendoFoto ? (
-    <span className="text-[9px] text-ink-soft">…</span>
-  ) : fotoUrl ? (
-    <img src={fotoUrl} alt="" className="h-full w-full object-cover" />
-  ) : (
-    <span className="text-xs font-bold text-ink-soft">{inicial}</span>
-  )
-
-  if (!onCambiarFoto) {
-    return (
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-paper">
-        {contenido}
-      </span>
-    )
-  }
-
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) onCambiarFoto(file)
-          e.target.value = ''
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={subiendoFoto}
-        title="Cambiar foto"
-        className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-dashed border-line bg-paper disabled:opacity-60"
-      >
-        {contenido}
-      </button>
-    </>
-  )
-}
+import { AvatarFoto } from '../shared/AvatarFoto'
 
 // Fila de un jugador con las acciones de administracion (ver datos
 // privados, editar, eliminar, foto) - se reutiliza en la lista plana
@@ -62,22 +11,13 @@ export function FilaJugadorAdmin({ jugador, datosVisible, onVerDatos, onEditar, 
     <li className="px-4 py-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2.5">
-          <div className="flex shrink-0 flex-col items-center gap-1">
-            <AvatarJugador
-              nombre={jugador.nombre}
-              fotoUrl={jugador.fotoUrl}
-              onCambiarFoto={onCambiarFoto}
-              subiendoFoto={subiendoFoto}
-            />
-            {onQuitarFoto && jugador.fotoUrl && !subiendoFoto && (
-              <button
-                onClick={onQuitarFoto}
-                className="text-[10px] text-ink-soft underline decoration-dotted"
-              >
-                Quitar
-              </button>
-            )}
-          </div>
+          <AvatarFoto
+            fotoUrl={jugador.fotoUrl}
+            texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
+            onCambiarFoto={onCambiarFoto}
+            subiendoFoto={subiendoFoto}
+            onQuitarFoto={onQuitarFoto}
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-ink">
               {jugador.nombre} {jugador.numeroCamiseta && <span className="text-ink-soft">#{jugador.numeroCamiseta}</span>}

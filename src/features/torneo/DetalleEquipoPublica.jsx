@@ -30,7 +30,7 @@ export default function DetalleEquipoPublica({ equipo, onCerrar }) {
           ← Volver
         </button>
         <div className="flex min-w-0 items-center gap-2">
-          <EscudoEquipo nombre={equipo.nombre} />
+          <EscudoEquipo nombre={equipo.nombre} fotoUrl={equipo.fotoPortadaUrl} />
           <span className={`truncate text-base font-bold ${color.text}`}>{equipo.nombre}</span>
         </div>
       </div>

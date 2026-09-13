@@ -43,7 +43,7 @@ export async function agregarFotoEquipo({ torneoId, equipoId, archivo, descripci
     throw new Error(`Esta promoción ya tiene el máximo de ${MAXIMO_FOTOS_GALERIA} fotos en su galería.`)
   }
 
-  const blob = await comprimirImagen(archivo)
+  const blob = await comprimirImagen(archivo, { pesoMaximoBytes: 50 * 1024 })
 
   const ref_ = await addDoc(collection(db, 'torneo_equipo_fotos'), {
     torneoId,

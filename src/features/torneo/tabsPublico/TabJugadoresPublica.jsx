@@ -114,7 +114,7 @@ export default function TabJugadoresPublica({ torneoId, categoriasActivas }) {
                   className={`flex w-full items-center justify-between gap-2 px-4 py-3 text-left ${color.bg}`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <EscudoEquipo nombre={eq.nombre} />
+                    <EscudoEquipo nombre={eq.nombre} fotoUrl={eq.fotoPortadaUrl} />
                     <span className={`truncate font-bold ${color.text}`}>{eq.nombre}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2 text-xs font-medium text-ink-soft">

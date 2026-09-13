@@ -76,5 +76,17 @@ service firebase.storage {
         request.resource.contentType.matches('image/.*');
       allow delete: if estaAutenticadoEnElTorneo(torneoId);
     }
+
+    // Foto de portada de una promocion/equipo (ver TabEquipos,
+    // torneoEquiposService.actualizarFotoPortadaEquipo) - se muestra en
+    // vez del escudo con la inicial en Jugadores y en la ficha de la
+    // promocion (ver EscudoEquipo).
+    match /torneo/{torneoId}/equipos/{equipoId}/portada.jpg {
+      allow read: if true;
+      allow create, update: if estaAutenticadoEnElTorneo(torneoId) &&
+        request.resource.size < 4 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if estaAutenticadoEnElTorneo(torneoId);
+    }
   }
 }

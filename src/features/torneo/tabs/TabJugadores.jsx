@@ -257,7 +257,7 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
                     onClick={() => setEquipoDetalle(eq)}
                     className="flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left"
                   >
-                    <EscudoEquipo nombre={eq.nombre} />
+                    <EscudoEquipo nombre={eq.nombre} fotoUrl={eq.fotoPortadaUrl} />
                     <span className={`truncate font-bold ${color.text}`}>{eq.nombre}</span>
                   </button>
                   <span className="flex shrink-0 items-center gap-1 pr-2">

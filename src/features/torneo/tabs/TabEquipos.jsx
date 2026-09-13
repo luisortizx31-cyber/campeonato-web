@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
-import { listarEquiposPorCategoria, eliminarEquipo } from '../../../services/torneoEquiposService'
+import {
+  listarEquiposPorCategoria,
+  eliminarEquipo,
+  actualizarFotoPortadaEquipo,
+  eliminarFotoPortadaEquipo,
+} from '../../../services/torneoEquiposService'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
+import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
+import { AvatarFoto } from '../../shared/AvatarFoto'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import ModalCrearEquipo from '../ModalCrearEquipo'
 import { migrarDesdeProyectoViejo } from '../../../dev/migrarDesdeProyectoViejo'
@@ -13,6 +20,7 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
   const [modal, setModal] = useState(null) // null | 'nuevo' | equipo a editar
   const [eliminando, setEliminando] = useState(null)
   const [errorEliminar, setErrorEliminar] = useState(null)
+  const [subiendoFotoId, setSubiendoFotoId] = useState(null)
 
   // BOTON TEMPORAL DE UN SOLO USO - borrar junto con
   // src/dev/migrarDesdeProyectoViejo.js despues de usarlo.
@@ -64,13 +72,41 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
     setEliminando(equipo.id)
     setErrorEliminar(null)
     try {
-      await eliminarEquipo(equipo.id)
+      await eliminarEquipo(equipo.id, equipo.torneoId)
       cargar()
     } catch (err) {
       console.error('[TabEquipos]', err)
       setErrorEliminar(err.message || 'No se pudo eliminar el equipo.')
     } finally {
       setEliminando(null)
+    }
+  }
+
+  async function handleCambiarFotoPortada(equipo, archivo) {
+    setSubiendoFotoId(equipo.id)
+    setErrorEliminar(null)
+    try {
+      await actualizarFotoPortadaEquipo(equipo.torneoId, equipo.id, archivo)
+      await cargar()
+    } catch (err) {
+      console.error('[TabEquipos] handleCambiarFotoPortada', err)
+      setErrorEliminar(err.message || 'No se pudo subir la foto.')
+    } finally {
+      setSubiendoFotoId(null)
+    }
+  }
+
+  async function handleQuitarFotoPortada(equipo) {
+    setSubiendoFotoId(equipo.id)
+    setErrorEliminar(null)
+    try {
+      await eliminarFotoPortadaEquipo(equipo.torneoId, equipo.id)
+      await cargar()
+    } catch (err) {
+      console.error('[TabEquipos] handleQuitarFotoPortada', err)
+      setErrorEliminar('No se pudo quitar la foto.')
+    } finally {
+      setSubiendoFotoId(null)
     }
   }
 
@@ -124,23 +160,37 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
       )}
 
       <ul className="space-y-2.5">
-        {equipos.map((eq) => (
+        {equipos.map((eq) => {
+          const color = colorEquipo(eq.nombre)
+          return (
           <li key={eq.id} className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">{eq.nombre}</p>
-                {eq.delegadoNombre && (
-                  <p className="mt-0.5 text-xs text-ink-soft">
-                    Delegado: {eq.delegadoNombre}
-                    {eq.delegadoTelefono && ` · ${eq.delegadoTelefono}`}
-                  </p>
-                )}
-                {eq.subdelegadoNombre && (
-                  <p className="mt-0.5 text-xs text-ink-soft">
-                    Subdelegado: {eq.subdelegadoNombre}
-                    {eq.subdelegadoTelefono && ` · ${eq.subdelegadoTelefono}`}
-                  </p>
-                )}
+              <div className="flex min-w-0 items-start gap-3">
+                <AvatarFoto
+                  fotoUrl={eq.fotoPortadaUrl}
+                  texto={inicialEquipo(eq.nombre)}
+                  tamanoClase="h-12 w-12"
+                  colorBg={color.bg}
+                  colorText={color.text}
+                  onCambiarFoto={(archivo) => handleCambiarFotoPortada(eq, archivo)}
+                  subiendoFoto={subiendoFotoId === eq.id}
+                  onQuitarFoto={() => handleQuitarFotoPortada(eq)}
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-ink">{eq.nombre}</p>
+                  {eq.delegadoNombre && (
+                    <p className="mt-0.5 text-xs text-ink-soft">
+                      Delegado: {eq.delegadoNombre}
+                      {eq.delegadoTelefono && ` · ${eq.delegadoTelefono}`}
+                    </p>
+                  )}
+                  {eq.subdelegadoNombre && (
+                    <p className="mt-0.5 text-xs text-ink-soft">
+                      Subdelegado: {eq.subdelegadoNombre}
+                      {eq.subdelegadoTelefono && ` · ${eq.subdelegadoTelefono}`}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
@@ -159,7 +209,8 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
               </div>
             </div>
           </li>
-        ))}
+          )
+        })}
       </ul>
 
       {modal && (

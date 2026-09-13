@@ -10,7 +10,13 @@ import {
   where,
   serverTimestamp,
 } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '../config/firebase'
+import { comprimirImagen } from '../utils/imagen'
+
+function rutaFotoPortadaEquipo(torneoId, equipoId) {
+  return `torneo/${torneoId}/equipos/${equipoId}/portada.jpg`
+}
 
 // Un solo equipo por id - lo usa TabMiEquipoDelegado (ver
 // PaginaPublicaTorneo) para saber la categoria del equipo del
@@ -65,13 +71,35 @@ export async function actualizarHistoriaEquipo(equipoId, historia) {
   })
 }
 
+// Foto de portada del equipo/promocion (ver TabEquipos) - se muestra en
+// vez del escudo con la inicial en Jugadores y en la ficha de la
+// promocion (ver EscudoEquipo, DetalleEquipo/DetalleEquipoPublica). Se
+// sube siempre a la misma ruta, asi que cambiarla sobreescribe la
+// anterior sin dejar basura en Storage.
+export async function actualizarFotoPortadaEquipo(torneoId, equipoId, archivo) {
+  const blob = await comprimirImagen(archivo, { pesoMaximoBytes: 50 * 1024 })
+  const fileRef = ref(storage, rutaFotoPortadaEquipo(torneoId, equipoId))
+  await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' })
+  const fotoPortadaUrl = await getDownloadURL(fileRef)
+  await updateDoc(doc(db, 'torneo_equipos', equipoId), { fotoPortadaUrl })
+}
+
+export async function eliminarFotoPortadaEquipo(torneoId, equipoId) {
+  await updateDoc(doc(db, 'torneo_equipos', equipoId), { fotoPortadaUrl: null })
+  try {
+    await deleteObject(ref(storage, rutaFotoPortadaEquipo(torneoId, equipoId)))
+  } catch (err) {
+    console.error('[torneoEquiposService] eliminarFotoPortadaEquipo deleteObject', err)
+  }
+}
+
 // Evita dejar jugadores/partidos huerfanos apuntando a un equipo que
 // ya no existe (calcularTablaPosiciones los ignora, pero es mejor
 // pedir que se limpien primero que perder datos en silencio). No
 // necesita torneoId: equipoId ya es unico globalmente (id autogenerado
 // por Firestore), y el permiso de borrado lo valida la regla de
 // seguridad contra el torneoId guardado en el propio documento.
-export async function eliminarEquipo(equipoId) {
+export async function eliminarEquipo(equipoId, torneoId) {
   const jugadoresSnap = await getDocs(
     query(collection(db, 'torneo_jugadores'), where('equipoId', '==', equipoId))
   )
@@ -88,4 +116,10 @@ export async function eliminarEquipo(equipoId) {
   }
 
   await deleteDoc(doc(db, 'torneo_equipos', equipoId))
+  try {
+    await deleteObject(ref(storage, rutaFotoPortadaEquipo(torneoId, equipoId)))
+  } catch (err) {
+    // El equipo puede no tener foto de portada nunca subida - no bloquea el borrado.
+    console.error('[torneoEquiposService] eliminarEquipo deleteObject foto', err)
+  }
 }
