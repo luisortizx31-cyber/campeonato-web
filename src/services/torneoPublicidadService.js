@@ -38,7 +38,7 @@ export async function listarPublicidad(torneoId) {
 // Storage usa el id del doc (necesita existir primero) - mientras
 // tanto queda `imagenUrl: null` (la UI lo trata como "subiendo...").
 export async function crearPublicidad({ torneoId, archivo, enlaceUrl, orden }) {
-  const blob = await comprimirImagen(archivo)
+  const blob = await comprimirImagen(archivo, { pesoMaximoBytes: 50 * 1024 })
 
   const ref_ = await addDoc(collection(db, 'torneo_publicidad'), {
     torneoId,
@@ -59,7 +59,7 @@ export async function crearPublicidad({ torneoId, archivo, enlaceUrl, orden }) {
 }
 
 export async function actualizarImagenPublicidad(torneoId, anuncioId, archivo) {
-  const blob = await comprimirImagen(archivo)
+  const blob = await comprimirImagen(archivo, { pesoMaximoBytes: 50 * 1024 })
   const fileRef = ref(storage, rutaImagen(torneoId, anuncioId))
   await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' })
   const imagenUrl = await getDownloadURL(fileRef)

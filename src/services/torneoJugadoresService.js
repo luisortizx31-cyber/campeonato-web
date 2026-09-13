@@ -146,7 +146,7 @@ export async function actualizarNumeroCamiseta(jugadorId, numeroCamiseta) {
 // se muestra grande) y se sube siempre a la misma ruta, asi que cambiar la
 // foto sobreescribe la anterior sin dejar basura en Storage.
 export async function actualizarFotoJugador(torneoId, jugadorId, archivo) {
-  const blob = await comprimirImagen(archivo, { anchoMaximo: 500 })
+  const blob = await comprimirImagen(archivo, { anchoMaximo: 500, pesoMaximoBytes: 50 * 1024 })
   const fileRef = ref(storage, rutaFotoJugador(torneoId, jugadorId))
   await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' })
   const fotoUrl = await getDownloadURL(fileRef)
