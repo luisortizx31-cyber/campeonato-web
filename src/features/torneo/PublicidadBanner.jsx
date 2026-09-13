@@ -29,10 +29,11 @@ function marcarContado(anuncioId) {
 /**
  * Banner de publicidad de la pagina publica - rota entre los
  * anuncios ACTIVOS del torneo (ver TabPublicidad, panel admin) con un
- * fundido suave. Si no hay ninguno activo no renderiza nada (no deja
- * un hueco vacio). Cada anuncio suma una impresion por visitante por
- * sesion (no una por cada vez que rota a la vista) y un clic cada vez
- * que lo tocan.
+ * fundido suave, y con flechas para que el publico pase de uno a otro
+ * a mano sin esperar la rotacion automatica. Si no hay ninguno activo
+ * no renderiza nada (no deja un hueco vacio). Cada anuncio suma una
+ * impresion por visitante por sesion (no una por cada vez que rota a
+ * la vista) y un clic cada vez que lo tocan.
  *
  * `preview` (usado en TabPublicidad para mostrarle al Maestro como
  * queda ANTES/DESPUES de publicar cambios) desactiva el registro de
@@ -77,6 +78,10 @@ export function PublicidadBanner({ torneoId, refreshKey, preview = false }) {
 
   if (anuncios.length === 0) return null
 
+  function ir(delta) {
+    setIndice((i) => (i + delta + anuncios.length) % anuncios.length)
+  }
+
   function handleClick(anuncio) {
     if (!preview) {
       registrarClicPublicidad(anuncio.id).catch((err) =>
@@ -107,14 +112,32 @@ export function PublicidadBanner({ torneoId, refreshKey, preview = false }) {
         ))}
       </div>
       {anuncios.length > 1 && (
-        <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1">
-          {anuncios.map((anuncio, i) => (
-            <span
-              key={anuncio.id}
-              className={`h-1.5 w-1.5 rounded-full transition-colors ${i === indice ? 'bg-white' : 'bg-white/40'}`}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            onClick={() => ir(-1)}
+            aria-label="Anuncio anterior"
+            className="absolute left-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-ink/40 text-white"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => ir(1)}
+            aria-label="Siguiente anuncio"
+            className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-ink/40 text-white"
+          >
+            ›
+          </button>
+          <div className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 gap-1">
+            {anuncios.map((anuncio, i) => (
+              <span
+                key={anuncio.id}
+                className={`h-1.5 w-1.5 rounded-full transition-colors ${i === indice ? 'bg-white' : 'bg-white/40'}`}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
