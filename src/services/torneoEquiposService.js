@@ -56,6 +56,15 @@ export async function actualizarEquipo(equipoId, { nombre, delegadoNombre, deleg
   })
 }
 
+// Texto libre con la historia de la promocion/equipo (ver DetalleEquipo,
+// pestaña Historia) - separado de actualizarEquipo porque se edita desde
+// una pantalla distinta al modal de editar equipo.
+export async function actualizarHistoriaEquipo(equipoId, historia) {
+  await updateDoc(doc(db, 'torneo_equipos', equipoId), {
+    historia: historia?.trim() || null,
+  })
+}
+
 // Evita dejar jugadores/partidos huerfanos apuntando a un equipo que
 // ya no existe (calcularTablaPosiciones los ignora, pero es mejor
 // pedir que se limpien primero que perder datos en silencio). No

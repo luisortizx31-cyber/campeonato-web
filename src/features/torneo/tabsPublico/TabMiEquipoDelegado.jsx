@@ -55,7 +55,7 @@ export default function TabMiEquipoDelegado() {
     setEliminando(jugador.id)
     setErrorAccion(null)
     try {
-      await eliminarJugador(jugador.id)
+      await eliminarJugador(jugador.id, jugador.torneoId)
       await cargarJugadores()
     } catch (err) {
       console.error('[TabMiEquipoDelegado] handleEliminar', err)

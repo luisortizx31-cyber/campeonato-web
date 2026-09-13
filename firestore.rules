@@ -399,5 +399,15 @@ service cloud.firestore {
                         && request.resource.data.clics >= resource.data.clics);
       allow delete: if esMaestroDe(resource.data.torneoId);
     }
+
+    // Galeria de fotos de recuerdo de una promocion/equipo (ver
+    // DetalleEquipo, pestaña Galeria de fotos / torneoGaleriaEquipoService).
+    // Lectura publica igual que /torneo_equipos; el tope de 5 fotos por
+    // equipo se valida en el servicio, no aca.
+    match /torneo_equipo_fotos/{fotoId} {
+      allow get, list: if true;
+      allow create: if esMaestro() && request.resource.data.torneoId == miTorneoId();
+      allow update, delete: if esMaestroDe(resource.data.torneoId);
+    }
   }
 }

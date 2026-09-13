@@ -13,10 +13,7 @@ import {
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../config/firebase'
-
-const ANCHO_MAXIMO_PX = 1200
-const CALIDAD_JPEG = 0.82
-const TAMANO_MAXIMO_ORIGEN_BYTES = 15 * 1024 * 1024
+import { comprimirImagen } from '../utils/imagen'
 
 // Banners de publicidad del link publico (ver PublicidadBanner.jsx) -
 // el Maestro sube una imagen y, opcionalmente, un link a donde manda
@@ -28,32 +25,6 @@ const TAMANO_MAXIMO_ORIGEN_BYTES = 15 * 1024 * 1024
 
 function rutaImagen(torneoId, anuncioId) {
   return `torneo/${torneoId}/publicidad/${anuncioId}.jpg`
-}
-
-// Redimensiona/recomprime la imagen en el navegador antes de subirla -
-// no hay backend en este proyecto, y un banner que ve TODO el publico
-// del link (no solo el Maestro) conviene que pese poco para que cargue
-// rapido incluso con mala señal. Siempre se sube como JPEG, sin
-// importar el formato original (png, webp, foto de celular, etc).
-async function comprimirImagen(file) {
-  if (!file.type.startsWith('image/')) {
-    throw new Error('El archivo tiene que ser una imagen.')
-  }
-  if (file.size > TAMANO_MAXIMO_ORIGEN_BYTES) {
-    throw new Error('La imagen es demasiado pesada (maximo 15 MB).')
-  }
-  const bitmap = await createImageBitmap(file)
-  const escala = Math.min(1, ANCHO_MAXIMO_PX / bitmap.width)
-  const ancho = Math.round(bitmap.width * escala)
-  const alto = Math.round(bitmap.height * escala)
-  const canvas = document.createElement('canvas')
-  canvas.width = ancho
-  canvas.height = alto
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, ancho, alto)
-  bitmap.close()
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', CALIDAD_JPEG))
-  if (!blob) throw new Error('No se pudo procesar la imagen.')
-  return blob
 }
 
 export async function listarPublicidad(torneoId) {

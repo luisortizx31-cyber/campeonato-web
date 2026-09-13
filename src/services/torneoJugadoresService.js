@@ -12,7 +12,13 @@ import {
   where,
   serverTimestamp,
 } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '../config/firebase'
+import { comprimirImagen } from '../utils/imagen'
+
+function rutaFotoJugador(torneoId, jugadorId) {
+  return `torneo/${torneoId}/jugadores/${jugadorId}.jpg`
+}
 
 // Crea el doc publico del jugador y, en la misma escritura, su doc
 // privado con el DNI y el telefono (torneo_jugadores/{id}/privado/datos)
@@ -46,6 +52,7 @@ export async function registrarJugador({ torneoId, equipoId, categoria, nombre, 
     // sistema, es para que se sepa a simple vista quien es de la
     // promo y quien no.
     esJale: Boolean(esJale),
+    fotoUrl: null,
     amarillasAcumuladas: 0,
     rojasAcumuladas: 0,
     suspendido: false,
@@ -134,6 +141,27 @@ export async function actualizarNumeroCamiseta(jugadorId, numeroCamiseta) {
   })
 }
 
+// Foto para identificar al jugador de un vistazo (ver DetalleEquipo,
+// pestaña Jugadores) - se comprime chica (va en un avatar circular, nunca
+// se muestra grande) y se sube siempre a la misma ruta, asi que cambiar la
+// foto sobreescribe la anterior sin dejar basura en Storage.
+export async function actualizarFotoJugador(torneoId, jugadorId, archivo) {
+  const blob = await comprimirImagen(archivo, { anchoMaximo: 500 })
+  const fileRef = ref(storage, rutaFotoJugador(torneoId, jugadorId))
+  await uploadBytes(fileRef, blob, { contentType: 'image/jpeg' })
+  const fotoUrl = await getDownloadURL(fileRef)
+  await updateDoc(doc(db, 'torneo_jugadores', jugadorId), { fotoUrl })
+}
+
+export async function eliminarFotoJugador(torneoId, jugadorId) {
+  await updateDoc(doc(db, 'torneo_jugadores', jugadorId), { fotoUrl: null })
+  try {
+    await deleteObject(ref(storage, rutaFotoJugador(torneoId, jugadorId)))
+  } catch (err) {
+    console.error('[torneoJugadoresService] eliminarFotoJugador deleteObject', err)
+  }
+}
+
 export async function obtenerDatosPrivadosJugador(jugadorId) {
   const snap = await getDoc(doc(db, 'torneo_jugadores', jugadorId, 'privado', 'datos'))
   if (!snap.exists()) return { dni: null, telefono: null }
@@ -153,7 +181,7 @@ export async function actualizarDatosPrivadosJugador(jugadorId, { torneoId, dni,
 // necesita poder mostrar el historial completo de un jugador; si se
 // permitiera borrar, la tarjeta quedaria apuntando a un jugadorId
 // inexistente).
-export async function eliminarJugador(jugadorId) {
+export async function eliminarJugador(jugadorId, torneoId) {
   const tarjetasSnap = await getDocs(
     query(collection(db, 'torneo_tarjetas'), where('jugadorId', '==', jugadorId))
   )
@@ -163,4 +191,10 @@ export async function eliminarJugador(jugadorId) {
 
   await deleteDoc(doc(db, 'torneo_jugadores', jugadorId, 'privado', 'datos'))
   await deleteDoc(doc(db, 'torneo_jugadores', jugadorId))
+  try {
+    await deleteObject(ref(storage, rutaFotoJugador(torneoId, jugadorId)))
+  } catch (err) {
+    // El jugador puede no tener foto nunca subida - no bloquea el borrado.
+    console.error('[torneoJugadoresService] eliminarJugador deleteObject foto', err)
+  }
 }

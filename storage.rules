@@ -41,11 +41,40 @@ service firebase.storage {
     // torneoPublicidadService.js) - ya se recomprimen/redimensionan en
     // el navegador antes de subir, asi que el tope de 4MB es solo un
     // resguardo, no el tamaño esperado real.
+    //
+    // create/update separado de delete: request.resource (de donde
+    // salen size/contentType) no existe en un borrado, asi que
+    // exigirlo tambien para delete tira storage/unauthorized SIEMPRE
+    // que se borra un archivo (bug real, encontrado al borrar un
+    // anuncio de prueba - eliminarPublicidad/eliminarFotoJugador/
+    // eliminarFotoEquipo quedaban con el doc de Firestore borrado pero
+    // el archivo huerfano en Storage para siempre).
     match /torneo/{torneoId}/publicidad/{archivo} {
       allow read: if true;
-      allow write: if estaAutenticadoEnElTorneo(torneoId) &&
+      allow create, update: if estaAutenticadoEnElTorneo(torneoId) &&
         request.resource.size < 4 * 1024 * 1024 &&
         request.resource.contentType.matches('image/.*');
+      allow delete: if estaAutenticadoEnElTorneo(torneoId);
+    }
+
+    // Foto de un jugador, para identificarlo de un vistazo (ver
+    // DetalleEquipo, pestaña Jugadores / torneoJugadoresService.js).
+    match /torneo/{torneoId}/jugadores/{archivo} {
+      allow read: if true;
+      allow create, update: if estaAutenticadoEnElTorneo(torneoId) &&
+        request.resource.size < 4 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if estaAutenticadoEnElTorneo(torneoId);
+    }
+
+    // Fotos de la galeria de recuerdos de una promocion/equipo (ver
+    // DetalleEquipo, pestaña Galeria de fotos / torneoGaleriaEquipoService.js).
+    match /torneo/{torneoId}/equipos/{equipoId}/galeria/{archivo} {
+      allow read: if true;
+      allow create, update: if estaAutenticadoEnElTorneo(torneoId) &&
+        request.resource.size < 4 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if estaAutenticadoEnElTorneo(torneoId);
     }
   }
 }

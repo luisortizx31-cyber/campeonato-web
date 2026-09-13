@@ -4,90 +4,17 @@ import {
   listarJugadoresPorCategoria,
   eliminarJugador,
   obtenerDatosPrivadosJugador,
+  actualizarFotoJugador,
+  eliminarFotoJugador,
 } from '../../../services/torneoJugadoresService'
 import { obtenerConfigCategoria, actualizarInscripcionesCerradas } from '../../../services/torneoConfigService'
-import { construirLinkWhatsapp } from '../../../utils/whatsapp'
 import { colorEquipo } from '../../../utils/colorEquipo'
-import { WhatsappIcon } from '../../shared/WhatsappIcon'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import ModalRegistrarJugador from '../ModalRegistrarJugador'
+import { FilaJugadorAdmin } from '../FilaJugadorAdmin'
+import DetalleEquipo from '../DetalleEquipo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
-
-// Fila de un jugador con las acciones de administracion (ver datos
-// privados, editar, eliminar) - se reutiliza tanto en la lista plana
-// de resultados de busqueda como dentro de cada seccion de equipo.
-function FilaJugadorAdmin({ jugador, datosVisible, onVerDatos, onEditar, onEliminar, eliminando }) {
-  return (
-    <li className="px-4 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-ink">
-            {jugador.nombre} {jugador.numeroCamiseta && <span className="text-ink-soft">#{jugador.numeroCamiseta}</span>}
-            {jugador.esJale && (
-              <span className="ml-1 rounded-full bg-warning-soft px-1.5 py-0.5 align-middle text-[10px] font-bold text-warning">
-                JALE
-              </span>
-            )}
-          </p>
-          {jugador.eliminado ? (
-            <span className="mt-1 inline-block rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
-              ❌ Eliminado{jugador.motivoEliminacion ? ` · ${jugador.motivoEliminacion}` : ''}
-            </span>
-          ) : jugador.suspendido ? (
-            <span className="mt-1 inline-block rounded-full bg-danger-soft px-2 py-0.5 text-xs font-medium text-danger">
-              Suspendido{jugador.motivoSuspension ? ` · ${jugador.motivoSuspension}` : ''}
-            </span>
-          ) : null}
-          {datosVisible !== undefined && (
-            <div className="mt-1 flex items-center gap-2">
-              {datosVisible === 'cargando' ? (
-                <p className="text-xs text-ink-soft">Cargando…</p>
-              ) : datosVisible === 'error' ? (
-                <p className="text-xs text-danger">Error al cargar.</p>
-              ) : (
-                <>
-                  <p className="font-mono text-xs text-ink-soft">
-                    DNI: {datosVisible.dni || 'Sin registrar'}
-                    {datosVisible.telefono && ` · ${datosVisible.telefono}`}
-                  </p>
-                  {construirLinkWhatsapp(datosVisible.telefono) && (
-                    <a
-                      href={construirLinkWhatsapp(datosVisible.telefono)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 text-success"
-                      aria-label={`Escribir a ${jugador.nombre} por WhatsApp`}
-                    >
-                      <WhatsappIcon className="h-4 w-4" />
-                    </a>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <div className="flex gap-2">
-            <button onClick={onVerDatos} className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft">
-              {datosVisible !== undefined ? 'Ocultar' : 'Ver datos'}
-            </button>
-            <button onClick={onEditar} className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft">
-              Editar
-            </button>
-          </div>
-          <button
-            onClick={onEliminar}
-            disabled={eliminando}
-            className="rounded-lg border border-danger/30 px-2.5 py-1 text-xs text-danger disabled:opacity-50"
-          >
-            {eliminando ? '…' : 'Eliminar'}
-          </button>
-        </div>
-      </div>
-    </li>
-  )
-}
 
 export default function TabJugadores({ torneoId, categoriasActivas }) {
   const [categoria, setCategoria] = useState(() => categoriasActivas[0])
@@ -95,7 +22,7 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
   const [equipos, setEquipos] = useState([])
   const [jugadores, setJugadores] = useState([])
   const [busqueda, setBusqueda] = useState('')
-  const [expandidos, setExpandidos] = useState([])
+  const [equipoDetalle, setEquipoDetalle] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [modal, setModal] = useState(null) // null | 'nuevo' | jugador a editar
@@ -103,6 +30,7 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
   const [eliminando, setEliminando] = useState(null)
   const [errorAccion, setErrorAccion] = useState(null)
   const [datosVisibles, setDatosVisibles] = useState({}) // { [jugadorId]: 'cargando' | { dni, telefono } | 'error' }
+  const [subiendoFotoId, setSubiendoFotoId] = useState(null)
   const [maximoJugadoresInscritos, setMaximoJugadoresInscritos] = useState(null)
   const [inscripcionesCerradas, setInscripcionesCerradas] = useState(false)
   const [cambiandoInscripciones, setCambiandoInscripciones] = useState(false)
@@ -144,14 +72,10 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
 
   useEffect(() => {
     setBusqueda('')
-    setExpandidos([])
+    setEquipoDetalle(null)
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [torneoId, categoria])
-
-  function toggleExpandido(equipoId) {
-    setExpandidos((e) => (e.includes(equipoId) ? e.filter((id) => id !== equipoId) : [...e, equipoId]))
-  }
 
   function abrirNuevo(equipoId = '') {
     setEquipoNuevoId(equipoId)
@@ -187,7 +111,7 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
     setEliminando(jugador.id)
     setErrorAccion(null)
     try {
-      await eliminarJugador(jugador.id)
+      await eliminarJugador(jugador.id, jugador.torneoId)
       cargar()
     } catch (err) {
       console.error('[TabJugadores]', err)
@@ -195,6 +119,49 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
     } finally {
       setEliminando(null)
     }
+  }
+
+  async function handleCambiarFoto(jugador, archivo) {
+    setSubiendoFotoId(jugador.id)
+    setErrorAccion(null)
+    try {
+      await actualizarFotoJugador(torneoId, jugador.id, archivo)
+      await cargar()
+    } catch (err) {
+      console.error('[TabJugadores] handleCambiarFoto', err)
+      setErrorAccion(err.message || 'No se pudo subir la foto.')
+    } finally {
+      setSubiendoFotoId(null)
+    }
+  }
+
+  async function handleQuitarFoto(jugador) {
+    setSubiendoFotoId(jugador.id)
+    setErrorAccion(null)
+    try {
+      await eliminarFotoJugador(torneoId, jugador.id)
+      await cargar()
+    } catch (err) {
+      console.error('[TabJugadores] handleQuitarFoto', err)
+      setErrorAccion('No se pudo quitar la foto.')
+    } finally {
+      setSubiendoFotoId(null)
+    }
+  }
+
+  if (equipoDetalle) {
+    return (
+      <DetalleEquipo
+        torneoId={torneoId}
+        equipo={equipoDetalle}
+        categoria={categoria}
+        maximoJugadoresInscritos={maximoJugadoresInscritos}
+        onCerrar={() => {
+          setEquipoDetalle(null)
+          cargar()
+        }}
+      />
+    )
   }
 
   return (
@@ -268,6 +235,9 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
                   onEditar={() => setModal(j)}
                   onEliminar={() => handleEliminar(j)}
                   eliminando={eliminando === j.id}
+                  onCambiarFoto={(file) => handleCambiarFoto(j, file)}
+                  subiendoFoto={subiendoFotoId === j.id}
+                  onQuitarFoto={() => handleQuitarFoto(j)}
                 />
               </li>
             ))}
@@ -279,13 +249,12 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
         <ul className="space-y-2">
           {equipos.map((eq) => {
             const jugadoresEquipo = jugadores.filter((j) => j.equipoId === eq.id)
-            const abierto = expandidos.includes(eq.id)
             const color = colorEquipo(eq.nombre)
             return (
               <li key={eq.id} className="overflow-hidden rounded-2xl border border-line bg-surface">
                 <div className={`flex items-center justify-between gap-2 ${color.bg}`}>
                   <button
-                    onClick={() => toggleExpandido(eq.id)}
+                    onClick={() => setEquipoDetalle(eq)}
                     className="flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left"
                   >
                     <EscudoEquipo nombre={eq.nombre} />
@@ -300,33 +269,14 @@ export default function TabJugadores({ torneoId, categoriasActivas }) {
                       +
                     </button>
                     <button
-                      onClick={() => toggleExpandido(eq.id)}
+                      onClick={() => setEquipoDetalle(eq)}
                       className="flex items-center gap-1 pr-2 text-xs font-medium text-ink-soft"
                     >
                       {jugadoresEquipo.length} jugador{jugadoresEquipo.length === 1 ? '' : 'es'}
-                      <span className={`transition-transform ${abierto ? 'rotate-180' : ''}`}>⌄</span>
+                      <span>›</span>
                     </button>
                   </span>
                 </div>
-                {abierto && (
-                  <ul className="divide-y divide-line border-t border-line bg-paper">
-                    {jugadoresEquipo.length === 0 ? (
-                      <li className="px-4 py-3 text-center text-xs text-ink-soft">Sin jugadores todavía.</li>
-                    ) : (
-                      jugadoresEquipo.map((j) => (
-                        <FilaJugadorAdmin
-                          key={j.id}
-                          jugador={j}
-                          datosVisible={datosVisibles[j.id]}
-                          onVerDatos={() => handleVerDatos(j.id)}
-                          onEditar={() => setModal(j)}
-                          onEliminar={() => handleEliminar(j)}
-                          eliminando={eliminando === j.id}
-                        />
-                      ))
-                    )}
-                  </ul>
-                )}
               </li>
             )
           })}
