@@ -222,6 +222,50 @@ export async function arrancarPartido(partidoId) {
   await updateDoc(doc(db, 'torneo_partidos', partidoId), { horaInicio: serverTimestamp() })
 }
 
+// Los 3 tiempos que se pueden cronometrar dentro de un partido, en el
+// orden en que normalmente ocurren. Cada uno vive en su propio campo
+// del doc del partido (torneo_partidos.primerTiempo / segundoTiempo /
+// tiempoExtra), como { duracionMin, inicio, fin } - separado de
+// horaInicio/horaFin (esos son el arranque/cierre del PARTIDO en si,
+// ver arrancarPartido/registrarResultadoPartido, y no se tocan aca).
+export const PERIODOS_PARTIDO = [
+  { campo: 'primerTiempo', label: 'Primer tiempo' },
+  { campo: 'segundoTiempo', label: 'Segundo tiempo' },
+  { campo: 'tiempoExtra', label: 'Tiempo extra' },
+]
+
+// Arranca el cronometro de un tiempo (ver ControlPartido -> Cancha,
+// CronometroPeriodo). `duracionMin` es la duracion configurada (ej.
+// 20) que se usa solo para el aviso de "faltan 3 min" y el cambio de
+// color - una vez arrancado, el cronometro sigue corriendo aunque se
+// pase de esa duracion, hasta que se toque "Finalizar" (ver
+// finalizarPeriodoPartido). Pisa cualquier intento anterior de este
+// mismo tiempo (mismo comportamiento que reiniciarPeriodoPartido +
+// arrancar de nuevo, en un solo paso).
+export async function iniciarPeriodoPartido(partidoId, campoPeriodo, duracionMin) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    [campoPeriodo]: { duracionMin: Number(duracionMin), inicio: serverTimestamp(), fin: null },
+  })
+}
+
+// Termina el cronometro en curso de un tiempo, dejando asentada la
+// hora real de fin - de ahi sale cuanto duro de verdad (puede ser mas
+// o menos que `duracionMin`), igual que horaInicio/horaFin ya lo hacen
+// para el partido completo.
+export async function finalizarPeriodoPartido(partidoId, campoPeriodo) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), {
+    [`${campoPeriodo}.fin`]: serverTimestamp(),
+  })
+}
+
+// Borra por completo el registro de un tiempo (para corregir un
+// arranque por error) - a diferencia de finalizarPeriodoPartido, esto
+// no deja rastro de que se haya cronometrado, queda como si nunca se
+// hubiera tocado "Iniciar".
+export async function reiniciarPeriodoPartido(partidoId, campoPeriodo) {
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), { [campoPeriodo]: null })
+}
+
 // Marcador "en vivo" (parcial, mientras el partido todavia no se
 // finaliza) - lo llama ControlPartido cada vez que cambia un gol,
 // asi Fechas y la pagina publica pueden mostrar el resultado sin

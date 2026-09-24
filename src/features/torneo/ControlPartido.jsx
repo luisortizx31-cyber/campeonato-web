@@ -10,7 +10,9 @@ import {
   actualizarMarcadorEnVivo,
   arrancarPartido,
   suscribirPartido,
+  PERIODOS_PARTIDO,
 } from '../../services/torneoPartidosService'
+import CronometroPeriodo from './CronometroPeriodo'
 import { registrarGol, listarGolesPorPartido, eliminarGol } from '../../services/torneoGolesService'
 import {
   registrarTarjetaPartido,
@@ -395,6 +397,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [horaInicio, setHoraInicio] = useState(partido.horaInicio || null)
   const [horaFin, setHoraFin] = useState(partido.horaFin || null)
   const [arrancando, setArrancando] = useState(false)
+  // Cronómetro de cada tiempo del partido (ver CronometroPeriodo) -
+  // independiente de horaInicio/horaFin de arriba. Cada uno es
+  // { duracionMin, inicio, fin } o null si ese tiempo nunca se inició.
+  const [primerTiempo, setPrimerTiempo] = useState(partido.primerTiempo || null)
+  const [segundoTiempo, setSegundoTiempo] = useState(partido.segundoTiempo || null)
+  const [tiempoExtra, setTiempoExtra] = useState(partido.tiempoExtra || null)
   // Si el resultado ya quedo guardado (partido "Jugado") - copia LOCAL
   // (no el prop `partido`, que es estatico) sincronizada en vivo (ver
   // suscribirPartido mas abajo), para que al finalizar el partido esta
@@ -493,6 +501,9 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       setDniConfirmadoVisitante(p.dniConfirmadoVisitante || [])
       setHoraInicio(p.horaInicio || null)
       setHoraFin(p.horaFin || null)
+      setPrimerTiempo(p.primerTiempo || null)
+      setSegundoTiempo(p.segundoTiempo || null)
+      setTiempoExtra(p.tiempoExtra || null)
       setGolesLocalGuardado(p.golesLocal)
     })
     return desuscribir
@@ -989,6 +1000,14 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const colorVisitante = colorEquipo(nombreEquipo(partido.equipoVisitanteId))
   const jugado = golesLocalGuardado != null
 
+  // Ver CronometroPeriodo: solo puede haber UN tiempo corriendo a la
+  // vez, asi que cada uno necesita saber si algun OTRO ya esta activo
+  // para desactivar su propio "Iniciar" mientras tanto.
+  const datosPeriodos = { primerTiempo, segundoTiempo, tiempoExtra }
+  function periodoActivo(datos) {
+    return datos?.inicio != null && datos?.fin == null
+  }
+
   function nombreJugadorDe(jugadorId) {
     return [...jugadoresLocal, ...jugadoresVisitante].find((j) => j.id === jugadorId)?.nombre || '—'
   }
@@ -1046,6 +1065,23 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             {arrancando ? 'Arrancando…' : '▶ Arrancar partido'}
           </button>
         )
+      )}
+
+      {horaInicio && (
+        <div className="mb-3 space-y-1.5">
+          {PERIODOS_PARTIDO.map((periodo) => (
+            <CronometroPeriodo
+              key={periodo.campo}
+              partidoId={partido.id}
+              periodo={periodo}
+              datos={datosPeriodos[periodo.campo]}
+              bloqueado={jugado}
+              hayOtroActivo={PERIODOS_PARTIDO.some(
+                (p) => p.campo !== periodo.campo && periodoActivo(datosPeriodos[p.campo])
+              )}
+            />
+          ))}
+        </div>
       )}
 
       {solicitudesPendientes.length > 0 && (
