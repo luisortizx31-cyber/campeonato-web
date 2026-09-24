@@ -1010,6 +1010,22 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   function periodoActivo(datos) {
     return datos?.inicio != null && datos?.fin == null
   }
+  function periodoTerminado(datos) {
+    return datos?.fin != null
+  }
+  // Un tiempo se muestra recien cuando le toca: el primero siempre, y
+  // los siguientes solo despues de que el anterior haya finalizado -
+  // asi Segundo tiempo queda oculto mientras corre Primer tiempo, y
+  // Tiempo extra oculto mientras corre Segundo tiempo. Si un tiempo YA
+  // tiene datos propios (se llego a iniciar en algun momento, aunque
+  // despues se haya reiniciado el anterior por error) se lo sigue
+  // mostrando igual, para no esconder un cronometro que ya esta en uso.
+  function periodoVisible(indice) {
+    if (indice === 0) return true
+    const anterior = PERIODOS_PARTIDO[indice - 1]
+    const propio = PERIODOS_PARTIDO[indice]
+    return periodoTerminado(datosPeriodos[anterior.campo]) || datosPeriodos[propio.campo] != null
+  }
 
   function nombreJugadorDe(jugadorId) {
     return [...jugadoresLocal, ...jugadoresVisitante].find((j) => j.id === jugadorId)?.nombre || '—'
@@ -1072,18 +1088,20 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
       {horaInicio && (
         <div className="mb-3 space-y-1.5">
-          {PERIODOS_PARTIDO.map((periodo) => (
-            <CronometroPeriodo
-              key={periodo.campo}
-              partidoId={partido.id}
-              periodo={periodo}
-              datos={datosPeriodos[periodo.campo]}
-              bloqueado={jugado}
-              hayOtroActivo={PERIODOS_PARTIDO.some(
-                (p) => p.campo !== periodo.campo && periodoActivo(datosPeriodos[p.campo])
-              )}
-            />
-          ))}
+          {PERIODOS_PARTIDO.map((periodo, i) =>
+            !periodoVisible(i) ? null : (
+              <CronometroPeriodo
+                key={periodo.campo}
+                partidoId={partido.id}
+                periodo={periodo}
+                datos={datosPeriodos[periodo.campo]}
+                bloqueado={jugado}
+                hayOtroActivo={PERIODOS_PARTIDO.some(
+                  (p) => p.campo !== periodo.campo && periodoActivo(datosPeriodos[p.campo])
+                )}
+              />
+            )
+          )}
         </div>
       )}
 
