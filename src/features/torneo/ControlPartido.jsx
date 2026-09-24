@@ -313,19 +313,19 @@ function SelectorAlineacion({
 // Tocar el nombre abre el selector de cambio (decidido por el padre).
 function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, onTocar, onGol, onAmarilla, onRoja }) {
   return (
-    <li className="px-2.5 py-2">
+    <li className="px-3 py-2.5">
       <button
         onClick={onTocar}
         disabled={bloqueado}
         className="flex w-full items-center justify-between gap-1.5 text-left disabled:opacity-60"
         title={bloqueado ? 'Arrancá el partido primero' : 'Tocar para sacarlo y elegir reemplazo'}
       >
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
           {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
           {nombreCorto(jugador.nombre)}
         </span>
         {(nGoles > 0 || amarillasPartido > 0) && (
-          <span className="flex shrink-0 items-center gap-1 text-[11px]">
+          <span className="flex shrink-0 items-center gap-1 text-xs">
             {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
             {Array.from({ length: amarillasPartido }).map((_, i) => (
               <span key={i}>🟨</span>
@@ -333,25 +333,28 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, 
           </span>
         )}
       </button>
-      <div className="mt-1.5 flex gap-1">
+      {/* Botones de accion mas grandes que antes (ahora que cada equipo
+          ocupa todo el ancho, ver mas arriba) - mas faciles de tocar
+          bien para quien esta controlando el partido. */}
+      <div className="mt-2 flex gap-2">
         <button
           onClick={onGol}
           disabled={procesando || bloqueado}
-          className="flex-1 rounded-md border border-line bg-surface py-1 text-[11px] disabled:opacity-50"
+          className="flex-1 rounded-lg border border-line bg-surface py-2.5 text-lg disabled:opacity-50"
         >
           ⚽
         </button>
         <button
           onClick={onAmarilla}
           disabled={procesando || bloqueado}
-          className="flex-1 rounded-md border-2 border-warning bg-warning/25 py-1 text-[11px] disabled:opacity-50"
+          className="flex-1 rounded-lg border-2 border-warning bg-warning/25 py-2.5 text-lg disabled:opacity-50"
         >
           🟨
         </button>
         <button
           onClick={onRoja}
           disabled={procesando || bloqueado}
-          className="flex-1 rounded-md border-2 border-danger bg-danger/25 py-1 text-[11px] disabled:opacity-50"
+          className="flex-1 rounded-lg border-2 border-danger bg-danger/25 py-2.5 text-lg disabled:opacity-50"
         >
           🟥
         </button>
@@ -1238,16 +1241,18 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             </p>
           )}
 
-          {/* Fondo verde tipo cancha, con las dos alineaciones separadas
-              por una linea central - no es un campo tactico con
-              posiciones reales, es un agrupamiento visual simple. Solo
-              se muestra a quien esta jugando ahora (titulares menos los
-              expulsados) - los suplentes se eligen en la pestaña
-              Alineación. */}
-          <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
+          {/* Fondo verde tipo cancha, con las dos alineaciones apiladas
+              (un equipo arriba, el otro abajo) en vez de lado a lado -
+              asi cada fila ocupa todo el ancho, mas facil de tocar bien
+              para quien esta controlando el partido. No es un campo
+              tactico con posiciones reales, es un agrupamiento visual
+              simple. Solo se muestra a quien esta jugando ahora
+              (titulares menos los expulsados) - los suplentes se
+              eligen en la pestaña Alineación. */}
+          <div className="mb-3 grid grid-cols-1 gap-2 rounded-2xl border border-white/10 bg-brand-dark p-2">
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
-                className={`truncate px-2 py-1.5 text-center text-[11px] font-bold text-ink ${colorLocal.bg}`}
+                className={`truncate px-3 py-2 text-center text-sm font-bold text-ink ${colorLocal.bg}`}
               >
                 {nombreEquipo(partido.equipoLocalId)} ({enCanchaLocal.length})
               </div>
@@ -1267,7 +1272,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                   />
                 ))}
                 {enCanchaLocal.length === 0 && (
-                  <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">
+                  <li className="px-3 py-3 text-center text-sm text-ink-soft">
                     Elegí titulares en Alineación
                   </li>
                 )}
@@ -1275,7 +1280,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             </div>
             <div className="overflow-hidden rounded-xl border border-line bg-surface">
               <div
-                className={`truncate px-2 py-1.5 text-center text-[11px] font-bold text-ink ${colorVisitante.bg}`}
+                className={`truncate px-3 py-2 text-center text-sm font-bold text-ink ${colorVisitante.bg}`}
               >
                 {nombreEquipo(partido.equipoVisitanteId)} ({enCanchaVisitante.length})
               </div>
@@ -1295,7 +1300,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                   />
                 ))}
                 {enCanchaVisitante.length === 0 && (
-                  <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">
+                  <li className="px-3 py-3 text-center text-sm text-ink-soft">
                     Elegí titulares en Alineación
                   </li>
                 )}
