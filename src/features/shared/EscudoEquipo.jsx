@@ -14,7 +14,11 @@ import { VisorFoto } from './VisorFoto'
 // que abre la ficha de la promocion, y un span (no button, para poder
 // anidarlo sin romper el HTML) con su propio click no debe disparar
 // tambien el del padre.
-export function EscudoEquipo({ nombre, fotoUrl }) {
+//
+// tamanoClase/textoClase permiten un escudo mas grande donde hay lugar
+// (ej. el listado "Partidos") sin cambiar el tamaño por defecto (32px)
+// de los demas usos.
+export function EscudoEquipo({ nombre, fotoUrl, tamanoClase = 'h-8 w-8', textoClase = 'text-xs' }) {
   const color = colorEquipo(nombre)
   const [verGrande, setVerGrande] = useState(false)
 
@@ -29,7 +33,7 @@ export function EscudoEquipo({ nombre, fotoUrl }) {
               }
             : undefined
         }
-        className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold ${color.bg} ${color.text} ${fotoUrl ? 'cursor-pointer' : ''}`}
+        className={`flex ${tamanoClase} shrink-0 items-center justify-center overflow-hidden rounded-full ${textoClase} font-bold ${color.bg} ${color.text} ${fotoUrl ? 'cursor-pointer' : ''}`}
       >
         {fotoUrl ? <img src={fotoUrl} alt="" className="h-full w-full object-cover" /> : inicialEquipo(nombre)}
       </span>

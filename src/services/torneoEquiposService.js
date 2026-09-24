@@ -52,6 +52,14 @@ export async function listarEquiposPorCategoria(torneoId, categoria) {
   return equipos
 }
 
+// Todos los equipos del torneo sin importar la categoria - para las
+// pantallas que mezclan categorias (ver TabPartidosPublica). Sin
+// ordenar: quien llama los busca por id.
+export async function listarEquiposDelTorneo(torneoId) {
+  const snap = await getDocs(query(collection(db, 'torneo_equipos'), where('torneoId', '==', torneoId)))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
 export async function actualizarEquipo(equipoId, { nombre, delegadoNombre, delegadoTelefono, subdelegadoNombre, subdelegadoTelefono }) {
   await updateDoc(doc(db, 'torneo_equipos', equipoId), {
     nombre: nombre.trim(),

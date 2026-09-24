@@ -59,6 +59,17 @@ export function suscribirPartidosPorCategoria(torneoId, categoria, onCambio) {
   })
 }
 
+// Todos los partidos del torneo (todas las categorias juntas) en tiempo
+// real - la usa la pestaña publica "Partidos" (ver TabPartidosPublica),
+// que muestra el calendario por dia sin separar por categoria. Filtrar
+// por categoria activa queda del lado de quien llama.
+export function suscribirPartidosDelTorneo(torneoId, onCambio) {
+  const q = query(collection(db, 'torneo_partidos'), where('torneoId', '==', torneoId))
+  return onSnapshot(q, (snap) => {
+    onCambio(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  })
+}
+
 // UN solo partido en tiempo real - la usa ControlPartido para que la
 // alineacion (titulares/suplentes/DNI confirmado) se actualice sola
 // cuando el delegado la va armando desde su celular, sin que el

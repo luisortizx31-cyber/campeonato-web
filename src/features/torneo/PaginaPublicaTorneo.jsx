@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext'
 import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
 import TabPosicionesPublica from './tabsPublico/TabPosicionesPublica'
 import TabFechasPublica from './tabsPublico/TabFechasPublica'
+import TabPartidosPublica from './tabsPublico/TabPartidosPublica'
 import TabGoleadoresPublica from './tabsPublico/TabGoleadoresPublica'
 import TabJugadoresPublica from './tabsPublico/TabJugadoresPublica'
 import TabAmonestadosPublica from './tabsPublico/TabAmonestadosPublica'
@@ -15,6 +16,7 @@ import TabMiEquipoDelegado from './tabsPublico/TabMiEquipoDelegado'
 import { PublicidadBanner } from './PublicidadBanner'
 
 const TABS_PUBLICAS = [
+  { id: 'partidos', label: 'Partidos', icon: '📅', Componente: TabPartidosPublica },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
   { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadoresPublica },
@@ -26,7 +28,7 @@ const TAB_MI_EQUIPO = { id: 'miequipo', label: 'Mi equipo', icon: '⭐', Compone
 
 // Se guarda en sessionStorage (no localStorage: solo para que un
 // refresh de pagina no vuelva siempre a la pestaña por defecto,
-// Fechas) - mismo patron que ya usa PanelTorneo.jsx del lado admin.
+// Partidos) - mismo patron que ya usa PanelTorneo.jsx del lado admin.
 const TAB_STORAGE_KEY = 'campeonato_publico_tabActiva'
 
 // Pagina publica de UN torneo (tenant) - sin login, pensada para
@@ -40,9 +42,9 @@ export default function PaginaPublicaTorneo() {
   const [tabActiva, setTabActiva] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
-      return [...TABS_PUBLICAS, TAB_MI_EQUIPO].some((t) => t.id === guardada) ? guardada : 'fechas'
+      return [...TABS_PUBLICAS, TAB_MI_EQUIPO].some((t) => t.id === guardada) ? guardada : 'partidos'
     } catch {
-      return 'fechas'
+      return 'partidos'
     }
   })
   const [basesUrl, setBasesUrl] = useState(null)
