@@ -178,7 +178,7 @@ export async function agregarPartidoManual({ torneoId, categoria, fechaNumero, e
 // Mueve UN partido puntual a otra Fecha (jornada) - para el caso de
 // una fecha que se posterga y termina jugandose junto con la
 // siguiente, sin tener que borrar y volver a cargar el cruce a mano.
-// A diferencia de reprogramarFecha (que solo cambia el dia/hora
+// A diferencia de programarHorariosDeFecha (que solo cambia el dia/hora
 // programado y deja el fechaNumero intacto), esto cambia el numero de
 // Fecha en si - el dia/hora programado, si tenia uno, se mantiene tal
 // cual (el Maestro lo corrige aparte si hace falta). Mismo chequeo de
@@ -342,38 +342,43 @@ export async function actualizarFechaProgramada(partidoId, fechaHora) {
   await updateDoc(doc(db, 'torneo_partidos', partidoId), { fecha: fechaHora })
 }
 
-// Reprograma una Fecha completa (por suspension, ej. lluvia) y corre
+// Guarda de una sola vez el dia/hora de VARIOS partidos de una misma
+// Fecha (ver ModalReprogramarFecha, boton "Programar fecha" en Fechas):
+// cada partido con su propio horario. `horarios` es un array de
+// { partidoId, fecha } donde `fecha` es un Date de JS, o null para
+// quitarle el horario a ese partido.
+//
+// Con `correrSiguientes` (por suspension, ej. lluvia) ademas se corren
 // TODAS las fechas siguientes que ya tenian dia puesto la misma
-// cantidad de dias/horas - el calendario pendiente se desplaza entero
-// por igual, no se "encadena" al dia que tenia anotado la siguiente
-// fecha (eso dejaria los espacios entre fechas desparejos). Si la
-// Fecha que se reprograma no tenia ningun dia puesto todavia, no hay
-// de donde calcular un desplazamiento: se le asigna la nueva fecha y
-// no se toca ninguna otra. Solo mueve partidos NO jugados - uno ya
-// jugado conserva su fecha real como registro historico.
-export async function reprogramarFecha(torneoId, categoria, fechaNumero, nuevaFechaBase) {
-  const partidos = await listarPartidosPorCategoria(torneoId, categoria)
-  const noJugados = partidos.filter((p) => p.golesLocal == null)
-  const deLaFecha = noJugados.filter((p) => p.fechaNumero === fechaNumero && p.fecha)
-
+// cantidad de tiempo que se movio esta - el calendario pendiente se
+// desplaza entero por igual, no se "encadena" al dia que tenia anotado
+// la siguiente fecha (eso dejaria los espacios entre fechas desparejos).
+// Lo que se movio se mide entre el horario mas temprano que tenian
+// antes los partidos de esta Fecha y el mas temprano que quedaron; si
+// ninguno tenia horario antes, no hay de donde calcular un
+// desplazamiento y no se toca ninguna otra fecha. Solo se mueven
+// partidos NO jugados - uno ya jugado conserva su fecha real como
+// registro historico.
+export async function programarHorariosDeFecha(torneoId, categoria, fechaNumero, horarios, correrSiguientes) {
   const batch = writeBatch(db)
+  horarios.forEach(({ partidoId, fecha }) => {
+    batch.update(doc(db, 'torneo_partidos', partidoId), { fecha })
+  })
 
-  if (deLaFecha.length === 0) {
-    noJugados
-      .filter((p) => p.fechaNumero === fechaNumero)
-      .forEach((p) => batch.update(doc(db, 'torneo_partidos', p.id), { fecha: nuevaFechaBase }))
-    await batch.commit()
-    return
+  if (correrSiguientes) {
+    const partidos = await listarPartidosPorCategoria(torneoId, categoria)
+    const porId = new Map(partidos.map((p) => [p.id, p]))
+    const conHorarioAntes = horarios.filter((h) => h.fecha && porId.get(h.partidoId)?.fecha)
+    if (conHorarioAntes.length > 0) {
+      const fechaVieja = Math.min(...conHorarioAntes.map((h) => porId.get(h.partidoId).fecha.toMillis()))
+      const fechaNueva = Math.min(...conHorarioAntes.map((h) => h.fecha.getTime()))
+      const deltaMs = fechaNueva - fechaVieja
+      partidos
+        .filter((p) => p.golesLocal == null && p.fechaNumero > fechaNumero && p.fecha)
+        .forEach((p) => batch.update(doc(db, 'torneo_partidos', p.id), { fecha: new Date(p.fecha.toMillis() + deltaMs) }))
+    }
   }
 
-  const fechaViejaMs = Math.min(...deLaFecha.map((p) => p.fecha.toMillis()))
-  const deltaMs = nuevaFechaBase.getTime() - fechaViejaMs
-
-  noJugados
-    .filter((p) => p.fechaNumero >= fechaNumero && p.fecha)
-    .forEach((p) => batch.update(doc(db, 'torneo_partidos', p.id), {
-      fecha: new Date(p.fecha.toMillis() + deltaMs),
-    }))
   await batch.commit()
 }
 

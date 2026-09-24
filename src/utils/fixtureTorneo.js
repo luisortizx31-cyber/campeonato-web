@@ -89,8 +89,19 @@ export function calcularFechasConPartidoJugado(partidos, equipoId) {
 export function formatearFechaProgramada(timestamp) {
   const fecha = timestamp.toDate()
   const dia = fecha.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
-  const hora = fecha.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' })
-  return `${dia} · ${hora}`
+  return `${dia} · ${formatearHora12(timestamp)}`
+}
+
+// Hora siempre en formato de 12 horas con AM/PM en mayusculas ("4:30 PM",
+// "12:00 AM") - se arma a mano en vez de toLocaleTimeString porque este
+// devuelve "p. m." (con puntos y espacios raros) segun el navegador. Es
+// el unico formato de hora que se muestra para los horarios programados.
+export function formatearHora12(timestamp) {
+  const fecha = timestamp.toDate ? timestamp.toDate() : timestamp
+  let horas = fecha.getHours() % 12
+  if (horas === 0) horas = 12
+  const meridiano = fecha.getHours() >= 12 ? 'PM' : 'AM'
+  return `${horas}:${String(fecha.getMinutes()).padStart(2, '0')} ${meridiano}`
 }
 
 // Dia y hora por separado, para la etiqueta de dos lineas debajo de
@@ -102,15 +113,15 @@ export function formatearDiaCorto(timestamp) {
   return timestamp.toDate().toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-// Hora en 12h sin los minutos cuando son :00 (ej. "12 am" en vez de
-// "12:00 a. m.") - mas compacta que toLocaleTimeString para esa misma
+// Hora en 12h sin los minutos cuando son :00 (ej. "12 AM" en vez de
+// "12:00 AM") - mas compacta que formatearHora12 para esa misma
 // etiqueta de dos lineas.
 export function formatearHoraCorta(timestamp) {
   const fecha = timestamp.toDate()
   const minutos = fecha.getMinutes()
   let horas = fecha.getHours() % 12
   if (horas === 0) horas = 12
-  const meridiano = fecha.getHours() >= 12 ? 'pm' : 'am'
+  const meridiano = fecha.getHours() >= 12 ? 'PM' : 'AM'
   return minutos === 0 ? `${horas} ${meridiano}` : `${horas}:${String(minutos).padStart(2, '0')} ${meridiano}`
 }
 

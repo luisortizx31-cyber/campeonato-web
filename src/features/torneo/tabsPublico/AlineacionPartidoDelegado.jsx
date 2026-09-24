@@ -314,7 +314,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
     let horas = d.getHours() % 12
     if (horas === 0) horas = 12
     const minutos = String(d.getMinutes()).padStart(2, '0')
-    const meridiano = d.getHours() >= 12 ? 'pm' : 'am'
+    const meridiano = d.getHours() >= 12 ? 'PM' : 'AM'
     return `${horas}:${minutos} ${meridiano}`
   }
 

@@ -238,7 +238,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
         // horario programado sea el mas proximo (no simplemente la de
         // menor numero) - asi una fecha reprogramada para mas adelante
         // no tapa a la que en realidad toca jugar hoy (ver
-        // reprogramarFecha, que mueve el horario pero no el
+        // programarHorariosDeFecha, que mueve el horario pero no el
         // fechaNumero). Una fecha pendiente sin horario puesto queda al
         // final de este criterio.
         const pendientes = fechas.filter((f) => ps.some((p) => p.fechaNumero === f && p.golesLocal == null))
@@ -556,15 +556,6 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const partidosDeFecha = partidos
     .filter((p) => p.fechaNumero === fechaSeleccionada)
     .sort(compararPartidosPorHorario)
-  // Fecha de referencia para prellenar ModalReprogramarFecha - la mas
-  // temprana entre los partidos no jugados de la fecha seleccionada
-  // (si ninguno tiene horario puesto todavia, queda null y el modal
-  // arranca vacio).
-  const fechaReferenciaSeleccionada = (() => {
-    const conFecha = partidosDeFecha.filter((p) => p.golesLocal == null && p.fecha)
-    if (conFecha.length === 0) return null
-    return new Date(Math.min(...conFecha.map((p) => p.fecha.toMillis())))
-  })()
   const partidosPendientes = partidosDeFecha.filter((p) => {
     const valores = formResultados[p.id]
     return valores && valores.golesLocal !== undefined && valores.golesLocal !== '' &&
@@ -977,7 +968,9 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
           torneoId={torneoId}
           categoria={categoria}
           fechaNumero={fechaSeleccionada}
-          fechaReferencia={fechaReferenciaSeleccionada}
+          partidosDeFecha={partidosDeFecha}
+          partidos={partidos}
+          nombreEquipo={nombreEquipo}
           onCerrar={() => setModalReprogramar(false)}
           onGuardado={async () => {
             setModalReprogramar(false)
