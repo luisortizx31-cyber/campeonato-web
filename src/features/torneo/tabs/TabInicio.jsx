@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposDelTorneo } from '../../../services/torneoEquiposService'
-import { suscribirPartidosDelTorneo } from '../../../services/torneoPartidosService'
+import { suscribirPartidosDelTorneo, habilitarAlineacionDeFecha } from '../../../services/torneoPartidosService'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
-import { estadoPartido } from '../../../utils/partidosPorDia'
-import { formatearFechaProgramada } from '../../../utils/fixtureTorneo'
+import { claveDia, estadoPartido } from '../../../utils/partidosPorDia'
+import { formatearHoraCorta } from '../../../utils/fixtureTorneo'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
 import ModalProgramarFechas from '../ModalProgramarFechas'
+import ControlPartido from '../ControlPartido'
 
 // Tarjeta de acceso rapido de la pantalla de Inicio. `destacada` la pinta
 // del color de marca y le da doble ancho (grid-cols-2) - se usa para
@@ -26,21 +27,130 @@ function BotonAccion({ icon, label, sub, destacada, onClick }) {
   )
 }
 
+// Fila de UN partido de hoy: equipos + (segun el estado) su hora
+// programada, el marcador en vivo o el resultado final, y un boton para
+// entrar directo a Control (los ya jugados no lo necesitan).
+function FilaPartidoHoy({ partido, estado, local, visitante, bloqueadoPor, onAbrirControl }) {
+  return (
+    <li className="flex items-center gap-2 py-2">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <EscudoEquipo nombre={local?.nombre} fotoUrl={local?.fotoPortadaUrl} tamanoClase="h-7 w-7" textoClase="text-[10px]" />
+        <span className="min-w-0 truncate text-xs font-medium text-ink">{local?.nombre || '—'}</span>
+      </div>
+      <div className="shrink-0 px-1 text-center">
+        {estado === 'fin' ? (
+          <span className="money text-sm font-bold text-ink">
+            {partido.golesLocal}-{partido.golesVisitante}
+          </span>
+        ) : estado === 'vivo' ? (
+          <span className="money text-sm font-bold text-danger">
+            {partido.golesLocalEnVivo ?? 0}-{partido.golesVisitanteEnVivo ?? 0}
+          </span>
+        ) : (
+          <span className="text-xs font-semibold text-ink-soft">{formatearHoraCorta(partido.fecha)}</span>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+        <span className="min-w-0 truncate text-right text-xs font-medium text-ink">{visitante?.nombre || '—'}</span>
+        <EscudoEquipo nombre={visitante?.nombre} fotoUrl={visitante?.fotoPortadaUrl} tamanoClase="h-7 w-7" textoClase="text-[10px]" />
+      </div>
+      {estado !== 'fin' && (
+        <button
+          onClick={() => onAbrirControl(partido)}
+          disabled={Boolean(bloqueadoPor)}
+          title={
+            bloqueadoPor
+              ? `Terminá primero el partido de Fecha ${bloqueadoPor.fechaNumero}`
+              : 'Alineación y eventos del partido'
+          }
+          className="shrink-0 rounded-lg border border-line bg-paper px-2 py-1.5 text-xs disabled:opacity-40"
+        >
+          📋
+        </button>
+      )}
+    </li>
+  )
+}
+
+// Los partidos de hoy de UNA categoria, con su propio boton de "Habilitar
+// delegados" (mismo criterio que TabFechas: toca los que todavia no
+// arrancaron ni tienen resultado) - separado de categoria en categoria
+// por si dos categorias juegan el mismo dia.
+function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoPorDe, onAbrirControl }) {
+  const [habilitando, setHabilitando] = useState(false)
+  const [error, setError] = useState(null)
+
+  const pendientesSinArrancar = partidos.filter((p) => p.golesLocal == null && p.horaInicio == null)
+  const habilitados =
+    pendientesSinArrancar.length > 0 && pendientesSinArrancar.every((p) => p.alineacionAbiertaLocal && p.alineacionAbiertaVisitante)
+
+  async function alternarDelegados() {
+    if (habilitados && !confirm('¿Cerrar la alineación de los delegados de hoy? Ya no van a poder armarla ni cambiarla.')) {
+      return
+    }
+    setHabilitando(true)
+    setError(null)
+    try {
+      await habilitarAlineacionDeFecha(pendientesSinArrancar.map((p) => p.id), !habilitados)
+    } catch (err) {
+      console.error('[TabInicio] habilitarAlineacionDeFecha', err)
+      setError('No se pudo cambiar el permiso de los delegados.')
+    } finally {
+      setHabilitando(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">{CATEGORIA_TORNEO_LABELS[categoria]}</p>
+        {pendientesSinArrancar.length > 0 && (
+          <button
+            onClick={alternarDelegados}
+            disabled={habilitando}
+            className={`shrink-0 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
+              habilitados ? 'border-success/30 bg-success-soft text-success' : 'border-line bg-surface text-ink-soft'
+            }`}
+          >
+            {habilitando ? '…' : habilitados ? '✓ Delegados' : '👥 Habilitar delegados'}
+          </button>
+        )}
+      </div>
+      {error && <p className="mb-1 text-[11px] text-danger">{error}</p>}
+      <ul className="divide-y divide-line">
+        {partidos.map((p) => (
+          <FilaPartidoHoy
+            key={p.id}
+            partido={p}
+            estado={estadoDe(p)}
+            local={equipoDe(p.equipoLocalId)}
+            visitante={equipoDe(p.equipoVisitanteId)}
+            bloqueadoPor={bloqueadoPorDe(p)}
+            onAbrirControl={onAbrirControl}
+          />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /**
  * Primera pantalla que ve el Maestro al entrar al panel (ver
- * PanelTorneo) - una bienvenida con el nombre del torneo, un vistazo al
- * partido en vivo o al proximo por jugarse (si hay alguno programado), y
- * accesos rapidos a lo que se usa mas seguido. "Programar fechas" abre
- * el asistente (ver ModalProgramarFechas) para elegir categoria, fecha y
+ * PanelTorneo) - una bienvenida con el nombre del torneo, los partidos
+ * programados para HOY (los de otros dias, atrasados o no, no
+ * aparecen) con boton de Control y de habilitar delegados, y accesos
+ * rapidos a lo que se usa mas seguido. "Programar fechas" abre el
+ * asistente (ver ModalProgramarFechas) para elegir categoria, fecha y
  * cargar los horarios sin tener que pasar primero por la pestaña Fechas.
  */
 export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, onIrATab }) {
   const [equipos, setEquipos] = useState([])
   const [partidos, setPartidos] = useState([])
   const [mostrarWizard, setMostrarWizard] = useState(false)
-  // Se actualiza cada minuto para que el "proximo partido" se vuelva "en
-  // vivo" solo apenas se llega a su horario (mismo criterio que
-  // TabPartidosPublica).
+  const [partidoControl, setPartidoControl] = useState(null)
+  // Se actualiza cada minuto para que un partido pase a "en vivo" (o el
+  // dia cambie a la medianoche) sin que haga falta refrescar la pagina
+  // (mismo criterio que TabPartidosPublica).
   const [ahora, setAhora] = useState(() => Date.now())
   useEffect(() => {
     const id = setInterval(() => setAhora(Date.now()), 60000)
@@ -70,12 +180,40 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
     return equipoDe(id)?.nombre || '—'
   }
 
-  const partidosActivos = partidos.filter((p) => categoriasActivas.includes(p.categoria))
-  const enVivo = partidosActivos.filter((p) => estadoPartido(p, ahora) === 'vivo')
-  const proximos = partidosActivos
-    .filter((p) => estadoPartido(p, ahora) === 'pendiente' && p.fecha)
+  // Control de partido reemplaza toda esta pantalla (igual que en
+  // Fechas) - los datos de arriba ya estan en vivo (suscribirPartidosDelTorneo),
+  // asi que no hace falta refrescar nada al volver.
+  if (partidoControl) {
+    return (
+      <ControlPartido
+        torneoId={torneoId}
+        categoria={partidoControl.categoria}
+        partido={partidoControl}
+        nombreEquipo={nombreEquipo}
+        onVolver={() => setPartidoControl(null)}
+      />
+    )
+  }
+
+  const hoyClave = claveDia(new Date(ahora))
+  const partidosHoy = partidos
+    .filter((p) => categoriasActivas.includes(p.categoria) && p.fecha && claveDia(p.fecha.toDate()) === hoyClave)
     .sort((a, b) => a.fecha.toMillis() - b.fecha.toMillis())
-  const destacado = enVivo[0] || proximos[0] || null
+  const categoriasHoy = [...new Set(partidosHoy.map((p) => p.categoria))]
+
+  function estadoDe(partido) {
+    return estadoPartido(partido, ahora)
+  }
+
+  // Mismo criterio que TabFechas: mientras un partido de una fecha
+  // ANTERIOR (de la misma categoria) haya arrancado y no se haya
+  // finalizado, no se deja abrir Control de una fecha posterior.
+  function bloqueadoPorDe(partido) {
+    const sinFinalizarDeCategoria = partidos.filter(
+      (p) => p.categoria === partido.categoria && p.golesLocal == null && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
+    )
+    return sinFinalizarDeCategoria.find((p) => p.id !== partido.id && p.fechaNumero < partido.fechaNumero)
+  }
 
   return (
     <div>
@@ -92,43 +230,24 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
 
       {/* Tarjeta "flotante": se monta sobre el hero con un margen negativo,
           como en los tableros que muestran un dato destacado justo debajo
-          de la cabecera. */}
-      {destacado && (
-        <div className="relative -mt-14 mb-6 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-xl">
-          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-soft">
-            {enVivo[0] ? (
-              <>
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
-                <span className="text-danger">En vivo ahora</span>
-              </>
-            ) : (
-              <>📅 Próximo partido</>
-            )}
+          de la cabecera. Solo los partidos de HOY - uno de ayer que quedo
+          sin arrancar, o uno de la semana que viene, no aparecen aca. */}
+      {partidosHoy.length > 0 && (
+        <div className="relative -mt-14 mb-6 space-y-3 overflow-hidden rounded-2xl border border-line bg-surface p-4 shadow-xl">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            📅 Partidos de hoy
           </p>
-          <div className="flex items-center gap-2.5">
-            <EscudoEquipo nombre={nombreEquipo(destacado.equipoLocalId)} fotoUrl={equipoDe(destacado.equipoLocalId)?.fotoPortadaUrl} />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-              {nombreEquipo(destacado.equipoLocalId)}
-            </span>
-            {enVivo[0] && <span className="money text-base font-extrabold text-ink">{destacado.golesLocalEnVivo ?? 0}</span>}
-          </div>
-          <div className="my-1.5 border-t border-line/70" />
-          <div className="flex items-center gap-2.5">
-            <EscudoEquipo nombre={nombreEquipo(destacado.equipoVisitanteId)} fotoUrl={equipoDe(destacado.equipoVisitanteId)?.fotoPortadaUrl} />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-              {nombreEquipo(destacado.equipoVisitanteId)}
-            </span>
-            {enVivo[0] && <span className="money text-base font-extrabold text-ink">{destacado.golesVisitanteEnVivo ?? 0}</span>}
-          </div>
-          <div className="mt-2.5 flex items-center justify-between gap-2">
-            <p className="min-w-0 truncate text-xs text-ink-soft">
-              {CATEGORIA_TORNEO_LABELS[destacado.categoria]}
-              {!enVivo[0] && destacado.fecha && ` · ${formatearFechaProgramada(destacado.fecha)}`}
-            </p>
-            <button onClick={() => onIrATab('fechas')} className="shrink-0 text-xs font-semibold text-brand">
-              Ir a Fechas ›
-            </button>
-          </div>
+          {categoriasHoy.map((categoria) => (
+            <GrupoCategoriaHoy
+              key={categoria}
+              categoria={categoria}
+              partidos={partidosHoy.filter((p) => p.categoria === categoria)}
+              estadoDe={estadoDe}
+              equipoDe={equipoDe}
+              bloqueadoPorDe={bloqueadoPorDe}
+              onAbrirControl={setPartidoControl}
+            />
+          ))}
         </div>
       )}
 
