@@ -111,8 +111,11 @@ function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoP
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-ink-soft">{CATEGORIA_TORNEO_LABELS[categoria]}</p>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 border-b-2 border-brand pb-0.5 text-base font-extrabold uppercase tracking-wide text-ink">
+          <span aria-hidden="true">⚽</span>
+          {CATEGORIA_TORNEO_LABELS[categoria]}
+        </p>
         {pendientesSinArrancar.length > 0 && (
           <button
             onClick={alternarDelegados}
