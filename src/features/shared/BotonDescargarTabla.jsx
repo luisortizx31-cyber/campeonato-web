@@ -39,6 +39,11 @@ export function BotonDescargarTabla({ targetRef, nombreArchivo = 'tabla' }) {
     clon.style.top = '0'
     clon.style.left = '-99999px'
 
+    // Lo marcado con data-sin-captura (ej. las fotitos de equipo de la
+    // tabla de posiciones, que ahi son solo para tocarlas) no va en la
+    // imagen/PDF descargado: la tabla sale igual que siempre.
+    clon.querySelectorAll('[data-sin-captura]').forEach((n) => n.remove())
+
     // Si el contenido tiene un contenedor con scroll horizontal (tablas
     // viejas mas anchas que la pantalla), hay que sacarle el scroll y
     // agrandar todo a "max-content" para que entre completo. Las

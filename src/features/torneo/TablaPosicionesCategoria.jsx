@@ -4,6 +4,8 @@ import { listarPartidosPorCategoria } from '../../services/torneoPartidosService
 import { listarAjustesPorCategoria } from '../../services/torneoAjustesService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { calcularTablaPosiciones } from '../../utils/tablaPosiciones'
+import { colorEquipo, inicialEquipo } from '../../utils/colorEquipo'
+import { VisorFoto } from '../shared/VisorFoto'
 
 const ESTILO_PODIO = {
   1: { badge: 'bg-warning text-white', fila: 'bg-warning-soft/50' },
@@ -22,6 +24,11 @@ const ESTILO_PODIO = {
  * padre pueda reusarlas (ej. exportar a Excel) sin volver a
  * consultar Firestore por su cuenta.
  *
+ * Cada equipo muestra su fotito (o la inicial coloreada si todavia no
+ * subio foto) al lado del nombre; tocar el nombre de un equipo que si
+ * tiene foto la abre en grande. Esas fotitos no salen en la imagen/PDF
+ * descargado (ver data-sin-captura en BotonDescargarTabla).
+ *
  * Expone su nodo raiz via `ref` para que el padre pueda capturarla
  * como imagen/PDF (ver BotonDescargarTabla) sin que este componente
  * sepa nada de esa funcionalidad.
@@ -32,6 +39,9 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
 ) {
   const [filas, setFilas] = useState([])
   const [equiposEliminados, setEquiposEliminados] = useState(0)
+  // equipoId -> foto de portada (solo los que ya subieron una)
+  const [fotos, setFotos] = useState({})
+  const [fotoAbierta, setFotoAbierta] = useState(null) // { url, nombre } | null
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   // Ref para no re-disparar el efecto de carga cada vez que el padre
@@ -67,6 +77,7 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
         if (!cancelado) {
           const nuevasFilas = calcularTablaPosiciones({ equipos, partidos, ajustes })
           setFilas(nuevasFilas)
+          setFotos(Object.fromEntries(equipos.filter((e) => e.fotoPortadaUrl).map((e) => [e.id, e.fotoPortadaUrl])))
           setEquiposEliminados(config.equiposEliminados || 0)
           onFilasRef.current?.(nuevasFilas)
         }
@@ -100,6 +111,7 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
     equiposEliminados > 0 ? Math.max(0, filas.length - equiposEliminados) : null
 
   return (
+    <>
     <div ref={ref} className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
       <table className="w-full table-fixed text-xs">
         <thead>
@@ -107,12 +119,12 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
             <th className="w-7 px-1 py-2 text-left font-semibold text-white">#</th>
             <th className="px-1.5 py-2 text-left font-semibold text-white">Equipo</th>
             <th className="w-10 px-1 py-2 text-center font-semibold text-white">Pts</th>
-            <th className="w-6 px-0.5 py-2 text-center font-medium">PJ</th>
-            <th className="w-6 px-0.5 py-2 text-center font-medium">PG</th>
-            <th className="w-6 px-0.5 py-2 text-center font-medium">PE</th>
-            <th className="w-6 px-0.5 py-2 text-center font-medium">PP</th>
-            <th className="w-6 px-0.5 py-2 text-center font-medium">GF</th>
-            <th className="w-6 px-0.5 py-2 text-center font-medium">GC</th>
+            <th className="w-[22px] px-0.5 py-2 text-center font-medium">PJ</th>
+            <th className="w-[22px] px-0.5 py-2 text-center font-medium">PG</th>
+            <th className="w-[22px] px-0.5 py-2 text-center font-medium">PE</th>
+            <th className="w-[22px] px-0.5 py-2 text-center font-medium">PP</th>
+            <th className="w-[22px] px-0.5 py-2 text-center font-medium">GF</th>
+            <th className="w-[22px] px-0.5 py-2 text-center font-medium">GC</th>
             <th className="w-8 px-1 py-2 text-center font-medium">DG</th>
           </tr>
         </thead>
@@ -122,6 +134,8 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
             const podio = ESTILO_PODIO[puesto]
             const eliminado = corte != null && puesto > corte
             const esPrimerEliminado = corte != null && puesto === corte + 1
+            const foto = fotos[f.equipoId]
+            const colorPromo = colorEquipo(f.nombre)
             return (
               <tr
                 key={f.equipoId}
@@ -150,7 +164,21 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
                     {puesto}
                   </span>
                 </td>
-                <td className="break-words px-1.5 py-1.5 text-sm leading-tight font-semibold text-ink">{f.nombre}</td>
+                <td className="px-1.5 py-1.5">
+                  <div
+                    onClick={foto ? () => setFotoAbierta({ url: foto, nombre: f.nombre }) : undefined}
+                    role={foto ? 'button' : undefined}
+                    className={`flex items-center gap-1 ${foto ? 'cursor-pointer' : ''}`}
+                  >
+                    <span
+                      data-sin-captura="true"
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center overflow-hidden rounded-full text-[9px] font-bold ${colorPromo.bg} ${colorPromo.text}`}
+                    >
+                      {foto ? <img src={foto} alt="" className="h-full w-full object-cover" /> : inicialEquipo(f.nombre)}
+                    </span>
+                    <span className="min-w-0 break-words text-sm leading-tight font-semibold text-ink">{f.nombre}</span>
+                  </div>
+                </td>
                 <td className="px-1 py-1.5 text-center">
                   <span className="money inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-brand px-1 py-0.5 text-xs font-bold text-white">
                     {f.pts}
@@ -187,6 +215,8 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
         </div>
       )}
     </div>
+    {fotoAbierta && <VisorFoto url={fotoAbierta.url} titulo={fotoAbierta.nombre} onCerrar={() => setFotoAbierta(null)} />}
+    </>
   )
 })
 

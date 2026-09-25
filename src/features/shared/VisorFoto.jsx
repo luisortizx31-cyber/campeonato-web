@@ -3,7 +3,7 @@
 // X, o Escape. Se usa desde AvatarFoto y EscudoEquipo.
 import { useEffect } from 'react'
 
-export function VisorFoto({ url, onCerrar }) {
+export function VisorFoto({ url, titulo, onCerrar }) {
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Escape') onCerrar()
@@ -34,12 +34,15 @@ export function VisorFoto({ url, onCerrar }) {
       >
         ×
       </button>
-      <img
-        src={url}
-        alt=""
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-full max-w-full rounded-lg object-contain"
-      />
+      <div className="flex max-h-full max-w-full flex-col items-center gap-3">
+        <img
+          src={url}
+          alt={titulo || ''}
+          onClick={(e) => e.stopPropagation()}
+          className="min-h-0 max-w-full rounded-lg object-contain"
+        />
+        {titulo && <p className="shrink-0 text-center text-base font-semibold text-white">{titulo}</p>}
+      </div>
     </div>
   )
 }
