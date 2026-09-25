@@ -3,7 +3,8 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
 import { listarTarjetasPorCategoria } from '../../../services/torneoTarjetasService'
 import { TIPO_TARJETA_LABELS, TIPO_TARJETA_STYLES } from '../../../models/torneo'
-import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
+import { colorEquipo } from '../../../utils/colorEquipo'
+import { AvatarJugador } from '../../shared/AvatarJugador'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
@@ -43,6 +44,9 @@ export default function TabAmonestadosPublica({ torneoId, categoriasActivas }) {
   function nombreJugador(id) {
     return jugadores.find((j) => j.id === id)?.nombre || '—'
   }
+  function jugadorDe(id) {
+    return jugadores.find((j) => j.id === id)
+  }
   function nombreEquipo(id) {
     return equipos.find((e) => e.id === id)?.nombre || '—'
   }
@@ -71,9 +75,12 @@ export default function TabAmonestadosPublica({ torneoId, categoriasActivas }) {
               </h2>
               <ul className="mb-6 space-y-2">
                 {eliminados.map((j) => (
-                  <li key={j.id} className="rounded-xl border border-danger bg-danger-soft px-4 py-3">
-                    <p className="text-sm font-semibold text-ink">❌ {j.nombre}</p>
-                    <p className="text-xs text-ink-soft">{nombreEquipo(j.equipoId)} · {j.motivoEliminacion}</p>
+                  <li key={j.id} className="flex items-center gap-3 rounded-xl border border-danger bg-danger-soft px-4 py-3">
+                    <AvatarJugador jugador={j} tamanoClase="h-11 w-11" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ink">❌ {j.nombre}</p>
+                      <p className="text-xs text-ink-soft">{nombreEquipo(j.equipoId)} · {j.motivoEliminacion}</p>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -96,11 +103,7 @@ export default function TabAmonestadosPublica({ torneoId, categoriasActivas }) {
                 return (
                   <li key={j.id} className="overflow-hidden rounded-2xl border border-danger/30 bg-surface shadow-sm">
                     <div className="flex items-center gap-3 bg-danger-soft px-4 py-3">
-                      <span
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold ${color.bg} ${color.text}`}
-                      >
-                        {inicialEquipo(equipo)}
-                      </span>
+                      <AvatarJugador jugador={j} tamanoClase="h-14 w-14" colorBg={color.bg} colorText={color.text} />
                       <div className="min-w-0">
                         <p className="truncate text-base font-bold text-ink">{j.nombre}</p>
                         <span className="inline-block rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-ink-soft">
@@ -168,6 +171,7 @@ export default function TabAmonestadosPublica({ torneoId, categoriasActivas }) {
                     const estilo = TIPO_TARJETA_STYLES[t.tipo]
                     return (
                       <li key={t.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+                        <AvatarJugador jugador={jugadorDe(t.jugadorId)} tamanoClase="h-10 w-10" />
                         <div className="flex shrink-0 flex-col items-center gap-1">
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estilo.fondo} ${estilo.texto}`}>
                             {TIPO_TARJETA_LABELS[t.tipo]}

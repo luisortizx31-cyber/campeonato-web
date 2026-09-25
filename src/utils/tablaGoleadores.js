@@ -14,6 +14,7 @@ export function calcularTablaGoleadores({ jugadores, goles }) {
       jugadorId: j.id,
       nombre: j.nombre,
       equipoId: j.equipoId,
+      fotoUrl: j.fotoUrl || null,
       goles: totales.get(j.id),
     }))
 

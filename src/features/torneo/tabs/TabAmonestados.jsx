@@ -13,12 +13,13 @@ import { TIPO_TARJETA_LABELS, TIPO_TARJETA_STYLES } from '../../../models/torneo
 import { colorEquipo } from '../../../utils/colorEquipo'
 import ModalAgregarTarjeta from '../ModalAgregarTarjeta'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
+import { AvatarJugador } from '../../shared/AvatarJugador'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 
 // Fila de una tarjeta dentro del historial - se repite tanto agrupada
 // por fecha (ver abajo) como en la lista plana de resultados de
 // busqueda.
-function FilaTarjeta({ tarjeta, nombreJugador, nombreEquipo, onEliminar, eliminando }) {
+function FilaTarjeta({ tarjeta, nombreJugador, jugadorDe, nombreEquipo, onEliminar, eliminando }) {
   // tipoEfectivo puede diferir de tipo (ej. la 2da amarilla del mismo
   // partido se procesa como roja, ver finalizarTarjetasPartido en
   // torneoTarjetasService) - hay que mostrar el efecto REAL que tuvo la
@@ -30,7 +31,8 @@ function FilaTarjeta({ tarjeta, nombreJugador, nombreEquipo, onEliminar, elimina
   const estilo = TIPO_TARJETA_STYLES[tipoMostrado]
   return (
     <li className="flex items-center justify-between gap-2 px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <AvatarJugador jugador={jugadorDe(tarjeta.jugadorId)} tamanoClase="h-10 w-10" />
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${estilo.fondo} ${estilo.texto}`}>
           {TIPO_TARJETA_LABELS[tipoMostrado]}
         </span>
@@ -117,6 +119,9 @@ export default function TabAmonestados({ torneoId, categoriasActivas }) {
 
   function nombreJugador(id) {
     return jugadores.find((j) => j.id === id)?.nombre || '—'
+  }
+  function jugadorDe(id) {
+    return jugadores.find((j) => j.id === id)
   }
   function nombreEquipo(id) {
     return equipos.find((e) => e.id === id)?.nombre || '—'
@@ -210,11 +215,14 @@ export default function TabAmonestados({ torneoId, categoriasActivas }) {
                     key={j.id}
                     className="flex items-center justify-between gap-2 rounded-xl border border-danger bg-danger-soft px-4 py-3"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink">❌ {j.nombre}</p>
-                      <p className="text-xs text-ink-soft">
-                        {nombreEquipo(j.equipoId)} · {j.motivoEliminacion}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <AvatarJugador jugador={j} tamanoClase="h-11 w-11" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">❌ {j.nombre}</p>
+                        <p className="text-xs text-ink-soft">
+                          {nombreEquipo(j.equipoId)} · {j.motivoEliminacion}
+                        </p>
+                      </div>
                     </div>
                     <button
                       onClick={() => handleLevantarSuspension(j)}
@@ -241,12 +249,15 @@ export default function TabAmonestados({ torneoId, categoriasActivas }) {
                   key={j.id}
                   className="flex items-center justify-between gap-2 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{j.nombre}</p>
-                    <p className="text-xs text-ink-soft">
-                      {nombreEquipo(j.equipoId)} · {j.motivoSuspension}
-                      {j.fechasSuspension ? ` · ${j.fechasSuspension} fecha(s)` : ''}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <AvatarJugador jugador={j} tamanoClase="h-11 w-11" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">{j.nombre}</p>
+                      <p className="text-xs text-ink-soft">
+                        {nombreEquipo(j.equipoId)} · {j.motivoSuspension}
+                        {j.fechasSuspension ? ` · ${j.fechasSuspension} fecha(s)` : ''}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleLevantarSuspension(j)}
@@ -296,6 +307,7 @@ export default function TabAmonestados({ torneoId, categoriasActivas }) {
                         <FilaTarjeta
                           tarjeta={t}
                           nombreJugador={nombreJugador}
+                          jugadorDe={jugadorDe}
                           nombreEquipo={nombreEquipo}
                           onEliminar={() => handleEliminarTarjeta(t)}
                           eliminando={procesando === t.id}
@@ -334,6 +346,7 @@ export default function TabAmonestados({ torneoId, categoriasActivas }) {
                                 key={t.id}
                                 tarjeta={t}
                                 nombreJugador={nombreJugador}
+                                jugadorDe={jugadorDe}
                                 nombreEquipo={nombreEquipo}
                                 onEliminar={() => handleEliminarTarjeta(t)}
                                 eliminando={procesando === t.id}
@@ -364,6 +377,7 @@ export default function TabAmonestados({ torneoId, categoriasActivas }) {
                               key={t.id}
                               tarjeta={t}
                               nombreJugador={nombreJugador}
+                              jugadorDe={jugadorDe}
                               nombreEquipo={nombreEquipo}
                               onEliminar={() => handleEliminarTarjeta(t)}
                               eliminando={procesando === t.id}
