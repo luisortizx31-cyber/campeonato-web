@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, formatearFechaProgramada, formatearDiaCorto, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearFechaProgramada, formatearDiaCorto, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -151,8 +152,13 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     const legs = new Set(partidosF.map((p) => calcularLegPartido(p, partidos)))
     return legs.size === 1 ? [...legs][0] : 'mixta'
   }
-  const fechasIda = fechasDisponibles.filter((f) => fechaLeg(f) === 'ida')
-  const fechasVuelta = fechasDisponibles.filter((f) => fechaLeg(f) === 'vuelta')
+  // La ida/vuelta de la temporada regular y la de la liguilla se cuentan por
+  // separado (la liguilla se muestra como "Liguilla ida" / "Liguilla vuelta").
+  const fechasLiguilla = fechasDisponibles.filter((f) => esFechaLiguilla(f, partidos))
+  const fechasIda = fechasDisponibles.filter((f) => !fechasLiguilla.includes(f) && fechaLeg(f) === 'ida')
+  const fechasVuelta = fechasDisponibles.filter((f) => !fechasLiguilla.includes(f) && fechaLeg(f) === 'vuelta')
+  const fechasLiguillaIda = fechasLiguilla.filter((f) => fechaLeg(f) === 'ida')
+  const fechasLiguillaVuelta = fechasLiguilla.filter((f) => fechaLeg(f) === 'vuelta')
 
   if (partidoAbiertoId) {
     return partidoAbierto ? (
@@ -187,17 +193,27 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
               <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
             </p>
           )}
+          {fechasLiguilla.length > 0 && (
+            <p className="mb-2 text-xs text-ink-soft">
+              <span className="font-semibold text-danger">Liguilla</span>
+              {fechasLiguillaIda.length > 0 && <> · ida: {textoFechas(fechasLiguillaIda)}</>}
+              {fechasLiguillaVuelta.length > 0 && <> · vuelta: {textoFechas(fechasLiguillaVuelta)}</>}
+              {fechasLiguillaIda.length === 0 && fechasLiguillaVuelta.length === 0 && <> · {textoFechas(fechasLiguilla)}</>}
+            </p>
+          )}
           <div ref={barraFechasRef} className="mb-3 flex items-stretch gap-1.5 overflow-x-auto pb-1">
             {fechasDisponibles.map((f) => {
               const completa = fechaCompleta(f)
               const empezada = !completa && fechaEmpezada(f)
               const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
+              const esLiguillaF = fechasLiguilla.includes(f)
+              const esPrimeraLiguilla = esLiguillaF && f === fechasLiguilla[0]
               const horarioMasBajo = horarioMasBajoDe(f)
               const enHora = horaLlegada(f)
               const yaPaso = horarioYaPaso(f)
               return (
                 <div key={f} className="flex shrink-0 items-stretch gap-1.5">
-                  {esPrimeraVuelta && <span className="w-px shrink-0 bg-line" />}
+                  {(esPrimeraVuelta || esPrimeraLiguilla) && <span className="w-px shrink-0 bg-line" />}
                   <div className="flex shrink-0 flex-col items-center gap-0.5">
                     <button
                       data-fecha={f}
@@ -214,7 +230,7 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                               : 'border-success/30 bg-success-soft text-success'
                       }`}
                     >
-                      Fecha {f}{completa ? ' ✓' : ''}
+                      {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · F${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
                     </button>
                     {horarioMasBajo && (
                       <div
@@ -265,11 +281,17 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                         <span className="h-1.5 w-1.5 rounded-full bg-line" /> Pendiente
                       </span>
                     )}
-                    {leg === 'ida' && (
-                      <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand">Ida</span>
-                    )}
-                    {leg === 'vuelta' && (
-                      <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold">↩ Vuelta</span>
+                    {p.fase === FASE_LIGUILLA ? (
+                      <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-semibold text-danger">{etiquetaLiguilla(leg)}</span>
+                    ) : (
+                      <>
+                        {leg === 'ida' && (
+                          <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand">Ida</span>
+                        )}
+                        {leg === 'vuelta' && (
+                          <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold">↩ Vuelta</span>
+                        )}
+                      </>
                     )}
                   </div>
 

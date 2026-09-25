@@ -1,3 +1,5 @@
+import { FASE_LIGUILLA } from '../models/torneo'
+
 // Genera el fixture "todos contra todos" de una categoria usando el
 // metodo del circulo (round-robin estandar): se fija el primer
 // equipo y el resto rota una posicion en cada fecha, emparejando
@@ -152,11 +154,38 @@ function parEquipos(partido) {
 // a una sola vuelta, o partido suelto sin revancha).
 export function calcularLegPartido(partido, partidos) {
   if (partido.fechaNumero == null) return null
+  // La liguilla tiene su propia ida y vuelta: un cruce de liguilla solo se
+  // compara con otros de liguilla (y uno de la temporada regular solo con
+  // los de la regular), aunque sean los mismos dos equipos - si no, la
+  // liguilla aparecia como "vuelta" de un partido de la temporada.
+  const esLiguilla = partido.fase === FASE_LIGUILLA
   const par = parEquipos(partido)
   const mismoPar = partidos
-    .filter((p) => p.fechaNumero != null && parEquipos(p) === par)
+    .filter((p) => p.fechaNumero != null && (p.fase === FASE_LIGUILLA) === esLiguilla && parEquipos(p) === par)
     .map((p) => p.fechaNumero)
   if (mismoPar.length < 2) return null
   const primera = Math.min(...mismoPar)
   return partido.fechaNumero === primera ? 'ida' : 'vuelta'
+}
+
+// Si la Fecha es de la liguilla (cuadro eliminatorio o grupo final, ver
+// torneoLiguillaService): sus partidos llevan fase === FASE_LIGUILLA.
+export function esFechaLiguilla(fechaNumero, partidos) {
+  return partidos.some((p) => p.fechaNumero === fechaNumero && p.fase === FASE_LIGUILLA)
+}
+
+// "Liguilla ida" / "Liguilla vuelta" segun el leg de calcularLegPartido
+// (o de una fecha entera); "Liguilla" a secas si es a un solo partido.
+export function etiquetaLiguilla(leg) {
+  if (leg === 'ida') return 'Liguilla ida'
+  if (leg === 'vuelta') return 'Liguilla vuelta'
+  return 'Liguilla'
+}
+
+// "Fecha 11", "Fecha 11–12" (seguidas) o "Fecha 11, 13" (salteadas).
+export function textoFechas(fechas) {
+  const orden = [...fechas].sort((a, b) => a - b)
+  if (orden.length === 1) return `Fecha ${orden[0]}`
+  const seguidas = orden.every((f, i) => i === 0 || f === orden[i - 1] + 1)
+  return seguidas ? `Fecha ${orden[0]}–${orden[orden.length - 1]}` : `Fecha ${orden.join(', ')}`
 }
