@@ -30,6 +30,8 @@ import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT
 import { colorEquipo } from '../../utils/colorEquipo'
 import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
+import { DesgloseGolesTiempo } from '../shared/DesgloseGolesTiempo'
+import { periodoEnCurso } from '../../utils/golesPorTiempo'
 import { useSwipeHorizontal } from '../../hooks/useSwipeHorizontal'
 
 const VISTAS = ['alineacion', 'cancha']
@@ -849,6 +851,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
         fechaNumero: partido.fechaNumero,
         cantidad: 1,
         partidoId: partido.id,
+        // En que tiempo cae el gol: el que tenga el cronometro corriendo.
+        periodo: periodoEnCurso({ primerTiempo, segundoTiempo, tiempoExtra }),
       })
       setUltimaAccion({ tipo: 'gol', docId: golId, descripcion: `Gol de ${jugador.nombre}` })
       await cargar()
@@ -1269,6 +1273,13 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             </div>
           )}
 
+          {horaInicio != null && !jugado && periodoEnCurso({ primerTiempo, segundoTiempo, tiempoExtra }) == null && (
+            <p className="mb-3 rounded-lg bg-brand-soft px-3 py-2 text-center text-xs font-medium text-brand">
+              ⏱ No hay ningún tiempo corriendo: los goles que cargues ahora no quedarán marcados como 1er o
+              2do tiempo. Iniciá el cronómetro del tiempo (arriba) para que se marquen.
+            </p>
+          )}
+
           {horaInicio == null && (
             <p className="mb-3 rounded-lg bg-warning-soft px-3 py-2 text-center text-xs font-medium text-warning">
               🔒 Todavía no arrancaste el partido - tocá "▶ Arrancar partido" arriba para poder cargar goles y
@@ -1361,7 +1372,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                           const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
                           return (
                             <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                              <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                              <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
                               <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
                             </li>
                           )
@@ -1375,7 +1386,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                       <ul className="space-y-1">
                         {amarillas.map((j) => (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                            <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
                             <span className="shrink-0 text-warning">1 amarilla</span>
                           </li>
                         ))}
@@ -1387,9 +1398,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                       <p className="mb-1 text-[11px] font-semibold text-brand">⚽ Goleadores</p>
                       <ul className="space-y-1">
                         {goleadores.map((j) => (
-                          <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
-                            <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                          <li key={j.id} className="text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
+                              <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                            </div>
+                            <DesgloseGolesTiempo goles={goles.filter((g) => g.jugadorId === j.id)} />
                           </li>
                         ))}
                       </ul>

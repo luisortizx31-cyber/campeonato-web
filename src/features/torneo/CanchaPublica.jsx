@@ -7,6 +7,7 @@ import { TIPO_TARJETA } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
+import { DesgloseGolesTiempo } from '../shared/DesgloseGolesTiempo'
 
 // Fila de solo lectura de la cancha (ver FilaAccion en ControlPartido,
 // del que esta es la version publica): mismo numero+nombre+goles/
@@ -249,7 +250,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                           const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
                           return (
                             <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                              <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                              <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
                               <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
                             </li>
                           )
@@ -263,7 +264,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                       <ul className="space-y-1">
                         {amarillas.map((j) => (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                            <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
                             <span className="shrink-0 text-warning">1 amarilla</span>
                           </li>
                         ))}
@@ -275,9 +276,12 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                       <p className="mb-1 text-[11px] font-semibold text-brand">⚽ Goleadores</p>
                       <ul className="space-y-1">
                         {goleadores.map((j) => (
-                          <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
-                            <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                          <li key={j.id} className="text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
+                              <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                            </div>
+                            <DesgloseGolesTiempo goles={goles.filter((g) => g.jugadorId === j.id)} />
                           </li>
                         ))}
                       </ul>

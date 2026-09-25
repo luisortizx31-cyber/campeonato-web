@@ -10,7 +10,12 @@ import { db } from '../config/firebase'
 // sumando estos registros (ver utils/tablaGoleadores.calcularTablaGoleadores),
 // asi que corregir un gol cargado de mas/de menos es simplemente
 // agregar o eliminar un registro.
-export async function registrarGol({ torneoId, categoria, jugadorId, equipoId, fechaNumero, cantidad, partidoId }) {
+//
+// `periodo` (opcional) es el tiempo del partido en que se metio el gol
+// ('primerTiempo' | 'segundoTiempo' | 'tiempoExtra', ver
+// utils/golesPorTiempo): lo pasa ControlPartido segun el cronometro que
+// este corriendo. null si no habia ninguno (o un gol suelto).
+export async function registrarGol({ torneoId, categoria, jugadorId, equipoId, fechaNumero, cantidad, partidoId, periodo }) {
   const ref = await addDoc(collection(db, 'torneo_goles'), {
     torneoId,
     categoria,
@@ -19,6 +24,7 @@ export async function registrarGol({ torneoId, categoria, jugadorId, equipoId, f
     fechaNumero: fechaNumero !== '' && fechaNumero != null ? Number(fechaNumero) : null,
     cantidad: Number(cantidad) || 1,
     partidoId: partidoId || null,
+    periodo: periodo || null,
     creadoEn: serverTimestamp(),
   })
   return ref.id

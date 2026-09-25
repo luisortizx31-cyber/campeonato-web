@@ -11,6 +11,7 @@ import {
 import { TIPO_TARJETA } from '../../../models/torneo'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
+import { DesgloseGolesTiempo } from '../../shared/DesgloseGolesTiempo'
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -593,7 +594,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                         const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
                         return (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                            <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
                             <span className="shrink-0 text-danger">{roja ? 'Roja directa' : '2 amarillas'}</span>
                           </li>
                         )
@@ -607,7 +608,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                     <ul className="space-y-1">
                       {amarillas.map((j) => (
                         <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
+                          <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
                           <span className="shrink-0 text-warning">1 amarilla</span>
                         </li>
                       ))}
@@ -619,9 +620,12 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                     <p className="mb-1 text-[11px] font-semibold text-brand">⚽ Goleadores</p>
                     <ul className="space-y-1">
                       {goleadores.map((j) => (
-                        <li key={j.id} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="min-w-0 truncate font-semibold text-ink">{j.nombre}</span>
-                          <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                        <li key={j.id} className="text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 break-words font-semibold text-ink">{j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}{j.nombre}</span>
+                            <span className="shrink-0 font-semibold text-brand">⚽ {golesDe(j.id)}</span>
+                          </div>
+                          <DesgloseGolesTiempo goles={goles.filter((g) => g.jugadorId === j.id)} />
                         </li>
                       ))}
                     </ul>
