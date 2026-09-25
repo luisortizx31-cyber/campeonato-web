@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { logout } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { obtenerConfigTorneo } from '../../services/torneoConfigService'
+import { obtenerTorneo } from '../../services/torneosService'
 import { CATEGORIAS_ACTIVAS_DEFAULT } from '../../models/torneo'
+import TabInicio from './tabs/TabInicio'
 import TabEquipos from './tabs/TabEquipos'
 import TabFechas from './tabs/TabFechas'
 import TabPosiciones from './tabs/TabPosiciones'
@@ -17,6 +19,7 @@ import TabConfiguracion from './tabs/TabConfiguracion'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
 
 const TABS = [
+  { id: 'inicio', label: 'Inicio', icon: '🏠', Componente: TabInicio },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechas },
   { id: 'posiciones', label: 'Posiciones', icon: '📊', Componente: TabPosiciones },
   { id: 'liguilla', label: 'Liguilla', icon: '🏆', Componente: TabLiguilla },
@@ -31,10 +34,10 @@ const TABS = [
 ]
 
 // Se guarda en sessionStorage (no localStorage: es solo para que un
-// refresh de la pagina no tire al Maestro de nuevo a la pestaña por
-// defecto (Fechas), no hace falta que sobreviva a cerrar la pestaña)
-// para que un F5 en medio de cualquier pestaña -incluido el Control
-// de Partido dentro de Fechas, ver TabFechas- deje todo tal cual estaba.
+// refresh de la pagina no tire al Maestro de nuevo a Inicio, no hace
+// falta que sobreviva a cerrar la pestaña) para que un F5 en medio de
+// cualquier seccion -incluido el Control de Partido dentro de Fechas,
+// ver TabFechas- deje todo tal cual estaba.
 const TAB_STORAGE_KEY = 'campeonato_tabActiva'
 
 export default function PanelTorneo() {
@@ -42,9 +45,9 @@ export default function PanelTorneo() {
   const [tabActiva, setTabActiva] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(TAB_STORAGE_KEY)
-      return TABS.some((t) => t.id === guardada) ? guardada : 'fechas'
+      return TABS.some((t) => t.id === guardada) ? guardada : 'inicio'
     } catch {
-      return 'fechas'
+      return 'inicio'
     }
   })
   const [linkCopiado, setLinkCopiado] = useState(false)
@@ -54,14 +57,19 @@ export default function PanelTorneo() {
   // actualiza un instante despues y el selector de categoria de cada
   // tab se autocorrige solo (ver SelectorCategoria).
   const [categoriasActivas, setCategoriasActivas] = useState(CATEGORIAS_ACTIVAS_DEFAULT)
+  // Nombre del torneo, para la bienvenida de Inicio (ver TabInicio) -
+  // null mientras carga, no bloquea el resto del panel.
+  const [nombreTorneo, setNombreTorneo] = useState(null)
 
   useEffect(() => {
     let cancelado = false
-    obtenerConfigTorneo(torneoId)
-      .then((c) => {
-        if (!cancelado) setCategoriasActivas(c.categoriasActivas)
+    Promise.all([obtenerConfigTorneo(torneoId), obtenerTorneo(torneoId)])
+      .then(([config, torneo]) => {
+        if (cancelado) return
+        setCategoriasActivas(config.categoriasActivas)
+        setNombreTorneo(torneo?.nombre || null)
       })
-      .catch((err) => console.error('[PanelTorneo] obtenerConfigTorneo', err))
+      .catch((err) => console.error('[PanelTorneo] cargar config/torneo', err))
     return () => {
       cancelado = true
     }
@@ -73,18 +81,6 @@ export default function PanelTorneo() {
     } catch {
       // Sin sessionStorage (modo privado, etc) simplemente no persiste.
     }
-  }, [tabActiva])
-
-  // La barra de pestañas se desplaza horizontal (overflow-x-auto) -
-  // sin esto, al restaurar una pestaña lejos del final (ej.
-  // Configuración) despues de un refresh, la barra arranca scrolleada
-  // al principio y hay que arrastrarla a mano para ver cual quedo
-  // activa.
-  const barraTabsRef = useRef(null)
-  useEffect(() => {
-    if (!barraTabsRef.current) return
-    const activo = barraTabsRef.current.querySelector(`[data-tab="${tabActiva}"]`)
-    activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   }, [tabActiva])
 
   const tab = TABS.find((t) => t.id === tabActiva) ?? TABS[0]
@@ -109,6 +105,19 @@ export default function PanelTorneo() {
           <h1 className="text-lg font-semibold text-ink">{tab.label}</h1>
         </div>
         <div className="flex shrink-0 gap-2">
+          {/* Unica forma de volver a Inicio desde cualquier seccion, ya
+              que no hay barra de pestañas (ver TabInicio, sus accesos
+              rapidos son la unica via para ir HACIA una seccion) - en
+              Inicio mismo no hace falta, ya estas ahi. */}
+          {tabActiva !== 'inicio' && (
+            <button
+              onClick={() => setTabActiva('inicio')}
+              title="Volver a Inicio"
+              className="rounded-lg border border-line px-3 py-1.5 text-sm text-ink-soft active:scale-95 transition-transform"
+            >
+              🏠
+            </button>
+          )}
           <button
             onClick={copiarLinkPublico}
             title="Copiar link público"
@@ -126,28 +135,16 @@ export default function PanelTorneo() {
         </div>
       </header>
 
-      <nav ref={barraTabsRef} className="flex border-b border-line bg-surface overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            data-tab={t.id}
-            onClick={() => setTabActiva(t.id)}
-            className={`shrink-0 flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              tabActiva === t.id
-                ? 'border-brand text-brand'
-                : 'border-transparent text-ink-soft'
-            }`}
-          >
-            <span>{t.icon}</span> {t.label}
-          </button>
-        ))}
-      </nav>
-
+      {/* Ya no hay una barra de pestañas: Inicio es el unico punto de
+          navegacion (sus accesos rapidos, ver TabInicio) y el boton 🏠
+          de arriba es la vuelta desde cualquier seccion. */}
       <main className="mx-auto max-w-2xl px-4 py-6">
         <Componente
           torneoId={torneoId}
           categoriasActivas={categoriasActivas}
           onCategoriasActualizadas={setCategoriasActivas}
+          nombreTorneo={nombreTorneo}
+          onIrATab={setTabActiva}
         />
       </main>
     </div>
