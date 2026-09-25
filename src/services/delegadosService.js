@@ -67,21 +67,6 @@ export async function obtenerDelegadoDeEquipo(equipoId) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null
 }
 
-// El delegado (si tiene uno activo) de CADA lado de un partido puntual
-// - la usa ControlPartido para saber si mostrar el boton de
-// habilitar/cerrar alineacion. Dos getDoc() de un solo documento
-// conocido en vez de una query de lista (ver idDelegadoDeEquipo).
-export async function obtenerDelegadosDePartido(equipoLocalId, equipoVisitanteId) {
-  const [local, visitante] = await Promise.all([
-    obtenerDelegadoDeEquipo(equipoLocalId),
-    obtenerDelegadoDeEquipo(equipoVisitanteId),
-  ])
-  return {
-    local: local && !local.deshabilitado ? local : null,
-    visitante: visitante && !visitante.deshabilitado ? visitante : null,
-  }
-}
-
 export async function listarDelegados(torneoId) {
   const snap = await getDocs(query(collection(db, 'torneo_delegados'), where('torneoId', '==', torneoId)))
   const delegados = snap.docs.map((d) => ({ id: d.id, ...d.data() }))

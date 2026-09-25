@@ -441,15 +441,24 @@ export async function actualizarDniConfirmado(partidoId, equipo, jugadorId, conf
   })
 }
 
-// El Maestro habilita (o cierra) que el delegado de un equipo pueda
-// armar la alineacion de ESTE partido puntual desde el link publico
-// (ver TabFechas "ofrecerHabilitarDelegados", al entrar a Control de
-// Partido, y AlineacionPartidoDelegado) - ver firestore.rules, que
-// solo deja tocar titulares/suplentes/dni del propio lado mientras
-// este flag este en true.
-export async function alternarAlineacionAbierta(partidoId, equipo, abierta) {
-  const campo = equipo === 'local' ? 'alineacionAbiertaLocal' : 'alineacionAbiertaVisitante'
-  await updateDoc(doc(db, 'torneo_partidos', partidoId), { [campo]: abierta })
+// El Maestro habilita (o cierra) de una sola vez que los delegados de
+// TODOS los equipos de los partidos indicados (los de una Fecha, ver el
+// boton "Habilitar delegados" de TabFechas) puedan armar su alineacion
+// desde el link publico (ver AlineacionPartidoDelegado) - ver
+// firestore.rules, que solo deja tocar titulares/suplentes/dni del
+// propio lado mientras el flag del lado este en true. Se marcan los dos
+// lados de cada partido: un equipo sin delegado simplemente no tiene
+// quien use ese permiso.
+export async function habilitarAlineacionDeFecha(partidoIds, abierta) {
+  if (partidoIds.length === 0) return
+  const batch = writeBatch(db)
+  partidoIds.forEach((id) => {
+    batch.update(doc(db, 'torneo_partidos', id), {
+      alineacionAbiertaLocal: abierta,
+      alineacionAbiertaVisitante: abierta,
+    })
+  })
+  await batch.commit()
 }
 
 // Vuelve a "Pendiente" (golesLocal/golesVisitante = null) los

@@ -10,11 +10,10 @@ import {
   actualizarFechaProgramada,
   eliminarPartido,
   cambiarFechaDePartido,
-  alternarAlineacionAbierta,
+  habilitarAlineacionDeFecha,
 } from '../../../services/torneoPartidosService'
 import { reconciliarSuspensionesPorFecha } from '../../../services/torneoTarjetasService'
 import { suscribirSolicitudesPendientesPorCategoria } from '../../../services/torneoSolicitudesCambioService'
-import { obtenerDelegadosDePartido } from '../../../services/delegadosService'
 import {
   calcularNumeroFechas,
   calcularLegPartido,
@@ -71,7 +70,7 @@ const STORAGE_FECHA_SELECCIONADA_PREFIJO = 'campeonato_fechas_fechaSeleccionada_
 // pegado a la que se habia mirado antes de irse.
 let seEntroAFechasEnEstaCarga = false
 
-export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones }) {
+export default function TabFechas({ torneoId, categoriasActivas }) {
   const [categoria, setCategoria] = useState(() => {
     try {
       const guardada = sessionStorage.getItem(STORAGE_CATEGORIA)
@@ -123,6 +122,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
 
   const [modalAgregar, setModalAgregar] = useState(false)
   const [modalReprogramar, setModalReprogramar] = useState(false)
+  const [habilitandoDelegados, setHabilitandoDelegados] = useState(false)
 
   const [eliminandoPartido, setEliminandoPartido] = useState(null)
   const [reiniciandoPartido, setReiniciandoPartido] = useState(null)
@@ -527,42 +527,43 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     return `Primero terminá el partido de ${nombreEquipo(bloqueante.equipoLocalId)} vs ${nombreEquipo(bloqueante.equipoVisitanteId)} (Fecha ${bloqueante.fechaNumero}) antes de seguir con la Fecha ${fechaDestino}.`
   }
 
-  // Antes esto era un boton aparte adentro de Control de Partido - se
-  // movio a este punto de entrada (una sola pregunta, no un toggle que
-  // hay que acordarse de prender) para que no haga falta reabrir
-  // Control para habilitar al delegado. Si ya esta habilitado (o el
-  // equipo no tiene delegado asignado) no pregunta nada, entra directo.
-  async function ofrecerHabilitarDelegados(partido) {
-    let delegados
-    try {
-      delegados = await obtenerDelegadosDePartido(partido.equipoLocalId, partido.equipoVisitanteId)
-    } catch (err) {
-      console.error('[TabFechas] ofrecerHabilitarDelegados', err)
-      return
-    }
-    const faltaLocal = delegados.local && !partido.alineacionAbiertaLocal
-    const faltaVisitante = delegados.visitante && !partido.alineacionAbiertaVisitante
-    if (!faltaLocal && !faltaVisitante) return
-    if (!confirm('¿Habilitar a los delegados para que hagan su alineación?')) return
-    try {
-      await Promise.all([
-        faltaLocal ? alternarAlineacionAbierta(partido.id, 'local', true) : null,
-        faltaVisitante ? alternarAlineacionAbierta(partido.id, 'visitante', true) : null,
-      ])
-    } catch (err) {
-      console.error('[TabFechas] ofrecerHabilitarDelegados', err)
-      setErrorGuardar('No se pudo habilitar a los delegados.')
-    }
-  }
-
+  // Al entrar a Control de partido ya no se pregunta nada sobre los
+  // delegados: se habilitan (o se cierran) de una vez para toda la Fecha
+  // con el boton "Habilitar delegados" (ver handleAlternarDelegados).
   async function handleAbrirControl(partido) {
     const bloqueante = partidoBloqueadoPor(partido)
     if (bloqueante) {
       setErrorGuardar(mensajeBloqueo(bloqueante, partido.fechaNumero))
       return
     }
-    await ofrecerHabilitarDelegados(partido)
     setPartidoControl(partido)
+  }
+
+  // Habilita (o cierra) que los delegados de los equipos que juegan la
+  // Fecha seleccionada armen su alineacion desde el link publico. Solo
+  // toca los partidos que todavia no arrancaron ni tienen resultado:
+  // una vez arrancado, el delegado ya no edita directo (ver
+  // AlineacionPartidoDelegado, pide cambios al Maestro).
+  async function handleAlternarDelegados(partidosPendientes, habilitar) {
+    if (
+      !habilitar &&
+      !confirm(`¿Cerrar la alineación de los delegados de la Fecha ${fechaSeleccionada}? Ya no van a poder armarla ni cambiarla.`)
+    )
+      return
+    setHabilitandoDelegados(true)
+    setErrorGuardar(null)
+    try {
+      await habilitarAlineacionDeFecha(
+        partidosPendientes.map((p) => p.id),
+        habilitar
+      )
+      await cargar()
+    } catch (err) {
+      console.error('[TabFechas] handleAlternarDelegados', err)
+      setErrorGuardar('No se pudo cambiar el permiso de los delegados.')
+    } finally {
+      setHabilitandoDelegados(false)
+    }
   }
 
   const fechasDisponibles = [...new Set(partidos.filter((p) => p.fechaNumero != null).map((p) => p.fechaNumero))].sort((a, b) => a - b)
@@ -573,6 +574,13 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   const partidosDeFecha = partidos
     .filter((p) => p.fechaNumero === fechaSeleccionada)
     .sort(compararPartidosPorHorario)
+  // Partidos de la Fecha a los que todavia se les puede habilitar/cerrar
+  // la alineacion de los delegados (sin resultado y sin arrancar), y si
+  // ya estan todos habilitados (ambos lados de cada uno).
+  const partidosPendientesSinArrancar = partidosDeFecha.filter((p) => p.golesLocal == null && p.horaInicio == null)
+  const delegadosHabilitados =
+    partidosPendientesSinArrancar.length > 0 &&
+    partidosPendientesSinArrancar.every((p) => p.alineacionAbiertaLocal && p.alineacionAbiertaVisitante)
   const partidosPendientes = partidosDeFecha.filter((p) => {
     const valores = formResultados[p.id]
     return valores && valores.golesLocal !== undefined && valores.golesLocal !== '' &&
@@ -823,16 +831,30 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                   )
                 })}
               </div>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                {onIrAPosiciones && (
-                  <button
-                    onClick={onIrAPosiciones}
-                    className="flex animate-pulse items-center gap-1.5 text-sm font-medium text-brand transition-colors hover:text-brand-dark"
-                  >
-                    📊 Ver tabla de posiciones
-                  </button>
-                )}
-                <div className="ml-auto flex flex-wrap justify-end gap-2">
+              <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  {partidosPendientesSinArrancar.length > 0 && (
+                    <button
+                      onClick={() => handleAlternarDelegados(partidosPendientesSinArrancar, !delegadosHabilitados)}
+                      disabled={habilitandoDelegados}
+                      title={
+                        delegadosHabilitados
+                          ? 'Los delegados ya pueden armar su alineación. Tocar para cerrarla.'
+                          : `Deja que los delegados de los equipos que juegan la Fecha ${fechaSeleccionada} armen su alineación`
+                      }
+                      className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                        delegadosHabilitados
+                          ? 'border-success/30 bg-success-soft text-success'
+                          : 'border-line bg-surface text-ink-soft hover:border-brand hover:text-brand'
+                      }`}
+                    >
+                      {habilitandoDelegados
+                        ? '…'
+                        : delegadosHabilitados
+                          ? '✓ Delegados habilitados'
+                          : '👥 Habilitar delegados'}
+                    </button>
+                  )}
                   <button
                     onClick={() => setModalAgregar(true)}
                     className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"

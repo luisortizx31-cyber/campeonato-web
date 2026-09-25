@@ -19,8 +19,8 @@ const STORAGE_PARTIDO_ABIERTO_ID = 'campeonato_miequipo_partidoAbiertoId'
  * PaginaPublicaTorneo) - acceso restringido a SU equipo nada mas (ver
  * firestore.rules): puede ver su plantel, inscribir jugadores nuevos,
  * y armar la alineacion de un partido puntual mientras el Maestro se
- * lo tenga habilitado (ver ControlPartido, boton "Habilitar
- * delegado").
+ * lo tenga habilitado (ver TabFechas, boton "Habilitar delegados"
+ * de cada Fecha).
  */
 export default function TabMiEquipoDelegado() {
   const { perfil } = useAuth()

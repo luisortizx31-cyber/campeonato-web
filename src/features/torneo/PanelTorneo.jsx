@@ -147,7 +147,6 @@ export default function PanelTorneo() {
         <Componente
           torneoId={torneoId}
           categoriasActivas={categoriasActivas}
-          onIrAPosiciones={() => setTabActiva('posiciones')}
           onCategoriasActualizadas={setCategoriasActivas}
         />
       </main>
