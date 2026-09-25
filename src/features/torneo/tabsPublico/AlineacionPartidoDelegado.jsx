@@ -319,8 +319,12 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
     return `${horas}:${minutos} ${meridiano}`
   }
 
+  // "#9 CHECHE": con el numero de camiseta (si lo tiene), para los pedidos
+  // de cambio ("sale #12 KALIN, entra #9 CHECHE").
   function nombreJugador(jugadorId) {
-    return jugadores.find((j) => j.id === jugadorId)?.nombre || '—'
+    const jugador = jugadores.find((j) => j.id === jugadorId)
+    if (!jugador) return '—'
+    return jugador.numeroCamiseta != null ? `#${jugador.numeroCamiseta} ${jugador.nombre}` : jugador.nombre
   }
 
   return (

@@ -1068,8 +1068,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
     return periodoTerminado(datosPeriodos[anterior.campo]) || datosPeriodos[propio.campo] != null
   }
 
+  // "#9 CHECHE": con el numero de camiseta (si lo tiene), para identificar de
+  // un vistazo a quien se refiere un pedido de cambio del delegado.
   function nombreJugadorDe(jugadorId) {
-    return [...jugadoresLocal, ...jugadoresVisitante].find((j) => j.id === jugadorId)?.nombre || '—'
+    const jugador = [...jugadoresLocal, ...jugadoresVisitante].find((j) => j.id === jugadorId)
+    if (!jugador) return '—'
+    return jugador.numeroCamiseta != null ? `#${jugador.numeroCamiseta} ${jugador.nombre}` : jugador.nombre
   }
 
   function formatearHora(valor) {
