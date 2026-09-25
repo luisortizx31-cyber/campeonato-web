@@ -11,7 +11,59 @@ import {
 import { TIPO_TARJETA } from '../../../models/torneo'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
+import { AvatarFoto } from '../../shared/AvatarFoto'
 import { DesgloseGolesTiempo } from '../../shared/DesgloseGolesTiempo'
+
+// Fila de un jugador en la Cancha: su foto (se agranda al tocarla), el
+// numero y el nombre COMPLETO (baja de linea si no entra) y debajo sus
+// goles/amarillas. Con `onTocar` (solo mi equipo) toda la fila abre el
+// pedido de cambio; sin `onTocar` es solo lectura. `bloqueado` (el
+// equipo rival) la pinta apagada, en gris, para que se note que no es de
+// mi promo.
+function FilaJugadorCancha({ jugador, nGoles, nAmarillas, onTocar, deshabilitado, bloqueado }) {
+  const contenido = (
+    <>
+      <span className={`block break-words text-sm font-medium leading-tight ${bloqueado ? 'text-ink-soft' : 'text-ink'}`}>
+        {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
+        {jugador.nombre}
+      </span>
+      {(nGoles > 0 || nAmarillas > 0) && (
+        <span className="mt-0.5 flex items-center gap-1 text-xs">
+          {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
+          {Array.from({ length: nAmarillas }).map((_, i) => (
+            <TarjetaIcono key={i} tipo="amarilla" />
+          ))}
+        </span>
+      )}
+    </>
+  )
+  return (
+    <li className={`flex items-center gap-2.5 px-3 py-2 ${bloqueado ? 'bg-paper' : ''}`}>
+      <div className={bloqueado ? 'opacity-60 grayscale' : ''}>
+        <AvatarFoto
+          fotoUrl={jugador.fotoUrl}
+          texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
+          tamanoClase="h-10 w-10"
+        />
+      </div>
+      {onTocar ? (
+        <button
+          onClick={onTocar}
+          disabled={deshabilitado}
+          title="Pedir un cambio"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-70"
+        >
+          <span className="min-w-0 flex-1">{contenido}</span>
+          <span className="shrink-0 rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-ink-soft">
+            ⇄ Cambio
+          </span>
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1">{contenido}</div>
+      )}
+    </li>
+  )
+}
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -522,61 +574,53 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
         // de mi equipo abre el mismo selector de cambio de arriba
         // (setCambio), pedirle un cambio a la OTRA promo no es una
         // opcion en ningun lado de esta pantalla.
-        <>
-        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-brand-dark p-1">
+        <div className="mx-auto max-w-md">
+        {/* Las dos promos una debajo de la otra (como en la Cancha del
+            administrador): la mia arriba, con sus jugadores tocables para
+            pedir un cambio, y la del rival abajo, apagada y bloqueada. */}
+        <div className="mb-3 grid grid-cols-1 gap-2 rounded-2xl border border-white/10 bg-brand-dark p-2">
           <div className="overflow-hidden rounded-xl border border-line bg-surface">
-            <div className="truncate bg-brand-soft px-2 py-1.5 text-center text-[11px] font-bold text-ink">
+            <div className="truncate bg-brand-soft px-3 py-2 text-center text-sm font-bold text-ink">
               {nombreEquipoPropio || 'Mi equipo'} ({enCanchaPropio.length})
             </div>
             <ul className="divide-y-2 divide-ink-soft/20">
               {enCanchaPropio.map((j) => (
-                <li key={j.id} className="flex items-center justify-between gap-1.5 px-2.5 py-2">
-                  <button
-                    onClick={() => setCambio(j)}
-                    disabled={finalizado}
-                    className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-70"
-                  >
-                    {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
-                    <span className="min-w-0 flex-1 break-words font-medium leading-tight text-ink">{j.nombre}</span>
-                  </button>
-                  {(golesDe(j.id) > 0 || tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)) && (
-                    <span className="flex shrink-0 items-center gap-1 text-[11px]">
-                      {golesDe(j.id) > 0 && <span className="font-semibold text-brand">⚽{golesDe(j.id)}</span>}
-                      {tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).map((_, i) => (
-                        <TarjetaIcono key={i} tipo="amarilla" />
-                      ))}
-                    </span>
-                  )}
-                </li>
+                <FilaJugadorCancha
+                  key={j.id}
+                  jugador={j}
+                  nGoles={golesDe(j.id)}
+                  nAmarillas={tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length}
+                  onTocar={() => setCambio(j)}
+                  deshabilitado={finalizado}
+                />
               ))}
               {enCanchaPropio.length === 0 && (
-                <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Elegí titulares en Alineación</li>
+                <li className="px-3 py-3 text-center text-sm text-ink-soft">Elegí titulares en Alineación</li>
               )}
             </ul>
           </div>
-          <div className="overflow-hidden rounded-xl border border-line bg-surface">
-            <div className="truncate bg-gold-soft px-2 py-1.5 text-center text-[11px] font-bold text-ink">
-              {nombreRival} ({enCanchaRival.length})
+          <div className="overflow-hidden rounded-xl border border-dashed border-ink-soft/40 bg-paper">
+            <div className="flex items-center justify-center gap-1.5 bg-ink-soft/15 px-3 py-2 text-sm font-bold text-ink-soft">
+              <span aria-hidden="true">🔒</span>
+              <span className="truncate">
+                {nombreRival} ({enCanchaRival.length})
+              </span>
             </div>
-            <ul className="divide-y-2 divide-ink-soft/20">
+            <p className="border-b border-ink-soft/20 px-3 py-1 text-center text-[11px] text-ink-soft">
+              Otra promoción · solo lectura
+            </p>
+            <ul className="divide-y-2 divide-ink-soft/10">
               {enCanchaRival.map((j) => (
-                <li key={j.id} className="flex items-center justify-between gap-1.5 px-2.5 py-2 text-xs">
-                  <span className="min-w-0 flex-1 break-words font-medium leading-tight text-ink">
-                    {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
-                    {j.nombre}
-                  </span>
-                  {(golesDe(j.id) > 0 || tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)) && (
-                    <span className="flex shrink-0 items-center gap-1 text-[11px]">
-                      {golesDe(j.id) > 0 && <span className="font-semibold text-brand">⚽{golesDe(j.id)}</span>}
-                      {tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).map((_, i) => (
-                        <TarjetaIcono key={i} tipo="amarilla" />
-                      ))}
-                    </span>
-                  )}
-                </li>
+                <FilaJugadorCancha
+                  key={j.id}
+                  jugador={j}
+                  nGoles={golesDe(j.id)}
+                  nAmarillas={tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).length}
+                  bloqueado
+                />
               ))}
               {enCanchaRival.length === 0 && (
-                <li className="px-2.5 py-3 text-center text-[11px] text-ink-soft">Todavía sin titulares</li>
+                <li className="px-3 py-3 text-center text-sm text-ink-soft">Todavía sin titulares</li>
               )}
             </ul>
           </div>
@@ -639,7 +683,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             </div>
           )
         ))}
-        </>
+        </div>
       )}
 
       {cambio && (
