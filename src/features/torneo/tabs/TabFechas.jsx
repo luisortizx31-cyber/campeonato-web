@@ -23,6 +23,7 @@ import {
   formatearHoraCorta,
   compararPartidosPorHorario,
 } from '../../../utils/fixtureTorneo'
+import { calcularRestricciones, motivoHorarioInvalido } from '../../../utils/horariosPartido'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
@@ -487,6 +488,19 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
     return equipos.find((e) => e.id === id)?.nombre || '—'
   }
 
+  // Que horarios se pueden elegir al programar UN partido: tiene que
+  // empezar despues de los partidos que van antes en su Fecha y no
+  // repetir la hora de otro (ver utils/horariosPartido). Un partido ya
+  // jugado no se valida.
+  function restriccionHorarioDe(partido) {
+    const pendientesDeLaFecha = partidos
+      .filter((p) => p.fechaNumero === partido.fechaNumero && p.golesLocal == null)
+      .sort(compararPartidosPorHorario)
+    return calcularRestricciones(
+      pendientesDeLaFecha.map((p) => ({ id: p.id, fecha: p.fecha ? p.fecha.toDate() : null }))
+    ).get(partido.id)
+  }
+
   // Partido "en vivo" (alineacion ya cargada, ver enVivo en FilaPartido
   // mas abajo) pero sin finalizar todavia. Mientras alguno de una fecha
   // ANTERIOR quede asi, no se deja tocar (ni abrir Control ni cargar
@@ -857,6 +871,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     onReiniciar={handleReiniciarPartidoIndividual}
                     reiniciando={reiniciandoPartido === p.id}
                     onGuardarHorario={handleGuardarFechaProgramada}
+                    restriccionHorario={restriccionHorarioDe(p)}
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={handleAbrirControl}
                     bloqueadoPor={partidoBloqueadoPor(p)}
@@ -891,6 +906,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
                     onReiniciar={handleReiniciarPartidoIndividual}
                     reiniciando={reiniciandoPartido === p.id}
                     onGuardarHorario={handleGuardarFechaProgramada}
+                    restriccionHorario={restriccionHorarioDe(p)}
                     nombreEquipo={nombreEquipo}
                     onAbrirControl={handleAbrirControl}
                     bloqueadoPor={partidoBloqueadoPor(p)}
@@ -982,7 +998,7 @@ export default function TabFechas({ torneoId, categoriasActivas, onIrAPosiciones
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, nombreEquipo, onAbrirControl, bloqueadoPor, fechasDisponibles, onCambiarFecha, cambiandoFecha }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, restriccionHorario, nombreEquipo, onAbrirControl, bloqueadoPor, fechasDisponibles, onCambiarFecha, cambiandoFecha }) {
   const [editandoHorario, setEditandoHorario] = useState(false)
   const [horarioDraft, setHorarioDraft] = useState(null) // Date | null
   const [guardandoHorario, setGuardandoHorario] = useState(false)
@@ -1027,6 +1043,9 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
       setGuardandoHorario(false)
     }
   }
+
+  // El horario elegido tiene que ser uno permitido (ver restriccionHorario).
+  const motivoHorarioDraft = motivoHorarioInvalido(horarioDraft, restriccionHorario)
 
   const jugado = partido.golesLocal != null
   // "En vivo": ya se armo la alineacion (se abrio Control de Partido)
@@ -1149,11 +1168,11 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
       <div className="px-3 pb-1">
         {editandoHorario ? (
           <div className="space-y-1.5">
-            <SelectorFechaHora value={horarioDraft} onChange={setHorarioDraft} disabled={guardandoHorario} />
+            <SelectorFechaHora value={horarioDraft} onChange={setHorarioDraft} disabled={guardandoHorario} restriccion={restriccionHorario} />
             <div className="flex items-center gap-1.5">
               <button
                 onClick={guardarHorario}
-                disabled={guardandoHorario}
+                disabled={guardandoHorario || Boolean(motivoHorarioDraft)}
                 className="shrink-0 rounded-lg bg-brand px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
               >
                 {guardandoHorario ? '…' : 'Guardar'}

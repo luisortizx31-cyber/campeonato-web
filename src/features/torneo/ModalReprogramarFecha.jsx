@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { programarHorariosDeFecha } from '../../services/torneoPartidosService'
 import { formatearFechaProgramada } from '../../utils/fixtureTorneo'
+import { calcularRestricciones, motivoHorarioInvalido } from '../../utils/horariosPartido'
 import { EscudoEquipo } from '../shared/EscudoEquipo'
 import { SelectorFechaHora } from '../shared/SelectorFechaHora'
 
@@ -28,6 +29,13 @@ function mismoInstante(a, b) {
  * dia elegido en todos los partidos de una vez (cada uno conserva su
  * hora) para no tener que elegirlo fila por fila.
  *
+ * Los horarios siguen la regla de utils/horariosPartido: cada partido
+ * tiene que empezar DESPUES del que tiene arriba y no puede repetir la
+ * hora de otro. En cuanto se le pone hora a un partido, en los de
+ * abajo quedan desactivadas esa hora y todas las anteriores (y los dias
+ * anteriores en el calendario). Un partido sin horario que todavia no
+ * se toco no se valida ni se guarda (queda como estaba).
+ *
  * Solo se guardan los partidos cuyo horario cambio. Si la Fecha ya tenia
  * dia puesto y hay fechas siguientes con dia, se ofrece (sin marcar) el
  * correr tambien esas fechas lo mismo que se movio esta - para cuando
@@ -38,6 +46,11 @@ export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero
   const [horarios, setHorarios] = useState(() =>
     Object.fromEntries(partidosDeFecha.map((p) => [p.id, aDate(p.fecha)]))
   )
+  // Partidos a los que el usuario ya les eligio horario en esta sesion. Uno
+  // sin horario previo que no esta aca solo tiene el dia que le puso
+  // "Mismo dia para todos" (con la hora inicial 12:00 AM del selector, que
+  // no es un horario de verdad) - no cuenta ni se guarda.
+  const [tocados, setTocados] = useState(() => new Set())
   const [diaParaTodos, setDiaParaTodos] = useState('')
   const [correrSiguientes, setCorrerSiguientes] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -49,13 +62,20 @@ export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero
   const hayFechaPrevia = editables.some((p) => p.fecha)
   const hayFechasSiguientes = partidos.some((p) => p.fechaNumero > fechaNumero && p.golesLocal == null && p.fecha)
 
+  // Horario que realmente tiene el partido ahora: el que ya tenia o el
+  // que se le eligio; null si todavia no tiene ninguno.
+  const efectivo = (p) => (tocados.has(p.id) || p.fecha ? horarios[p.id] : null)
+  const cambiado = (p) => !mismoInstante(efectivo(p), aDate(p.fecha))
+  const restricciones = calcularRestricciones(editables.map((p) => ({ id: p.id, fecha: efectivo(p) })))
+
   function cambiarHorario(partidoId, fecha) {
+    setTocados((t) => new Set(t).add(partidoId))
     setHorarios((h) => ({ ...h, [partidoId]: fecha }))
   }
 
   // Pone el dia elegido en todos los partidos pendientes conservando la
-  // hora que cada uno ya tenia (los que no tenian ninguna quedan en
-  // 12:00 AM, el valor inicial del selector de hora).
+  // hora que cada uno ya tenia; los que todavia no tenian hora quedan
+  // solo con el dia, esperando que se les elija la hora.
   function aplicarDiaATodos(fechaStr) {
     setDiaParaTodos(fechaStr)
     if (!fechaStr) return
@@ -72,13 +92,16 @@ export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero
 
   async function handleSubmit(e) {
     e.preventDefault()
-    const cambios = editables
-      .filter((p) => !mismoInstante(horarios[p.id], aDate(p.fecha)))
-      .map((p) => ({ partidoId: p.id, fecha: horarios[p.id] }))
-    if (cambios.length === 0) {
+    const cambiados = editables.filter(cambiado)
+    if (cambiados.length === 0) {
       setError('No cambiaste ningún horario.')
       return
     }
+    if (cambiados.some((p) => motivoHorarioInvalido(efectivo(p), restricciones.get(p.id)))) {
+      setError('Hay horarios marcados en rojo: cada partido tiene que empezar después del de arriba y no puede repetir la hora de otro.')
+      return
+    }
+    const cambios = cambiados.map((p) => ({ partidoId: p.id, fecha: efectivo(p) }))
     setEnviando(true)
     setError(null)
     try {
@@ -137,7 +160,14 @@ export default function ModalReprogramarFecha({ torneoId, categoria, fechaNumero
                         {p.fecha ? ` · 🗓 ${formatearFechaProgramada(p.fecha)}` : ''}
                       </p>
                     ) : (
-                      <SelectorFechaHora value={horarios[p.id]} onChange={(fecha) => cambiarHorario(p.id, fecha)} disabled={enviando} />
+                      <SelectorFechaHora
+                        value={horarios[p.id]}
+                        onChange={(fecha) => cambiarHorario(p.id, fecha)}
+                        disabled={enviando}
+                        restriccion={restricciones.get(p.id)}
+                        sinElegir={!efectivo(p)}
+                        mostrarAviso={cambiado(p)}
+                      />
                     )}
                   </li>
                 )

@@ -87,7 +87,7 @@ export function calcularFechasConPartidoJugado(partidos, equipoId) {
 // tanto en el panel admin como en la pagina publica - un solo lugar
 // para no repetir el formato en los dos.
 export function formatearFechaProgramada(timestamp) {
-  const fecha = timestamp.toDate()
+  const fecha = timestamp.toDate ? timestamp.toDate() : timestamp
   const dia = fecha.toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
   return `${dia} · ${formatearHora12(timestamp)}`
 }
