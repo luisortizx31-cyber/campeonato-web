@@ -311,7 +311,7 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                         {inicialEquipo(nombreLocal)}
                       </span>
                       <span
-                        className={`min-w-0 flex-1 truncate text-sm ${
+                        className={`min-w-0 flex-1 break-words text-sm leading-tight ${
                           ganoLocal ? 'font-bold text-ink' : ganoVisitante ? 'font-medium text-ink-soft' : 'font-medium text-ink'
                         }`}
                       >
@@ -333,7 +333,7 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                         {inicialEquipo(nombreVisitante)}
                       </span>
                       <span
-                        className={`min-w-0 flex-1 truncate text-sm ${
+                        className={`min-w-0 flex-1 break-words text-sm leading-tight ${
                           ganoVisitante ? 'font-bold text-ink' : ganoLocal ? 'font-medium text-ink-soft' : 'font-medium text-ink'
                         }`}
                       >

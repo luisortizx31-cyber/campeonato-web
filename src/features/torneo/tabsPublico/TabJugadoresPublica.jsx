@@ -115,7 +115,7 @@ export default function TabJugadoresPublica({ torneoId, categoriasActivas }) {
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <EscudoEquipo nombre={eq.nombre} fotoUrl={eq.fotoPortadaUrl} />
-                    <span className={`truncate font-bold ${color.text}`}>{eq.nombre}</span>
+                    <span className={`break-words font-bold leading-tight ${color.text}`}>{eq.nombre}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2 text-xs font-medium text-ink-soft">
                     {jugadoresEquipo.length} jugador{jugadoresEquipo.length === 1 ? '' : 'es'}

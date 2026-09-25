@@ -1251,7 +1251,7 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         <div className="flex items-center gap-2.5 px-3 py-2">
           <EscudoEquipo nombre={nombreLocal} />
           <span
-            className={`min-w-0 flex-1 truncate text-sm ${
+            className={`min-w-0 flex-1 break-words text-sm leading-tight ${
               ganoLocal ? 'font-bold text-ink' : ganoVisitante ? 'font-medium text-ink-soft' : 'font-medium text-ink'
             }`}
           >
@@ -1273,7 +1273,7 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
         <div className="flex items-center gap-2.5 px-3 py-2">
           <EscudoEquipo nombre={nombreVisitante} />
           <span
-            className={`min-w-0 flex-1 truncate text-sm ${
+            className={`min-w-0 flex-1 break-words text-sm leading-tight ${
               ganoVisitante ? 'font-bold text-ink' : ganoLocal ? 'font-medium text-ink-soft' : 'font-medium text-ink'
             }`}
           >

@@ -164,8 +164,12 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
           const color = colorEquipo(eq.nombre)
           return (
           <li key={eq.id} className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex min-w-0 items-start gap-3">
+            {/* flex-wrap + minimo de ancho en el bloque del equipo: en el celular no
+                queda lugar para el nombre completo al lado de los botones, asi que
+                Editar/Eliminar bajan a la linea de abajo (a la derecha) y el nombre
+                usa todo el ancho; en pantallas anchas siguen a su lado. */}
+            <div className="flex flex-wrap items-start gap-x-2 gap-y-2">
+              <div className="flex min-w-0 flex-1 basis-[16rem] items-start gap-3">
                 <AvatarFoto
                   fotoUrl={eq.fotoPortadaUrl}
                   texto={inicialEquipo(eq.nombre)}
@@ -177,7 +181,7 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
                   onQuitarFoto={() => handleQuitarFotoPortada(eq)}
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-ink">{eq.nombre}</p>
+                  <p className="break-words font-semibold leading-tight text-ink">{eq.nombre}</p>
                   {eq.delegadoNombre && (
                     <p className="mt-0.5 text-xs text-ink-soft">
                       Delegado: {eq.delegadoNombre}
@@ -192,7 +196,7 @@ export default function TabEquipos({ torneoId, categoriasActivas }) {
                   )}
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="ml-auto flex shrink-0 gap-2">
                 <button
                   onClick={() => setModal(eq)}
                   className="rounded-lg border border-line px-2.5 py-1 text-xs text-ink-soft"
