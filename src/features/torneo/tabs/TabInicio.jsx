@@ -27,53 +27,52 @@ function BotonAccion({ icon, label, sub, destacada, onClick }) {
   )
 }
 
-// Un equipo dentro de FilaPartidoHoy - a todo el ancho de su propia
-// linea, con el nombre completo (baja de linea en vez de cortarse, no
-// comparte la fila con el rival como pasaba antes).
-function FilaEquipoHoy({ equipo, goles, mostrarGoles }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <EscudoEquipo nombre={equipo?.nombre} fotoUrl={equipo?.fotoPortadaUrl} tamanoClase="h-6 w-6" textoClase="text-[9px]" />
-      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-tight text-ink">{equipo?.nombre || '—'}</span>
-      {mostrarGoles && <span className="money shrink-0 text-sm font-bold text-ink">{goles}</span>}
-    </div>
-  )
-}
-
-// Fila de UN partido de hoy: cada equipo en su propia linea y abajo el
-// estado + un boton para entrar directo a Control (los ya jugados no lo
-// necesitan). Mismo criterio que la lista final del asistente de
-// Programar fechas.
+// Fila de UN partido de hoy: los dos equipos lado a lado, como en las
+// apps de resultados (ver TabPartidosPublica) - el nombre baja a una
+// segunda linea si es largo (break-words) en vez de cortarse con "...",
+// asi que la fila sigue siendo una sola por partido sin perder ningun
+// caracter del nombre. Un boton para entrar directo a Control (los ya
+// jugados no lo necesitan).
 function FilaPartidoHoy({ partido, estado, local, visitante, bloqueadoPor, onAbrirControl }) {
   return (
-    <li className="space-y-1 py-2.5">
-      <FilaEquipoHoy equipo={local} goles={partido.golesLocal} mostrarGoles={estado === 'fin'} />
-      <FilaEquipoHoy equipo={visitante} goles={partido.golesVisitante} mostrarGoles={estado === 'fin'} />
-      <div className="flex items-center justify-between gap-2 pt-0.5">
-        {estado === 'vivo' ? (
-          <span className="money text-xs font-bold text-danger">
-            {partido.golesLocalEnVivo ?? 0}-{partido.golesVisitanteEnVivo ?? 0} · En vivo
+    <li className="flex items-center gap-2 py-2">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+        <span className="min-w-0 break-words text-right text-xs font-medium leading-tight text-ink">
+          {local?.nombre || '—'}
+        </span>
+        <EscudoEquipo nombre={local?.nombre} fotoUrl={local?.fotoPortadaUrl} tamanoClase="h-7 w-7" textoClase="text-[10px]" />
+      </div>
+      <div className="shrink-0 px-1 text-center">
+        {estado === 'fin' ? (
+          <span className="money text-sm font-bold text-ink">
+            {partido.golesLocal}-{partido.golesVisitante}
           </span>
-        ) : estado === 'pendiente' ? (
-          <span className="text-xs font-semibold text-ink-soft">{formatearHoraCorta(partido.fecha)}</span>
+        ) : estado === 'vivo' ? (
+          <span className="money text-sm font-bold text-danger">
+            {partido.golesLocalEnVivo ?? 0}-{partido.golesVisitanteEnVivo ?? 0}
+          </span>
         ) : (
-          <span className="text-xs text-ink-soft">Jugado</span>
-        )}
-        {estado !== 'fin' && (
-          <button
-            onClick={() => onAbrirControl(partido)}
-            disabled={Boolean(bloqueadoPor)}
-            title={
-              bloqueadoPor
-                ? `Terminá primero el partido de Fecha ${bloqueadoPor.fechaNumero}`
-                : 'Alineación y eventos del partido'
-            }
-            className="shrink-0 rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft disabled:opacity-40"
-          >
-            📋 Control
-          </button>
+          <span className="text-xs font-semibold text-ink-soft">{formatearHoraCorta(partido.fecha)}</span>
         )}
       </div>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <EscudoEquipo nombre={visitante?.nombre} fotoUrl={visitante?.fotoPortadaUrl} tamanoClase="h-7 w-7" textoClase="text-[10px]" />
+        <span className="min-w-0 break-words text-xs font-medium leading-tight text-ink">{visitante?.nombre || '—'}</span>
+      </div>
+      {estado !== 'fin' && (
+        <button
+          onClick={() => onAbrirControl(partido)}
+          disabled={Boolean(bloqueadoPor)}
+          title={
+            bloqueadoPor
+              ? `Terminá primero el partido de Fecha ${bloqueadoPor.fechaNumero}`
+              : 'Alineación y eventos del partido'
+          }
+          className="shrink-0 rounded-lg border border-line bg-paper px-2 py-1.5 text-xs disabled:opacity-40"
+        >
+          📋
+        </button>
+      )}
     </li>
   )
 }
