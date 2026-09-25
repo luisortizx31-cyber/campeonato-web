@@ -1,6 +1,6 @@
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../services/torneoEquiposService'
-import { listarPartidosPorCategoria } from '../../services/torneoPartidosService'
+import { suscribirPartidosPorCategoria } from '../../services/torneoPartidosService'
 import { listarAjustesPorCategoria } from '../../services/torneoAjustesService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { calcularTablaPosiciones } from '../../utils/tablaPosiciones'
@@ -24,6 +24,11 @@ const ESTILO_PODIO = {
  * padre pueda reusarlas (ej. exportar a Excel) sin volver a
  * consultar Firestore por su cuenta.
  *
+ * Se mueve EN VIVO: los partidos que se estan jugando cuentan con su
+ * marcador actual (ganando suma 3, empatando 1, perdiendo 0) y la tabla
+ * se reacomoda gol a gol; los equipos con un partido en juego llevan un
+ * punto rojo en sus puntos (ver calcularTablaPosiciones, incluirEnVivo).
+ *
  * Cada equipo muestra su fotito (o la inicial coloreada si todavia no
  * subio foto) al lado del nombre; tocar el nombre de un equipo que si
  * tiene foto la abre en grande. Esas fotitos no salen en la imagen/PDF
@@ -37,17 +42,27 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
   { torneoId, categoria, refreshKey, onFilas },
   ref
 ) {
-  const [filas, setFilas] = useState([])
-  const [equiposEliminados, setEquiposEliminados] = useState(0)
-  // equipoId -> foto de portada (solo los que ya subieron una)
-  const [fotos, setFotos] = useState({})
+  // Los datos que se cargan una vez (equipos, ajustes de puntos y
+  // configuracion; se recargan con refreshKey) por un lado, y los partidos
+  // por otro, que se siguen EN VIVO. Cada uno guarda la `clave` (torneo +
+  // categoria) para no mostrar datos de la categoria anterior mientras carga
+  // la nueva.
+  const clave = `${torneoId}|${categoria}`
+  const [base, setBase] = useState(null)
+  const [partidosVivo, setPartidosVivo] = useState(null)
   const [fotoAbierta, setFotoAbierta] = useState(null) // { url, nombre } | null
-  const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
-  // Ref para no re-disparar el efecto de carga cada vez que el padre
-  // pasa un onFilas con nueva identidad (ej. un arrow function
-  // inline) - se actualiza en su propio efecto, nunca durante el
-  // render.
+  // Se actualiza cada minuto para que un partido arrancado y nunca
+  // finalizado deje de contar como "en vivo" pasado el maximo (ver
+  // estadoPartido).
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
+  // Ref para no re-disparar los efectos cada vez que el padre pasa un
+  // onFilas con nueva identidad (ej. un arrow function inline) - se
+  // actualiza en su propio efecto, nunca durante el render.
   const onFilasRef = useRef(onFilas)
   useEffect(() => {
     onFilasRef.current = onFilas
@@ -56,12 +71,10 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
   useEffect(() => {
     let cancelado = false
     async function cargar() {
-      setCargando(true)
       setError(null)
       try {
-        const [equipos, partidos, ajustes, config] = await Promise.all([
+        const [equipos, ajustes, config] = await Promise.all([
           listarEquiposPorCategoria(torneoId, categoria),
-          listarPartidosPorCategoria(torneoId, categoria),
           // Coleccion nueva (ver ModalAjustarPuntos) - si su regla de
           // Firestore todavia no esta desplegada, que la tabla siga
           // funcionando igual (sin ajustes) en vez de romperse entera.
@@ -75,26 +88,52 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
           }),
         ])
         if (!cancelado) {
-          const nuevasFilas = calcularTablaPosiciones({ equipos, partidos, ajustes })
-          setFilas(nuevasFilas)
-          setFotos(Object.fromEntries(equipos.filter((e) => e.fotoPortadaUrl).map((e) => [e.id, e.fotoPortadaUrl])))
-          setEquiposEliminados(config.equiposEliminados || 0)
-          onFilasRef.current?.(nuevasFilas)
+          setBase({
+            clave,
+            equipos,
+            ajustes,
+            equiposEliminados: config.equiposEliminados || 0,
+            fotos: Object.fromEntries(equipos.filter((e) => e.fotoPortadaUrl).map((e) => [e.id, e.fotoPortadaUrl])),
+          })
         }
       } catch (err) {
         console.error('[TablaPosicionesCategoria]', err)
         if (!cancelado) setError('No se pudo cargar la tabla de posiciones.')
-      } finally {
-        if (!cancelado) setCargando(false)
       }
     }
     cargar()
     return () => {
       cancelado = true
     }
-  }, [torneoId, categoria, refreshKey])
+  }, [torneoId, categoria, clave, refreshKey])
 
-  if (cargando) return <p className="text-sm text-ink-soft">Cargando…</p>
+  useEffect(() => {
+    return suscribirPartidosPorCategoria(torneoId, categoria, (lista) => setPartidosVivo({ clave, lista }))
+  }, [torneoId, categoria, clave])
+
+  const listo = base?.clave === clave && partidosVivo?.clave === clave
+  const filas = useMemo(
+    () =>
+      listo
+        ? calcularTablaPosiciones({
+            equipos: base.equipos,
+            partidos: partidosVivo.lista,
+            ajustes: base.ajustes,
+            incluirEnVivo: true,
+            ahora,
+          })
+        : [],
+    [listo, base, partidosVivo, ahora]
+  )
+  const equiposEliminados = listo ? base.equiposEliminados : 0
+  const fotos = listo ? base.fotos : {}
+  const hayEnVivo = filas.some((f) => f.enVivo)
+
+  useEffect(() => {
+    if (listo) onFilasRef.current?.(filas)
+  }, [listo, filas])
+
+  if (!listo && !error) return <p className="text-sm text-ink-soft">Cargando…</p>
   if (error) return <p className="text-sm text-danger">{error}</p>
   if (filas.length === 0) {
     return (
@@ -180,8 +219,14 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
                   </div>
                 </td>
                 <td className="px-1 py-1.5 text-center">
-                  <span className="money inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-brand px-1 py-0.5 text-xs font-bold text-white">
+                  <span className="money relative inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-brand px-1 py-0.5 text-xs font-bold text-white">
                     {f.pts}
+                    {f.enVivo && (
+                      <span
+                        title="Partido en juego"
+                        className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-danger ring-1 ring-white"
+                      />
+                    )}
                   </span>
                   {f.ajustePts !== 0 && (
                     <span className={`block text-[9px] font-medium ${f.ajustePts > 0 ? 'text-success' : 'text-danger'}`}>
@@ -207,6 +252,13 @@ const TablaPosicionesCategoria = forwardRef(function TablaPosicionesCategoria(
           })}
         </tbody>
       </table>
+
+      {hayEnVivo && (
+        <div className="flex items-center gap-2 border-t border-line bg-danger-soft/40 px-3 py-1.5 text-[11px] font-medium text-danger">
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-danger" />
+          En vivo: los equipos con punto rojo suman el marcador actual de su partido (provisional).
+        </div>
+      )}
 
       {corte != null && corte < filas.length && (
         <div className="flex items-center gap-2 border-t border-line bg-danger-soft/40 px-3 py-1.5 text-[11px] font-medium text-danger">

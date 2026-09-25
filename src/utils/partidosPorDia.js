@@ -14,13 +14,13 @@ const MS_DIA = 24 * 60 * 60 * 1000
 // 'fin' (ya tiene resultado), 'vivo' (arranco y todavia no termino) o
 // 'pendiente'. El criterio de "vivo" es horaInicio (se marca al tocar
 // "Arrancar partido" en ControlPartido), no el hecho de tener
-// alineacion cargada: el delegado arma titulares con dias de
-// anticipacion y eso no significa que el partido ya se este jugando.
+// alineacion cargada (el delegado arma titulares con dias de
+// anticipacion) ni marcador en vivo (ControlPartido lo escribe en 0
+// apenas se abre el partido, aunque todavia no haya arrancado).
 export function estadoPartido(partido, ahora) {
   if (partido.golesLocal != null && partido.golesVisitante != null) return 'fin'
   const inicio = partido.horaInicio?.toMillis?.()
   if (inicio != null) return ahora - inicio < HORAS_MAX_EN_VIVO * 60 * 60 * 1000 ? 'vivo' : 'pendiente'
-  if (partido.golesLocalEnVivo != null) return 'vivo'
   return 'pendiente'
 }
 

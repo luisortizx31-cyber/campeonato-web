@@ -5,9 +5,19 @@
 // comisionista en TabComisionistas.jsx - se recalcula en cada carga
 // en vez de guardar un contador, para que nunca pueda desincronizarse
 // de los resultados reales.
+import { estadoPartido } from './partidosPorDia'
+
 const PUNTOS_POR_RESULTADO = { gana: 3, empata: 1, pierde: 0 }
 
-export function calcularTablaPosiciones({ equipos, partidos, ajustes = [] }) {
+// Con `incluirEnVivo` los partidos que se estan jugando (arrancados y sin
+// resultado final, ver estadoPartido) cuentan con su marcador ACTUAL
+// (golesLocalEnVivo / golesVisitanteEnVivo, 0-0 si todavia no hay goles)
+// como si fuera el resultado final: ganando va 3 puntos, empatando 1 y
+// perdiendo 0, y la tabla se mueve gol a gol. Es provisional - cuando el
+// partido se finaliza pasa a contar con su resultado definitivo - y los
+// equipos involucrados salen con `enVivo: true` para marcarlos. Sin la
+// opcion (por defecto) solo cuentan los partidos terminados.
+export function calcularTablaPosiciones({ equipos, partidos, ajustes = [], incluirEnVivo = false, ahora = Date.now() }) {
   const filasPorEquipo = new Map(
     equipos.map((e) => [
       e.id,
@@ -23,14 +33,18 @@ export function calcularTablaPosiciones({ equipos, partidos, ajustes = [] }) {
         dg: 0,
         pts: 0,
         ajustePts: 0,
+        enVivo: false,
       },
     ])
   )
 
   for (const partido of partidos) {
     // Partidos del fixture generado (ver torneoPartidosService.generarFixture)
-    // que todavia no tienen resultado cargado no cuentan para la tabla.
-    if (partido.golesLocal == null || partido.golesVisitante == null) continue
+    // que todavia no tienen resultado cargado no cuentan para la tabla
+    // (salvo, si se pidio, los que se estan jugando ahora mismo).
+    const terminado = partido.golesLocal != null && partido.golesVisitante != null
+    const enJuego = incluirEnVivo && !terminado && estadoPartido(partido, ahora) === 'vivo'
+    if (!terminado && !enJuego) continue
 
     const local = filasPorEquipo.get(partido.equipoLocalId)
     const visitante = filasPorEquipo.get(partido.equipoVisitanteId)
@@ -38,8 +52,12 @@ export function calcularTablaPosiciones({ equipos, partidos, ajustes = [] }) {
     // partido se ignora para la tabla en vez de romper el calculo.
     if (!local || !visitante) continue
 
-    const golesLocal = partido.golesLocal ?? 0
-    const golesVisitante = partido.golesVisitante ?? 0
+    const golesLocal = (terminado ? partido.golesLocal : partido.golesLocalEnVivo) ?? 0
+    const golesVisitante = (terminado ? partido.golesVisitante : partido.golesVisitanteEnVivo) ?? 0
+    if (enJuego) {
+      local.enVivo = true
+      visitante.enVivo = true
+    }
 
     local.pj += 1
     visitante.pj += 1
