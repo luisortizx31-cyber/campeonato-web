@@ -229,8 +229,17 @@ export async function registrarResultadoPartido(partidoId, { golesLocal, golesVi
 // delegado ya no puede tocar la alineacion directo, sus cambios
 // quedan como solicitud para que el Maestro los apruebe (ver
 // torneoSolicitudesCambioService y AlineacionPartidoDelegado).
-export async function arrancarPartido(partidoId) {
-  await updateDoc(doc(db, 'torneo_partidos', partidoId), { horaInicio: serverTimestamp() })
+//
+// Con `duracionPrimerTiempoMin` tambien arranca, en la misma escritura y
+// con la misma hora, el cronometro del primer tiempo con esa duracion
+// (ver iniciarPeriodoPartido / CronometroPeriodo): asi el partido nunca
+// arranca con el primer tiempo sin cronometrar.
+export async function arrancarPartido(partidoId, duracionPrimerTiempoMin) {
+  const datos = { horaInicio: serverTimestamp() }
+  if (duracionPrimerTiempoMin) {
+    datos.primerTiempo = { duracionMin: Number(duracionPrimerTiempoMin), inicio: serverTimestamp(), fin: null }
+  }
+  await updateDoc(doc(db, 'torneo_partidos', partidoId), datos)
 }
 
 // Los 3 tiempos que se pueden cronometrar dentro de un partido, en el

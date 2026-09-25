@@ -32,6 +32,7 @@ import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
 import { DesgloseGolesTiempo } from '../shared/DesgloseGolesTiempo'
 import { periodoEnCurso } from '../../utils/golesPorTiempo'
+import { desbloquearAudio } from '../../utils/sonidoAlerta'
 import { useSwipeHorizontal } from '../../hooks/useSwipeHorizontal'
 
 const VISTAS = ['alineacion', 'cancha']
@@ -419,6 +420,10 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   const [horaInicio, setHoraInicio] = useState(partido.horaInicio || null)
   const [horaFin, setHoraFin] = useState(partido.horaFin || null)
   const [arrancando, setArrancando] = useState(false)
+  // Duracion (en minutos) del primer tiempo, que hay que poner ANTES de
+  // poder arrancar el partido: al arrancar, el cronometro del primer
+  // tiempo empieza a correr con esta duracion.
+  const [duracionPrimerTiempo, setDuracionPrimerTiempo] = useState('')
   // Cronómetro de cada tiempo del partido (ver CronometroPeriodo) -
   // independiente de horaInicio/horaFin de arriba. Cada uno es
   // { duracionMin, inicio, fin } o null si ese tiempo nunca se inició.
@@ -676,18 +681,26 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   // AlineacionPartidoDelegado), sus cambios quedan pendientes de
   // aprobar aca abajo.
   async function handleArrancarPartido() {
+    const minutosPrimerTiempo = Number(duracionPrimerTiempo)
+    if (!minutosPrimerTiempo || minutosPrimerTiempo <= 0) {
+      setError('Poné primero cuántos minutos dura el primer tiempo para poder arrancar el partido.')
+      return
+    }
     if (
       !confirm(
-        '¿Arrancar el partido ahora? Desde este momento el delegado ya no va a poder cambiar la alineación directo - sus cambios van a quedar como pedido para que los apruebes vos.'
+        `¿Arrancar el partido ahora? Empieza a correr el primer tiempo (${minutosPrimerTiempo} min). Desde este momento el delegado ya no va a poder cambiar la alineación directo - sus cambios van a quedar como pedido para que los apruebes vos.`
       )
     )
       return
+    // Justo en este click (gesto real) para que los avisos sonoros del
+    // cronometro puedan sonar despues - ver sonidoAlerta.desbloquearAudio.
+    desbloquearAudio()
     setArrancando(true)
     setError(null)
     const ahora = new Date()
     setHoraInicio(ahora)
     try {
-      await arrancarPartido(partido.id)
+      await arrancarPartido(partido.id, minutosPrimerTiempo)
     } catch (err) {
       console.error('[ControlPartido] handleArrancarPartido', err)
       setError('No se pudo registrar el arranque del partido.')
@@ -1097,13 +1110,38 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
             <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-success align-middle" />Partido arrancado a las {formatearHora(horaInicio)}
           </p>
         ) : (
-          <button
-            onClick={handleArrancarPartido}
-            disabled={arrancando}
-            className="mb-3 w-full rounded-lg border border-success/30 bg-success-soft py-2 text-sm font-medium text-success disabled:opacity-50"
-          >
-            {arrancando ? 'Arrancando…' : '▶ Arrancar partido'}
-          </button>
+          <div className="mb-3 rounded-xl border border-success/30 bg-success-soft p-3">
+            {/* Primero se pone la duracion del primer tiempo; recien
+                despues se habilita "Arrancar partido", que arranca
+                tambien su cronometro. */}
+            <div className="mb-2 flex items-center gap-2">
+              <p className="min-w-0 flex-1 text-xs font-semibold text-ink">1. Duración del primer tiempo</p>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                value={duracionPrimerTiempo}
+                onChange={(e) => setDuracionPrimerTiempo(e.target.value)}
+                placeholder="Ej. 20"
+                disabled={arrancando}
+                aria-label="Minutos del primer tiempo"
+                className="no-spinner w-16 shrink-0 rounded-md border border-line bg-surface px-1.5 py-1 text-center text-sm text-ink outline-none focus-visible:border-brand disabled:opacity-50"
+              />
+              <span className="shrink-0 text-xs text-ink-soft">min</span>
+            </div>
+            <button
+              onClick={handleArrancarPartido}
+              disabled={arrancando || !(Number(duracionPrimerTiempo) > 0)}
+              className="w-full rounded-lg border border-success/30 bg-surface py-2 text-sm font-medium text-success disabled:opacity-50"
+            >
+              {arrancando ? 'Arrancando…' : '2. ▶ Arrancar partido'}
+            </button>
+            {!(Number(duracionPrimerTiempo) > 0) && (
+              <p className="mt-1.5 text-center text-[11px] text-ink-soft">
+                Poné primero los minutos del primer tiempo para poder arrancar.
+              </p>
+            )}
+          </div>
         )
       )}
 
@@ -1426,7 +1464,8 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
 
           <button
             onClick={handleFinalizar}
-            disabled={finalizando || reiniciando}
+            disabled={finalizando || reiniciando || (!jugado && horaInicio == null)}
+            title={!jugado && horaInicio == null ? 'Arrancá el partido primero' : undefined}
             className="w-full rounded-lg bg-brand py-2.5 font-medium text-white disabled:opacity-50"
           >
             {finalizando
@@ -1435,6 +1474,11 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 ? 'Actualizar resultado final'
                 : 'Finalizar partido'}
           </button>
+          {!jugado && horaInicio == null && (
+            <p className="mt-1.5 text-center text-[11px] text-ink-soft">
+              Se habilita cuando arranques el partido.
+            </p>
+          )}
 
           <button
             onClick={handleReiniciarPartido}
