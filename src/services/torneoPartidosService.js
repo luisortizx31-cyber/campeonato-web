@@ -477,7 +477,8 @@ export async function reiniciarResultadosFecha(torneoId, categoria, fechaNumero)
 // categoria a la vez: el fixture queda intacto (mismos cruces, mismo
 // numero de fecha) pero cada partido vuelve a cero por completo -
 // resultado, goles, tarjetas, alineacion (todos los jugadores vuelven a
-// "Jugadores", ver TabMiEquipoDelegado/ControlPartido) Y la programacion
+// "Jugadores", ver TabMiEquipoDelegado/ControlPartido), los cronometros
+// del primer tiempo, segundo tiempo y tiempo extra Y la programacion
 // (el dia/hora de cada partido queda sin programar, como recien
 // generado) - y cada jugador de la categoria queda sin amarillas/rojas
 // ni suspension/eliminacion, como si nadie hubiera jugado todavia. Es la
@@ -512,6 +513,11 @@ export async function reiniciarResultadosTodasLasFechas(torneoId, categoria) {
       // partido") - si no, quedaba marcado como en vivo para siempre.
       horaInicio: null,
       horaFin: null,
+      // Y sin los cronometros de los tiempos (primer tiempo, segundo tiempo
+      // y tiempo extra, ver CronometroPeriodo): vuelven a "sin iniciar".
+      primerTiempo: null,
+      segundoTiempo: null,
+      tiempoExtra: null,
       // Y sin dia/hora programado (ver actualizarFechaProgramada): hay
       // que volver a programar las fechas desde cero.
       fecha: null,
