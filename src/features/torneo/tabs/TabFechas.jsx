@@ -22,7 +22,9 @@ import {
   textoFechas,
   formatearFechaProgramada,
   formatearDiaCorto,
+  formatearDiaLargo,
   formatearHoraCorta,
+  formatearHora12,
   compararPartidosPorHorario,
 } from '../../../utils/fixtureTorneo'
 import { calcularRestricciones, motivoHorarioInvalido } from '../../../utils/horariosPartido'
@@ -929,6 +931,17 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
             )
           ) : (
             <div {...swipeFecha}>
+              {horarioMasBajoDe(fechaSeleccionada) && (
+                <div className="mb-3 rounded-2xl border border-line bg-surface px-4 py-3 text-center shadow-sm">
+                  <p className="text-lg font-extrabold uppercase leading-tight tracking-wide text-ink">
+                    {formatearDiaLargo(horarioMasBajoDe(fechaSeleccionada))}
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-ink-soft">
+                    {horarioYaPaso(fechaSeleccionada) ? 'Empezó' : 'Empieza'} a las{' '}
+                    {formatearHora12(horarioMasBajoDe(fechaSeleccionada))}
+                  </p>
+                </div>
+              )}
               {fechaSeleccionadaBloqueadaPor && (
                 <p className="mb-2.5 rounded-lg bg-warning-soft px-3 py-2 text-xs text-warning">
                   ⚠ Tenés un partido sin finalizar en la Fecha {fechaSeleccionadaBloqueadaPor.fechaNumero} (

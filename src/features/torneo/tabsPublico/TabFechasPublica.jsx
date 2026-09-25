@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearFechaProgramada, formatearDiaCorto, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearFechaProgramada, formatearDiaCorto, formatearDiaLargo, formatearHoraCorta, formatearHora12, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
@@ -219,16 +219,18 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                     <button
                       data-fecha={f}
                       onClick={() => setFechaSeleccionada(f)}
-                      className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
                         enHora ? 'animate-pulse' : ''
                       } ${
                         fechaSeleccionada === f
-                          ? 'border-brand bg-brand text-white'
+                          ? 'border-brand bg-brand text-white shadow-sm'
                           : completa
                             ? 'border-danger/30 bg-danger-soft text-danger'
                             : empezada
                               ? 'border-warning/30 bg-warning-soft text-warning'
-                              : 'border-success/30 bg-success-soft text-success'
+                              : enHora
+                                ? 'border-success/30 bg-success-soft text-success'
+                                : 'border-line bg-surface text-ink-soft'
                       }`}
                     >
                       {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · F${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
@@ -248,6 +250,18 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
               )
             })}
           </div>
+
+          {horarioMasBajoDe(fechaSeleccionada) && (
+            <div className="mb-3 rounded-2xl border border-line bg-surface px-4 py-3 text-center shadow-sm">
+              <p className="text-lg font-extrabold uppercase leading-tight tracking-wide text-ink">
+                {formatearDiaLargo(horarioMasBajoDe(fechaSeleccionada))}
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-ink-soft">
+                {horarioYaPaso(fechaSeleccionada) ? 'Empezó' : 'Empieza'} a las{' '}
+                {formatearHora12(horarioMasBajoDe(fechaSeleccionada))}
+              </p>
+            </div>
+          )}
 
           <ul className="space-y-2.5" {...swipeFecha}>
             {partidosDeFecha.map((p) => {

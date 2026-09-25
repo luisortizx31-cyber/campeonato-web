@@ -115,6 +115,16 @@ export function formatearDiaCorto(timestamp) {
   return timestamp.toDate().toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+// Dia completo para el encabezado grande al entrar a una Fecha ("Viernes
+// 25 de setiembre") - a diferencia de formatearDiaCorto (abreviado, para
+// la pastilla chica del selector), este lleva el nombre del dia y del
+// mes enteros. toLocaleDateString los devuelve en minuscula.
+export function formatearDiaLargo(timestamp) {
+  const fecha = timestamp.toDate ? timestamp.toDate() : timestamp
+  const texto = fecha.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
 // Hora en 12h sin los minutos cuando son :00 (ej. "12 AM" en vez de
 // "12:00 AM") - mas compacta que formatearHora12 para esa misma
 // etiqueta de dos lineas.
