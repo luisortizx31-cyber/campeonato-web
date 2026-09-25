@@ -71,11 +71,23 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
       setFechaSeleccionada((actual) => {
         if (fechas.length === 0) return null
         if (actual && fechas.includes(actual)) return actual
-        // Al entrar a la pestaña (o la primera vez), arranca en la
-        // fecha actual que todavia esta por jugarse - no en la ultima
-        // del fixture (mismo criterio que TabFechas admin).
-        const pendiente = fechas.find((f) => ps.some((p) => p.fechaNumero === f && p.golesLocal == null))
-        return pendiente ?? fechas[0]
+        // Al entrar a la pestaña, arranca en la fecha pendiente cuyo
+        // horario programado sea el mas proximo (no simplemente la de
+        // menor numero) - asi una fecha reprogramada para mas adelante
+        // no tapa a la que en realidad toca jugar hoy (mismo criterio
+        // que TabFechas admin). Una fecha pendiente sin horario puesto
+        // queda al final de este criterio.
+        const pendientes = fechas.filter((f) => ps.some((p) => p.fechaNumero === f && p.golesLocal == null))
+        if (pendientes.length === 0) return fechas[0]
+        const conHorario = pendientes
+          .map((f) => {
+            const horarios = ps
+              .filter((p) => p.fechaNumero === f && p.golesLocal == null && p.fecha)
+              .map((p) => p.fecha.toMillis())
+            return { f, horario: horarios.length > 0 ? Math.min(...horarios) : Infinity }
+          })
+          .sort((a, b) => a.horario - b.horario || a.f - b.f)
+        return conHorario[0].f
       })
 
       partidosListos = true
