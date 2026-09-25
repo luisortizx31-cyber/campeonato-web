@@ -5,6 +5,7 @@ import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { formatearHoraCorta } from '../../../utils/fixtureTorneo'
 import { claveDia, diasConPartidos, diaInicial, etiquetaDia, estadoPartido } from '../../../utils/partidosPorDia'
+import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import CanchaPublica from '../CanchaPublica'
 
@@ -14,7 +15,7 @@ function millisFecha(partido) {
   return partido.fecha?.toMillis?.() ?? 0
 }
 
-function FilaPartido({ partido, estado, equipoLocal, equipoVisitante, onAbrir }) {
+function FilaPartido({ partido, estado, equipoLocal, equipoVisitante, ahora, onAbrir }) {
   const nombreLocal = equipoLocal?.nombre || '—'
   const nombreVisitante = equipoVisitante?.nombre || '—'
   const ganoLocal = estado === 'fin' && partido.golesLocal > partido.golesVisitante
@@ -46,7 +47,8 @@ function FilaPartido({ partido, estado, equipoLocal, equipoVisitante, onAbrir })
                 <p className="mt-1 text-[11px] font-medium tracking-wide text-ink-soft">FIN</p>
               ) : (
                 <p className="mt-1 flex items-center justify-center gap-1 text-[11px] font-bold tracking-wide text-danger">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" /> EN VIVO
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+                  {textoMinutoEnCurso(partido, ahora) || 'EN VIVO'}
                 </p>
               )}
             </>
@@ -161,6 +163,7 @@ export function VistaPartidosPorDia({ partidos, equipos, categoriasActivas, ahor
                     estado={estadoPartido(p, ahora)}
                     equipoLocal={equipoPorId.get(p.equipoLocalId)}
                     equipoVisitante={equipoPorId.get(p.equipoVisitanteId)}
+                    ahora={ahora}
                     onAbrir={() => onAbrirPartido(p.id)}
                   />
                 ))}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearFechaProgramada, formatearDiaCorto, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
@@ -274,7 +275,8 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       </span>
                     ) : enVivo ? (
                       <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" /> En vivo
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+                        {textoMinutoEnCurso(p, ahora) || 'En vivo'}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">

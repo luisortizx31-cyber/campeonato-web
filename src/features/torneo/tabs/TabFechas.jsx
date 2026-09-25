@@ -34,6 +34,7 @@ import ControlPartido from '../ControlPartido'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import { SelectorFechaHora } from '../../shared/SelectorFechaHora'
+import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 
 /**
  * Genera el fixture "todos contra todos" de una categoria (una vez
@@ -921,6 +922,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
                     fechasDisponibles={fechasDisponibles}
                     onCambiarFecha={handleCambiarFechaPartido}
                     cambiandoFecha={cambiandoFechaPartido === p.id}
+                    ahora={ahora}
                   />
                 ))}
               </ul>
@@ -956,6 +958,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
                     fechasDisponibles={fechasDisponibles}
                     onCambiarFecha={handleCambiarFechaPartido}
                     cambiandoFecha={cambiandoFechaPartido === p.id}
+                    ahora={ahora}
                   />
                 ))}
               </ul>
@@ -1041,7 +1044,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
   )
 }
 
-function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, restriccionHorario, nombreEquipo, onAbrirControl, bloqueadoPor, fechasDisponibles, onCambiarFecha, cambiandoFecha }) {
+function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange, onGuardar, guardando, onEliminar, eliminando, onReiniciar, reiniciando, onGuardarHorario, restriccionHorario, nombreEquipo, onAbrirControl, bloqueadoPor, fechasDisponibles, onCambiarFecha, cambiandoFecha, ahora }) {
   const [editandoHorario, setEditandoHorario] = useState(false)
   const [horarioDraft, setHorarioDraft] = useState(null) // Date | null
   const [guardandoHorario, setGuardandoHorario] = useState(false)
@@ -1122,7 +1125,8 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
           </span>
         ) : enVivo ? (
           <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" /> En vivo
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+            {textoMinutoEnCurso(partido, ahora) || 'En vivo'}
           </span>
         ) : (
           <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">

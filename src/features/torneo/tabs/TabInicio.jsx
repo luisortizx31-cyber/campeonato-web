@@ -4,6 +4,7 @@ import { suscribirPartidosDelTorneo, habilitarAlineacionDeFecha } from '../../..
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { claveDia, estadoPartido } from '../../../utils/partidosPorDia'
 import { formatearHoraCorta } from '../../../utils/fixtureTorneo'
+import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
 import ModalProgramarFechas from '../ModalProgramarFechas'
@@ -33,7 +34,7 @@ function BotonAccion({ icon, label, sub, destacada, onClick }) {
 // asi que la fila sigue siendo una sola por partido sin perder ningun
 // caracter del nombre. Un boton para entrar directo a Control (los ya
 // jugados no lo necesitan).
-function FilaPartidoHoy({ partido, estado, local, visitante, bloqueadoPor, onAbrirControl }) {
+function FilaPartidoHoy({ partido, estado, local, visitante, bloqueadoPor, ahora, onAbrirControl }) {
   return (
     <li className="flex items-center gap-2 py-2">
       <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
@@ -48,9 +49,12 @@ function FilaPartidoHoy({ partido, estado, local, visitante, bloqueadoPor, onAbr
             {partido.golesLocal}-{partido.golesVisitante}
           </span>
         ) : estado === 'vivo' ? (
-          <span className="money text-sm font-bold text-danger">
-            {partido.golesLocalEnVivo ?? 0}-{partido.golesVisitanteEnVivo ?? 0}
-          </span>
+          <>
+            <span className="money block text-sm font-bold text-danger">
+              {partido.golesLocalEnVivo ?? 0}-{partido.golesVisitanteEnVivo ?? 0}
+            </span>
+            <span className="block text-[10px] font-semibold text-danger">{textoMinutoEnCurso(partido, ahora) || 'En vivo'}</span>
+          </>
         ) : (
           <span className="text-xs font-semibold text-ink-soft">{formatearHoraCorta(partido.fecha)}</span>
         )}
@@ -81,7 +85,7 @@ function FilaPartidoHoy({ partido, estado, local, visitante, bloqueadoPor, onAbr
 // delegados" (mismo criterio que TabFechas: toca los que todavia no
 // arrancaron ni tienen resultado) - separado de categoria en categoria
 // por si dos categorias juegan el mismo dia.
-function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoPorDe, onAbrirControl }) {
+function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoPorDe, ahora, onAbrirControl }) {
   const [habilitando, setHabilitando] = useState(false)
   const [error, setError] = useState(null)
 
@@ -131,6 +135,7 @@ function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoP
             local={equipoDe(p.equipoLocalId)}
             visitante={equipoDe(p.equipoVisitanteId)}
             bloqueadoPor={bloqueadoPorDe(p)}
+            ahora={ahora}
             onAbrirControl={onAbrirControl}
           />
         ))}
@@ -250,6 +255,7 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
               estadoDe={estadoDe}
               equipoDe={equipoDe}
               bloqueadoPorDe={bloqueadoPorDe}
+              ahora={ahora}
               onAbrirControl={setPartidoControl}
             />
           ))}

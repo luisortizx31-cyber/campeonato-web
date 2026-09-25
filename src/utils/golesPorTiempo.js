@@ -5,9 +5,9 @@
 // los `campo` de abajo) o null si no habia ningun tiempo corriendo (o el
 // gol es anterior a esta funcion).
 export const TIEMPOS_GOL = [
-  { campo: 'primerTiempo', etiqueta: '1er tiempo' },
-  { campo: 'segundoTiempo', etiqueta: '2do tiempo' },
-  { campo: 'tiempoExtra', etiqueta: 'Tiempo extra' },
+  { campo: 'primerTiempo', etiqueta: '1er tiempo', etiquetaCorta: '1T' },
+  { campo: 'segundoTiempo', etiqueta: '2do tiempo', etiquetaCorta: '2T' },
+  { campo: 'tiempoExtra', etiqueta: 'Tiempo extra', etiquetaCorta: 'TE' },
 ]
 
 // El tiempo que esta corriendo ahora (con inicio y todavia sin fin), o
@@ -16,6 +16,22 @@ export const TIEMPOS_GOL = [
 export function periodoEnCurso(datos) {
   const enCurso = TIEMPOS_GOL.find(({ campo }) => datos[campo]?.inicio != null && datos[campo]?.fin == null)
   return enCurso ? enCurso.campo : null
+}
+
+// "1T 12'": cuantos minutos lleva corriendo el tiempo activo ahora mismo,
+// para mostrar en los listados de partidos (Fechas, Partidos, Cancha) sin
+// tener que abrir el Control para saberlo - tanto del lado del Maestro
+// como del publico. null si ningun tiempo esta corriendo (el partido
+// puede estar "en vivo" con la alineacion cargada pero sin ningun
+// cronometro arrancado todavia, ver ControlPartido).
+export function textoMinutoEnCurso(partido, ahora) {
+  const campo = periodoEnCurso(partido)
+  if (!campo) return null
+  const inicioMs = partido[campo]?.inicio?.toMillis?.()
+  if (inicioMs == null) return null
+  const minutos = Math.max(0, Math.floor((ahora - inicioMs) / 60000))
+  const { etiquetaCorta } = TIEMPOS_GOL.find((t) => t.campo === campo)
+  return `${etiquetaCorta} ${minutos}'`
 }
 
 // Goles de UN jugador agrupados por tiempo: [{ etiqueta, cantidad }] en

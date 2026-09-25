@@ -8,6 +8,7 @@ import { colorEquipo } from '../../utils/colorEquipo'
 import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
 import { DesgloseGolesTiempo } from '../shared/DesgloseGolesTiempo'
+import { textoMinutoEnCurso } from '../../utils/golesPorTiempo'
 
 // Fila de solo lectura de la cancha (ver FilaAccion en ControlPartido,
 // del que esta es la version publica): mismo numero+nombre+goles/
@@ -57,6 +58,13 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
   const [tarjetas, setTarjetas] = useState([])
   const [minimoJugadoresCancha, setMinimoJugadoresCancha] = useState(null)
   const [cargando, setCargando] = useState(true)
+  // Se actualiza cada minuto para que "1T 12'" (ver textoMinutoEnCurso)
+  // vaya avanzando solo, sin que el publico tenga que refrescar.
+  const [ahora, setAhora] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setAhora(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let cancelado = false
@@ -159,7 +167,8 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
           </span>
         ) : enVivo ? (
           <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" /> En vivo
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+            {textoMinutoEnCurso(partido, ahora) || 'En vivo'}
           </span>
         ) : (
           <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">
