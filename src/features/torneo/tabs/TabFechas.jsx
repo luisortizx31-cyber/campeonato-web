@@ -151,12 +151,11 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
     seEntroAFechasEnEstaCarga = true
   }, [])
 
-  const barraFechasRef = useRef(null)
-  useEffect(() => {
-    if (!barraFechasRef.current || fechaSeleccionada == null) return
-    const activo = barraFechasRef.current.querySelector(`[data-fecha="${fechaSeleccionada}"]`)
-    activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  }, [fechaSeleccionada])
+  // Arranca mostrando directo los partidos de la fecha actual (no la
+  // grilla) - asi el Maestro no tiene que tocar nada para ver lo que
+  // toca hoy; la grilla queda a un toque de distancia con el boton
+  // "Todas las fechas".
+  const [verGrillaFechas, setVerGrillaFechas] = useState(false)
 
   useEffect(() => {
     try {
@@ -788,112 +787,120 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
 
           {!busquedaNormalizada && (
             <>
-              {fechasVuelta.length > 0 && (
-                <p className="mb-2 text-xs text-ink-soft">
-                  <span className="font-semibold text-brand">Ida:</span> Fecha {Math.min(...fechasIda)}–{Math.max(...fechasIda)}
-                  {'  ·  '}
-                  <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
-                </p>
-              )}
-              {fechasLiguilla.length > 0 && (
-                <p className="mb-2 text-xs text-ink-soft">
-                  <span className="font-semibold text-danger">Liguilla</span>
-                  {fechasLiguillaIda.length > 0 && <> · ida: {textoFechas(fechasLiguillaIda)}</>}
-                  {fechasLiguillaVuelta.length > 0 && <> · vuelta: {textoFechas(fechasLiguillaVuelta)}</>}
-                  {fechasLiguillaIda.length === 0 && fechasLiguillaVuelta.length === 0 && <> · {textoFechas(fechasLiguilla)}</>}
-                </p>
-              )}
-              <div ref={barraFechasRef} className="mb-3 flex items-stretch gap-1.5 overflow-x-auto pb-1">
-                {fechasDisponibles.map((f) => {
-                  const completa = fechaCompleta(f)
-                  const empezada = !completa && fechaEmpezada(f)
-                  const activa = fechaSeleccionada === f
-                  const enHora = horaLlegada(f)
-                  const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
-                  const esLiguillaF = fechasLiguilla.includes(f)
-                  const esPrimeraLiguilla = esLiguillaF && f === fechasLiguilla[0]
-                  const horarioMasBajo = horarioMasBajoDe(f)
-                  const yaPaso = horarioYaPaso(f)
-                  return (
-                    <div key={f} className="flex shrink-0 items-stretch gap-1.5">
-                      {(esPrimeraVuelta || esPrimeraLiguilla) && <span className="w-px shrink-0 bg-line" />}
-                      <div className="flex shrink-0 flex-col items-center gap-0.5">
-                        <button
-                          data-fecha={f}
-                          onClick={() => setFechaSeleccionada(f)}
-                          className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
-                            enHora ? 'animate-pulse' : ''
-                          } ${
-                            activa
-                              ? 'border-brand bg-brand text-white shadow-sm'
-                              : completa
-                                ? 'border-danger/30 bg-danger-soft text-danger'
-                                : empezada
-                                  ? 'border-warning/30 bg-warning-soft text-warning'
-                                  : enHora
-                                    ? 'border-success/30 bg-success-soft text-success'
-                                    : 'border-line bg-surface text-ink-soft'
-                          }`}
-                        >
-                          {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · F${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
-                        </button>
-                        {horarioMasBajo && (
-                          <div
-                            className={`flex flex-col items-center whitespace-nowrap rounded-lg px-2 py-1 leading-tight text-white shadow-sm ${
-                              yaPaso ? 'bg-ink-soft' : 'bg-gold'
+              {verGrillaFechas ? (
+                <>
+                  {fechasVuelta.length > 0 && (
+                    <p className="mb-2 text-xs text-ink-soft">
+                      <span className="font-semibold text-brand">Ida:</span> Fecha {Math.min(...fechasIda)}–{Math.max(...fechasIda)}
+                      {'  ·  '}
+                      <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
+                    </p>
+                  )}
+                  {fechasLiguilla.length > 0 && (
+                    <p className="mb-2 text-xs text-ink-soft">
+                      <span className="font-semibold text-danger">Liguilla</span>
+                      {fechasLiguillaIda.length > 0 && <> · ida: {textoFechas(fechasLiguillaIda)}</>}
+                      {fechasLiguillaVuelta.length > 0 && <> · vuelta: {textoFechas(fechasLiguillaVuelta)}</>}
+                      {fechasLiguillaIda.length === 0 && fechasLiguillaVuelta.length === 0 && <> · {textoFechas(fechasLiguilla)}</>}
+                    </p>
+                  )}
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {fechasDisponibles.map((f) => {
+                      const completa = fechaCompleta(f)
+                      const empezada = !completa && fechaEmpezada(f)
+                      const activa = fechaSeleccionada === f
+                      const enHora = horaLlegada(f)
+                      const esLiguillaF = fechasLiguilla.includes(f)
+                      const horarioMasBajo = horarioMasBajoDe(f)
+                      const yaPaso = horarioYaPaso(f)
+                      return (
+                        <div key={f} className="flex flex-col items-center gap-0.5">
+                          <button
+                            onClick={() => {
+                              setFechaSeleccionada(f)
+                              setVerGrillaFechas(false)
+                            }}
+                            className={`rounded-full border px-5 py-2.5 text-base font-bold transition-all ${
+                              enHora ? 'animate-pulse' : ''
+                            } ${
+                              activa
+                                ? 'border-brand bg-brand text-white shadow-sm'
+                                : completa
+                                  ? 'border-danger/30 bg-danger-soft text-danger'
+                                  : empezada
+                                    ? 'border-warning/30 bg-warning-soft text-warning'
+                                    : enHora
+                                      ? 'border-success/30 bg-success-soft text-success'
+                                      : 'border-line bg-surface text-ink-soft'
                             }`}
                           >
-                            <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
-                            <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-                <div className="flex flex-wrap justify-end gap-2">
-                  {partidosPendientesSinArrancar.length > 0 && (
+                            {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · F${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
+                          </button>
+                          {horarioMasBajo && (
+                            <div
+                              className={`flex flex-col items-center whitespace-nowrap rounded-lg px-2 py-1 leading-tight text-white shadow-sm ${
+                                yaPaso ? 'bg-ink-soft' : 'bg-gold'
+                              }`}
+                            >
+                              <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
+                              <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    onClick={() => setVerGrillaFechas(true)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white shadow-sm transition-transform active:scale-95"
+                  >
+                    ← Todas las fechas
+                  </button>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {partidosPendientesSinArrancar.length > 0 && (
+                      <button
+                        onClick={() => handleAlternarDelegados(partidosPendientesSinArrancar, !delegadosHabilitados)}
+                        disabled={habilitandoDelegados}
+                        title={
+                          delegadosHabilitados
+                            ? 'Los delegados ya pueden armar su alineación. Tocar para cerrarla.'
+                            : `Deja que los delegados de los equipos que juegan la Fecha ${fechaSeleccionada} armen su alineación`
+                        }
+                        className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                          delegadosHabilitados
+                            ? 'border-success/30 bg-success-soft text-success'
+                            : 'border-line bg-surface text-ink-soft hover:border-brand hover:text-brand'
+                        }`}
+                      >
+                        {habilitandoDelegados
+                          ? '…'
+                          : delegadosHabilitados
+                            ? '✓ Delegados habilitados'
+                            : '👥 Habilitar delegados'}
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleAlternarDelegados(partidosPendientesSinArrancar, !delegadosHabilitados)}
-                      disabled={habilitandoDelegados}
-                      title={
-                        delegadosHabilitados
-                          ? 'Los delegados ya pueden armar su alineación. Tocar para cerrarla.'
-                          : `Deja que los delegados de los equipos que juegan la Fecha ${fechaSeleccionada} armen su alineación`
-                      }
-                      className={`shrink-0 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                        delegadosHabilitados
-                          ? 'border-success/30 bg-success-soft text-success'
-                          : 'border-line bg-surface text-ink-soft hover:border-brand hover:text-brand'
-                      }`}
+                      onClick={() => setModalAgregar(true)}
+                      className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
                     >
-                      {habilitandoDelegados
-                        ? '…'
-                        : delegadosHabilitados
-                          ? '✓ Delegados habilitados'
-                          : '👥 Habilitar delegados'}
+                      + Agregar partido
                     </button>
-                  )}
-                  <button
-                    onClick={() => setModalAgregar(true)}
-                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
-                  >
-                    + Agregar partido
-                  </button>
-                  <button
-                    onClick={() => setModalReprogramar(true)}
-                    className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
-                  >
-                    📅 Programar fecha
-                  </button>
+                    <button
+                      onClick={() => setModalReprogramar(true)}
+                      className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand hover:text-brand"
+                    >
+                      📅 Programar fecha
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
-          {errorGuardar && (
+          {errorGuardar && !verGrillaFechas && (
             <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorGuardar}</p>
           )}
 
@@ -929,7 +936,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
                 ))}
               </ul>
             )
-          ) : (
+          ) : verGrillaFechas ? null : (
             <div {...swipeFecha}>
               {horarioMasBajoDe(fechaSeleccionada) && (
                 <div className="mb-3 rounded-2xl border border-line bg-surface px-4 py-3 text-center shadow-sm">

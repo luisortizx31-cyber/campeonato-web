@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearFechaProgramada, formatearDiaCorto, formatearDiaLargo, formatearHoraCorta, formatearHora12, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
@@ -32,12 +32,10 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     return () => clearInterval(id)
   }, [])
 
-  const barraFechasRef = useRef(null)
-  useEffect(() => {
-    if (!barraFechasRef.current || fechaSeleccionada == null) return
-    const activo = barraFechasRef.current.querySelector(`[data-fecha="${fechaSeleccionada}"]`)
-    activo?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  }, [fechaSeleccionada])
+  // Arranca mostrando directo los partidos de la fecha actual (no la
+  // grilla) - asi el publico no tiene que tocar nada para ver lo que
+  // se juega hoy; la grilla queda a un toque con "Todas las fechas".
+  const [verGrillaFechas, setVerGrillaFechas] = useState(false)
 
   // Los partidos se siguen en vivo (onSnapshot) en vez de traerse una
   // sola vez - asi el marcador en vivo que carga ControlPartido (ver
@@ -199,83 +197,91 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
 
       {!cargando && fechasDisponibles.length > 0 && (
         <>
-          {fechasVuelta.length > 0 && (
-            <p className="mb-2 text-xs text-ink-soft">
-              <span className="font-semibold text-brand">Ida:</span> Fecha {Math.min(...fechasIda)}–{Math.max(...fechasIda)}
-              {'  ·  '}
-              <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
-            </p>
-          )}
-          {fechasLiguilla.length > 0 && (
-            <p className="mb-2 text-xs text-ink-soft">
-              <span className="font-semibold text-danger">Liguilla</span>
-              {fechasLiguillaIda.length > 0 && <> · ida: {textoFechas(fechasLiguillaIda)}</>}
-              {fechasLiguillaVuelta.length > 0 && <> · vuelta: {textoFechas(fechasLiguillaVuelta)}</>}
-              {fechasLiguillaIda.length === 0 && fechasLiguillaVuelta.length === 0 && <> · {textoFechas(fechasLiguilla)}</>}
-            </p>
-          )}
-          <div ref={barraFechasRef} className="mb-3 flex items-stretch gap-1.5 overflow-x-auto pb-1">
-            {fechasDisponibles.map((f) => {
-              const completa = fechaCompleta(f)
-              const empezada = !completa && fechaEmpezada(f)
-              const esPrimeraVuelta = fechasVuelta.length > 0 && f === Math.min(...fechasVuelta)
-              const esLiguillaF = fechasLiguilla.includes(f)
-              const esPrimeraLiguilla = esLiguillaF && f === fechasLiguilla[0]
-              const horarioMasBajo = horarioMasBajoDe(f)
-              const enHora = horaLlegada(f)
-              const yaPaso = horarioYaPaso(f)
-              return (
-                <div key={f} className="flex shrink-0 items-stretch gap-1.5">
-                  {(esPrimeraVuelta || esPrimeraLiguilla) && <span className="w-px shrink-0 bg-line" />}
-                  <div className="flex shrink-0 flex-col items-center gap-0.5">
-                    <button
-                      data-fecha={f}
-                      onClick={() => setFechaSeleccionada(f)}
-                      className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-all ${
-                        enHora ? 'animate-pulse' : ''
-                      } ${
-                        fechaSeleccionada === f
-                          ? 'border-brand bg-brand text-white shadow-sm'
-                          : completa
-                            ? 'border-danger/30 bg-danger-soft text-danger'
-                            : empezada
-                              ? 'border-warning/30 bg-warning-soft text-warning'
-                              : enHora
-                                ? 'border-success/30 bg-success-soft text-success'
-                                : 'border-line bg-surface text-ink-soft'
-                      }`}
-                    >
-                      {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · F${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
-                    </button>
-                    {horarioMasBajo && (
-                      <div
-                        className={`flex flex-col items-center whitespace-nowrap rounded-lg px-2 py-1 leading-tight text-white shadow-sm ${
-                          yaPaso ? 'bg-ink-soft' : 'bg-gold'
+          {verGrillaFechas ? (
+            <>
+              {fechasVuelta.length > 0 && (
+                <p className="mb-2 text-xs text-ink-soft">
+                  <span className="font-semibold text-brand">Ida:</span> Fecha {Math.min(...fechasIda)}–{Math.max(...fechasIda)}
+                  {'  ·  '}
+                  <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
+                </p>
+              )}
+              {fechasLiguilla.length > 0 && (
+                <p className="mb-2 text-xs text-ink-soft">
+                  <span className="font-semibold text-danger">Liguilla</span>
+                  {fechasLiguillaIda.length > 0 && <> · ida: {textoFechas(fechasLiguillaIda)}</>}
+                  {fechasLiguillaVuelta.length > 0 && <> · vuelta: {textoFechas(fechasLiguillaVuelta)}</>}
+                  {fechasLiguillaIda.length === 0 && fechasLiguillaVuelta.length === 0 && <> · {textoFechas(fechasLiguilla)}</>}
+                </p>
+              )}
+              <div className="mb-3 flex flex-wrap gap-2">
+                {fechasDisponibles.map((f) => {
+                  const completa = fechaCompleta(f)
+                  const empezada = !completa && fechaEmpezada(f)
+                  const esLiguillaF = fechasLiguilla.includes(f)
+                  const horarioMasBajo = horarioMasBajoDe(f)
+                  const enHora = horaLlegada(f)
+                  const yaPaso = horarioYaPaso(f)
+                  return (
+                    <div key={f} className="flex flex-col items-center gap-0.5">
+                      <button
+                        onClick={() => {
+                          setFechaSeleccionada(f)
+                          setVerGrillaFechas(false)
+                        }}
+                        className={`rounded-full border px-5 py-2.5 text-base font-bold transition-all ${
+                          enHora ? 'animate-pulse' : ''
+                        } ${
+                          fechaSeleccionada === f
+                            ? 'border-brand bg-brand text-white shadow-sm'
+                            : completa
+                              ? 'border-danger/30 bg-danger-soft text-danger'
+                              : empezada
+                                ? 'border-warning/30 bg-warning-soft text-warning'
+                                : enHora
+                                  ? 'border-success/30 bg-success-soft text-success'
+                                  : 'border-line bg-surface text-ink-soft'
                         }`}
                       >
-                        <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
-                        <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
-                      </div>
-                    )}
-                  </div>
+                        {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · F${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
+                      </button>
+                      {horarioMasBajo && (
+                        <div
+                          className={`flex flex-col items-center whitespace-nowrap rounded-lg px-2 py-1 leading-tight text-white shadow-sm ${
+                            yaPaso ? 'bg-ink-soft' : 'bg-gold'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold">{formatearDiaCorto(horarioMasBajo)}</span>
+                          <span className="text-[9px] font-semibold">{formatearHoraCorta(horarioMasBajo)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setVerGrillaFechas(true)}
+                className="mb-3 flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white shadow-sm transition-transform active:scale-95"
+              >
+                ← Todas las fechas
+              </button>
+
+              {horarioMasBajoDe(fechaSeleccionada) && (
+                <div className="mb-3 rounded-2xl border border-line bg-surface px-4 py-3 text-center shadow-sm">
+                  <p className="text-lg font-extrabold uppercase leading-tight tracking-wide text-ink">
+                    {formatearDiaLargo(horarioMasBajoDe(fechaSeleccionada))}
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-ink-soft">
+                    {horarioYaPaso(fechaSeleccionada) ? 'Empezó' : 'Empieza'} a las{' '}
+                    {formatearHora12(horarioMasBajoDe(fechaSeleccionada))}
+                  </p>
                 </div>
-              )
-            })}
-          </div>
+              )}
 
-          {horarioMasBajoDe(fechaSeleccionada) && (
-            <div className="mb-3 rounded-2xl border border-line bg-surface px-4 py-3 text-center shadow-sm">
-              <p className="text-lg font-extrabold uppercase leading-tight tracking-wide text-ink">
-                {formatearDiaLargo(horarioMasBajoDe(fechaSeleccionada))}
-              </p>
-              <p className="mt-0.5 text-sm font-semibold text-ink-soft">
-                {horarioYaPaso(fechaSeleccionada) ? 'Empezó' : 'Empieza'} a las{' '}
-                {formatearHora12(horarioMasBajoDe(fechaSeleccionada))}
-              </p>
-            </div>
-          )}
-
-          <ul className="space-y-2.5" {...swipeFecha}>
+              <ul className="space-y-2.5" {...swipeFecha}>
             {partidosDeFecha.map((p) => {
               const jugado = p.golesLocal != null && p.golesVisitante != null
               const enVivo = !jugado && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
@@ -383,7 +389,9 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                 </li>
               )
             })}
-          </ul>
+              </ul>
+            </>
+          )}
         </>
       )}
     </div>
