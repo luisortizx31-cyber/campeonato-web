@@ -28,6 +28,8 @@ import {
 } from '../../services/torneoSolicitudesCambioService'
 import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
+import { AvatarFoto } from '../shared/AvatarFoto'
+import { TarjetaIcono } from '../shared/TarjetaIcono'
 import { nombreCorto } from '../../utils/nombreJugador'
 import { useSwipeHorizontal } from '../../hooks/useSwipeHorizontal'
 
@@ -74,7 +76,10 @@ function FilaAlineacion({ indice, jugador, estado, dniConfirmado, titularesCompl
         ) : estado === 'expulsado' ? (
           <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs">
             <span className="w-4 shrink-0 text-right text-ink-soft">{indice}</span>
-            <span className="min-w-0 flex-1 truncate font-medium text-danger">🟥 {jugador.nombre}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1 font-medium text-danger">
+              <TarjetaIcono tipo="roja" />
+              <span className="truncate">{jugador.nombre}</span>
+            </span>
             <span className="shrink-0 text-[10px] font-semibold text-danger">{motivoExpulsion}</span>
           </span>
         ) : (
@@ -283,7 +288,7 @@ function SelectorAlineacion({
                 onClick={() => toggleSeccion('expulsados')}
                 className="flex w-full items-center justify-between gap-2 border-t border-line bg-danger-soft px-2.5 py-1 text-left text-xs font-bold uppercase tracking-wide text-danger"
               >
-                <span>🟥 Expulsados ({listaExpulsados.length})</span>
+                <span className="flex items-center gap-1"><TarjetaIcono tipo="roja" /> Expulsados ({listaExpulsados.length})</span>
                 <span className={`normal-case transition-transform ${seccionAbierta.expulsados ? 'rotate-180' : ''}`}>⌄</span>
               </button>
               {seccionAbierta.expulsados && (
@@ -312,51 +317,60 @@ function SelectorAlineacion({
 // (titulares, no expulsados) - aca se cargan los eventos del partido.
 // Tocar el nombre abre el selector de cambio (decidido por el padre).
 function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, onTocar, onGol, onAmarilla, onRoja }) {
+  const deshabilitado = procesando || bloqueado
   return (
-    <li className="px-3 py-2.5">
+    <li className="flex items-center gap-2.5 px-3 py-2">
+      <AvatarFoto
+        fotoUrl={jugador.fotoUrl}
+        texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
+        tamanoClase="h-10 w-10"
+      />
       <button
         onClick={onTocar}
         disabled={bloqueado}
-        className="flex w-full items-center justify-between gap-1.5 text-left disabled:opacity-60"
+        className="min-w-0 flex-1 text-left disabled:opacity-60"
         title={bloqueado ? 'Arrancá el partido primero' : 'Tocar para sacarlo y elegir reemplazo'}
       >
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+        <span className="block truncate text-sm font-medium text-ink">
           {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
           {nombreCorto(jugador.nombre)}
         </span>
         {(nGoles > 0 || amarillasPartido > 0) && (
-          <span className="flex shrink-0 items-center gap-1 text-xs">
+          <span className="mt-0.5 flex items-center gap-1 text-xs">
             {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
             {Array.from({ length: amarillasPartido }).map((_, i) => (
-              <span key={i}>🟨</span>
+              <TarjetaIcono key={i} tipo="amarilla" />
             ))}
           </span>
         )}
       </button>
-      {/* Botones de accion mas grandes que antes (ahora que cada equipo
-          ocupa todo el ancho, ver mas arriba) - mas faciles de tocar
-          bien para quien esta controlando el partido. */}
-      <div className="mt-2 flex gap-2">
+      {/* Tres botones juntos a la derecha (48x44 px, faciles de tocar) en
+          vez de una fila a todo el ancho - la pantalla queda mucho menos
+          ancha y cada jugador ocupa una sola linea. */}
+      <div className="flex shrink-0 gap-1.5">
         <button
           onClick={onGol}
-          disabled={procesando || bloqueado}
-          className="flex-1 rounded-lg border border-line bg-surface py-2.5 text-lg disabled:opacity-50"
+          disabled={deshabilitado}
+          title="Gol"
+          className="flex h-11 w-12 items-center justify-center rounded-lg border border-line bg-surface text-lg disabled:opacity-50"
         >
           ⚽
         </button>
         <button
           onClick={onAmarilla}
-          disabled={procesando || bloqueado}
-          className="flex-1 rounded-lg border-2 border-warning bg-warning/25 py-2.5 text-lg disabled:opacity-50"
+          disabled={deshabilitado}
+          title="Tarjeta amarilla"
+          className="flex h-11 w-12 items-center justify-center rounded-lg border-2 border-warning bg-warning/25 disabled:opacity-50"
         >
-          🟨
+          <TarjetaIcono tipo="amarilla" className="h-6 w-4" />
         </button>
         <button
           onClick={onRoja}
-          disabled={procesando || bloqueado}
-          className="flex-1 rounded-lg border-2 border-danger bg-danger/25 py-2.5 text-lg disabled:opacity-50"
+          disabled={deshabilitado}
+          title="Tarjeta roja"
+          className="flex h-11 w-12 items-center justify-center rounded-lg border-2 border-danger bg-danger/25 disabled:opacity-50"
         >
-          🟥
+          <TarjetaIcono tipo="roja" className="h-6 w-4" />
         </button>
       </div>
     </li>
@@ -1041,7 +1055,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-md">
       <div className="mb-3 flex items-center gap-2">
         <button
           onClick={onVolver}
@@ -1073,7 +1087,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       ) : (
         horaInicio ? (
           <p className="mb-3 rounded-lg bg-success-soft px-3 py-2 text-center text-xs font-medium text-success">
-            🟢 Partido arrancado a las {formatearHora(horaInicio)}
+            <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full bg-success align-middle" />Partido arrancado a las {formatearHora(horaInicio)}
           </p>
         ) : (
           <button
@@ -1338,7 +1352,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 <div className="divide-y divide-line">
                   {expulsados.length > 0 && (
                     <div className="px-3 py-2">
-                      <p className="mb-1 text-[11px] font-semibold text-danger">🟥 Expulsados</p>
+                      <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-danger"><TarjetaIcono tipo="roja" /> Expulsados</p>
                       <ul className="space-y-1">
                         {expulsados.map((j) => {
                           const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
@@ -1354,7 +1368,7 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                   )}
                   {amarillas.length > 0 && (
                     <div className="px-3 py-2">
-                      <p className="mb-1 text-[11px] font-semibold text-warning">🟨 Amarillas</p>
+                      <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-warning"><TarjetaIcono tipo="amarilla" /> Amarillas</p>
                       <ul className="space-y-1">
                         {amarillas.map((j) => (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">

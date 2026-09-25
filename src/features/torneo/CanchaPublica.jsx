@@ -6,13 +6,20 @@ import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { TIPO_TARJETA } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { nombreCorto } from '../../utils/nombreJugador'
+import { AvatarFoto } from '../shared/AvatarFoto'
+import { TarjetaIcono } from '../shared/TarjetaIcono'
 
 // Fila de solo lectura de la cancha (ver FilaAccion en ControlPartido,
 // del que esta es la version publica): mismo numero+nombre+goles/
 // amarillas, sin los botones de cargar gol/tarjeta.
 function FilaAccionPublica({ jugador, nGoles, amarillasPartido }) {
   return (
-    <li className="flex items-center justify-between gap-1.5 px-2.5 py-2">
+    <li className="flex items-center justify-between gap-2 px-2.5 py-2">
+      <AvatarFoto
+        fotoUrl={jugador.fotoUrl}
+        texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
+        tamanoClase="h-8 w-8"
+      />
       <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
         {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
         {nombreCorto(jugador.nombre)}
@@ -21,7 +28,7 @@ function FilaAccionPublica({ jugador, nGoles, amarillasPartido }) {
         <span className="flex shrink-0 items-center gap-1 text-[11px]">
           {nGoles > 0 && <span className="font-semibold text-brand">⚽{nGoles}</span>}
           {Array.from({ length: amarillasPartido }).map((_, i) => (
-            <span key={i}>🟨</span>
+            <TarjetaIcono key={i} tipo="amarilla" />
           ))}
         </span>
       )}
@@ -237,7 +244,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                 <div className="divide-y divide-line">
                   {expulsados.length > 0 && (
                     <div className="px-3 py-2">
-                      <p className="mb-1 text-[11px] font-semibold text-danger">🟥 Expulsados</p>
+                      <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-danger"><TarjetaIcono tipo="roja" /> Expulsados</p>
                       <ul className="space-y-1">
                         {expulsados.map((j) => {
                           const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
@@ -253,7 +260,7 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
                   )}
                   {amarillas.length > 0 && (
                     <div className="px-3 py-2">
-                      <p className="mb-1 text-[11px] font-semibold text-warning">🟨 Amarillas</p>
+                      <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-warning"><TarjetaIcono tipo="amarilla" /> Amarillas</p>
                       <ul className="space-y-1">
                         {amarillas.map((j) => (
                           <li key={j.id} className="flex items-center justify-between gap-2 text-xs">

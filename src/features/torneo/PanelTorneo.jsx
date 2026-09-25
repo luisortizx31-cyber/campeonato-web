@@ -14,13 +14,14 @@ import TabReclamos from './tabs/TabReclamos'
 import TabBases from './tabs/TabBases'
 import TabPublicidad from './tabs/TabPublicidad'
 import TabConfiguracion from './tabs/TabConfiguracion'
+import { TarjetaIcono } from '../shared/TarjetaIcono'
 
 const TABS = [
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechas },
   { id: 'posiciones', label: 'Posiciones', icon: '📊', Componente: TabPosiciones },
   { id: 'liguilla', label: 'Liguilla', icon: '🏆', Componente: TabLiguilla },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadores },
-  { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestados },
+  { id: 'amonestados', label: 'Amonestados', icon: <TarjetaIcono tipo="amarilla" />, Componente: TabAmonestados },
   { id: 'reclamos', label: 'Reclamos', icon: '📢', Componente: TabReclamos },
   { id: 'equipos', label: 'Equipos', icon: '🛡️', Componente: TabEquipos },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadores },

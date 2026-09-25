@@ -27,6 +27,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import ModalCrearDelegado from '../ModalCrearDelegado'
 import SeccionColegios from './SeccionColegios'
+import { TarjetaIcono } from '../../shared/TarjetaIcono'
 
 // Agrupa varios ajustes relacionados bajo un mismo titulo (una sola
 // tarjeta con separadores adentro) en vez de una fila suelta con su
@@ -365,7 +366,7 @@ export default function TabConfiguracion({ torneoId, categoriasActivas, onCatego
               </p>
             </SeccionConfig>
 
-            <SeccionConfig icono="🟨" titulo="Tarjetas y disciplina">
+            <SeccionConfig icono={<TarjetaIcono tipo="amarilla" />} titulo="Tarjetas y disciplina">
               <FilaConfig htmlFor="umbral-amarillas" label="Suspender al llegar a">
                 <select
                   id="umbral-amarillas"

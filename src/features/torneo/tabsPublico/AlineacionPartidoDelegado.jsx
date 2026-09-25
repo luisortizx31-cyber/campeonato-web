@@ -11,6 +11,7 @@ import {
 import { TIPO_TARJETA } from '../../../models/torneo'
 import { colorEquipo } from '../../../utils/colorEquipo'
 import { nombreCorto } from '../../../utils/nombreJugador'
+import { TarjetaIcono } from '../../shared/TarjetaIcono'
 
 function porNombre(a, b) {
   return a.nombre.localeCompare(b.nombre)
@@ -538,7 +539,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                     <span className="flex shrink-0 items-center gap-1 text-[11px]">
                       {golesDe(j.id) > 0 && <span className="font-semibold text-brand">⚽{golesDe(j.id)}</span>}
                       {tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).map((_, i) => (
-                        <span key={i}>🟨</span>
+                        <TarjetaIcono key={i} tipo="amarilla" />
                       ))}
                     </span>
                   )}
@@ -564,7 +565,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                     <span className="flex shrink-0 items-center gap-1 text-[11px]">
                       {golesDe(j.id) > 0 && <span className="font-semibold text-brand">⚽{golesDe(j.id)}</span>}
                       {tarjetasDe(j.id).filter((t) => t.tipo === TIPO_TARJETA.AMARILLA).map((_, i) => (
-                        <span key={i}>🟨</span>
+                        <TarjetaIcono key={i} tipo="amarilla" />
                       ))}
                     </span>
                   )}
@@ -587,7 +588,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
               <div className="divide-y divide-line">
                 {expulsados.length > 0 && (
                   <div className="px-3 py-2">
-                    <p className="mb-1 text-[11px] font-semibold text-danger">🟥 Expulsados</p>
+                    <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-danger"><TarjetaIcono tipo="roja" /> Expulsados</p>
                     <ul className="space-y-1">
                       {expulsados.map((j) => {
                         const roja = tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.ROJA)
@@ -603,7 +604,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                 )}
                 {amarillas.length > 0 && (
                   <div className="px-3 py-2">
-                    <p className="mb-1 text-[11px] font-semibold text-warning">🟨 Amarillas</p>
+                    <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-warning"><TarjetaIcono tipo="amarilla" /> Amarillas</p>
                     <ul className="space-y-1">
                       {amarillas.map((j) => (
                         <li key={j.id} className="flex items-center justify-between gap-2 text-xs">

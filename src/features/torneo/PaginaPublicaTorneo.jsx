@@ -14,13 +14,14 @@ import TabJugadoresPublica from './tabsPublico/TabJugadoresPublica'
 import TabAmonestadosPublica from './tabsPublico/TabAmonestadosPublica'
 import TabMiEquipoDelegado from './tabsPublico/TabMiEquipoDelegado'
 import { PublicidadBanner } from './PublicidadBanner'
+import { TarjetaIcono } from '../shared/TarjetaIcono'
 
 const TABS_PUBLICAS = [
   { id: 'partidos', label: 'Partidos', icon: '📅', Componente: TabPartidosPublica },
   { id: 'fechas', label: 'Fechas', icon: '🗓️', Componente: TabFechasPublica },
   { id: 'posiciones', label: 'Tabla de Posiciones', icon: '📊', Componente: TabPosicionesPublica },
   { id: 'goleadores', label: 'Goleadores', icon: '⚽', Componente: TabGoleadoresPublica },
-  { id: 'amonestados', label: 'Amonestados', icon: '🟨', Componente: TabAmonestadosPublica },
+  { id: 'amonestados', label: 'Amonestados', icon: <TarjetaIcono tipo="amarilla" />, Componente: TabAmonestadosPublica },
   { id: 'jugadores', label: 'Jugadores', icon: '👥', Componente: TabJugadoresPublica },
 ]
 
