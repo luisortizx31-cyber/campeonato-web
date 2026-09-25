@@ -781,15 +781,22 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
   // Tocar a un titular para sacarlo no lo pasa directo a suplente: abre
   // el selector de "por quien entra" con los suplentes YA CONVOCADOS de
   // su mismo equipo, para que el cambio quede armado en un solo paso
-  // (sale uno, entra otro) en vez de dos toques sueltos. Sin suplentes
-  // convocados, sale directo al banco (no hay de donde elegir entrante).
+  // (sale uno, entra otro) en vez de dos toques sueltos.
+  //
+  // Sin suplentes convocados solo sale directo al banco ANTES de que
+  // arranque el partido (armando la alineacion en la pestaña Alineacion,
+  // donde tocar a un titular es simplemente destildarlo). Con el partido
+  // ya en juego siempre se pide confirmacion: un toque sin querer en la
+  // Cancha sacaba a un jugador sin avisar (ver el selector de cambio de
+  // abajo, que en ese caso solo ofrece "pasa al banco" / "sale del
+  // partido" / cancelar).
   function handleTocarTitular(equipo, jugador) {
     const jugadoresEquipo = equipo === 'local' ? jugadoresLocal : jugadoresVisitante
     const suplentesIds = equipo === 'local' ? suplentesLocal : suplentesVisitante
     const candidatos = jugadoresEquipo.filter(
       (j) => j.id !== jugador.id && suplentesIds.includes(j.id) && !estaExpulsadoEnPartido(j.id)
     )
-    if (candidatos.length === 0) {
+    if (candidatos.length === 0 && horaInicio == null) {
       moverJugadorA(equipo, jugador.id, 'suplente')
       return
     }
@@ -1538,12 +1545,25 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
       )}
 
       {cambio && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-paper shadow-xl sm:rounded-3xl">
+        <div
+          onClick={() => setCambio(null)}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-paper shadow-xl sm:rounded-3xl"
+          >
             <div className="flex items-center justify-between border-b border-line bg-surface px-5 py-4">
-              <h1 className="text-base font-semibold text-ink">¿Quién entra por {cambio.saliente.nombre}?</h1>
+              <h1 className="text-base font-semibold text-ink">
+                {cambio.suplentes.length > 0
+                  ? `¿Quién entra por ${cambio.saliente.nombre}?`
+                  : `¿Sacar a ${cambio.saliente.nombre} de la cancha?`}
+              </h1>
               <button onClick={() => setCambio(null)} className="text-2xl leading-none text-ink-soft px-1">×</button>
             </div>
+            {cambio.suplentes.length === 0 && (
+              <p className="px-5 pt-3 text-xs text-ink-soft">No hay suplentes convocados para reemplazarlo.</p>
+            )}
             <ul className="divide-y divide-line">
               {cambio.suplentes.map((s) => (
                 <li key={s.id}>
@@ -1572,6 +1592,12 @@ export default function ControlPartido({ torneoId, categoria, partido, nombreEqu
                 className="w-full rounded-lg border border-line py-2.5 text-sm font-medium text-ink-soft"
               >
                 Sale del partido (vuelve a Jugadores)
+              </button>
+              <button
+                onClick={() => setCambio(null)}
+                className="w-full rounded-lg bg-brand py-2.5 text-sm font-medium text-white"
+              >
+                Cancelar (no cambiar nada)
               </button>
             </div>
           </div>
