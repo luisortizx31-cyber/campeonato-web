@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { VisorFoto } from './VisorFoto'
+import { RecortadorFoto } from './RecortadorFoto'
 
 // Avatar circular con foto (si ya se subio una) o un texto de respaldo
 // (inicial de nombre, etc) mientras tanto - usado para la foto de un
@@ -11,6 +12,10 @@ import { VisorFoto } from './VisorFoto'
 // texto de abajo, que solo aparecen si se paso onCambiarFoto (modo
 // admin). Sin foto y en modo admin, tocar el circulo abre el selector
 // de archivo directo (no hay nada que agrandar todavia).
+//
+// Al elegir un archivo NO se sube directo: primero se abre el recortador
+// (RecortadorFoto) para mover/acercar/girar la foto, y recien al
+// confirmar se llama a onCambiarFoto con la foto ya recortada.
 export function AvatarFoto({
   fotoUrl,
   texto,
@@ -23,6 +28,7 @@ export function AvatarFoto({
 }) {
   const inputRef = useRef(null)
   const [verGrande, setVerGrande] = useState(false)
+  const [porRecortar, setPorRecortar] = useState(null) // File elegido, esperando recorte
 
   const contenido = subiendoFoto ? (
     <span className="text-[9px] text-ink-soft">…</span>
@@ -51,7 +57,7 @@ export function AvatarFoto({
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
-            if (file) onCambiarFoto(file)
+            if (file) setPorRecortar(file)
             e.target.value = ''
           }}
         />
@@ -84,6 +90,16 @@ export function AvatarFoto({
         </div>
       )}
       {verGrande && fotoUrl && <VisorFoto url={fotoUrl} onCerrar={() => setVerGrande(false)} />}
+      {porRecortar && (
+        <RecortadorFoto
+          archivo={porRecortar}
+          onCancelar={() => setPorRecortar(null)}
+          onConfirmar={(recortada) => {
+            setPorRecortar(null)
+            onCambiarFoto(recortada)
+          }}
+        />
+      )}
     </div>
   )
 }
