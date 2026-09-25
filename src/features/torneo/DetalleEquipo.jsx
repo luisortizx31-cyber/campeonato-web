@@ -16,6 +16,7 @@ import {
 import { actualizarHistoriaEquipo } from '../../services/torneoEquiposService'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { EscudoEquipo } from '../shared/EscudoEquipo'
+import { VisorFoto } from '../shared/VisorFoto'
 import { FilaJugadorAdmin } from './FilaJugadorAdmin'
 import ModalRegistrarJugador from './ModalRegistrarJugador'
 
@@ -342,13 +343,19 @@ function PestanaGaleria({ torneoId, equipo }) {
 
 function TarjetaFoto({ foto, onGuardarDescripcion, onEliminar }) {
   const [descripcion, setDescripcion] = useState(foto.descripcion || '')
+  const [verGrande, setVerGrande] = useState(false)
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex gap-3">
+        {/* object-contain: la foto se ve COMPLETA dentro del cuadro (con
+            bordes vacios si no tiene la misma proporcion) en vez de
+            recortada; tocarla la abre en grande. */}
         <div className="h-24 w-32 shrink-0 overflow-hidden rounded-lg border border-line bg-paper">
           {foto.url ? (
-            <img src={foto.url} alt="" className="h-full w-full object-cover" />
+            <button type="button" onClick={() => setVerGrande(true)} title="Ver foto completa" className="block h-full w-full">
+              <img src={foto.url} alt="" className="h-full w-full object-contain" />
+            </button>
           ) : (
             <div className="flex h-full items-center justify-center text-[10px] text-ink-soft">Subiendo…</div>
           )}
@@ -380,6 +387,7 @@ function TarjetaFoto({ foto, onGuardarDescripcion, onEliminar }) {
           </div>
         </div>
       </div>
+      {verGrande && foto.url && <VisorFoto url={foto.url} titulo={foto.descripcion || undefined} onCerrar={() => setVerGrande(false)} />}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { listarJugadoresPorEquipo } from '../../services/torneoJugadoresService'
 import { listarFotosEquipo } from '../../services/torneoGaleriaEquipoService'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { EscudoEquipo } from '../shared/EscudoEquipo'
+import { VisorFoto } from '../shared/VisorFoto'
 import { FilaJugadorPublica } from './FilaJugadorPublica'
 
 const TABS = [
@@ -92,6 +93,7 @@ function PestanaJugadoresPublica({ equipo }) {
 function PestanaGaleriaPublica({ equipo }) {
   const [fotos, setFotos] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [fotoAbierta, setFotoAbierta] = useState(null) // foto en grande, o null
 
   useEffect(() => {
     let cancelado = false
@@ -119,14 +121,23 @@ function PestanaGaleriaPublica({ equipo }) {
     )
   }
 
+  // Cada foto se ve COMPLETA (object-contain, sin recortar) y al tocarla
+  // se abre en grande.
   return (
     <div className="space-y-3">
       {fotos.map((foto) => (
         <div key={foto.id} className="overflow-hidden rounded-2xl border border-line bg-surface">
-          {foto.url && <img src={foto.url} alt={foto.descripcion || ''} className="h-56 w-full object-cover" />}
+          {foto.url && (
+            <button type="button" onClick={() => setFotoAbierta(foto)} className="block w-full bg-paper">
+              <img src={foto.url} alt={foto.descripcion || ''} className="mx-auto max-h-96 w-full object-contain" />
+            </button>
+          )}
           {foto.descripcion && <p className="px-4 py-3 text-sm text-ink-soft">{foto.descripcion}</p>}
         </div>
       ))}
+      {fotoAbierta && (
+        <VisorFoto url={fotoAbierta.url} titulo={fotoAbierta.descripcion || undefined} onCerrar={() => setFotoAbierta(null)} />
+      )}
     </div>
   )
 }
