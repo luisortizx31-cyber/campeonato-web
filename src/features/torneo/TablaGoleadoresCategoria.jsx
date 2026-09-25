@@ -12,6 +12,11 @@ const ESTILO_PODIO = {
   3: { badge: 'bg-warning text-white', fila: 'bg-warning-soft/40' },
 }
 
+// Cuantos goleadores se muestran de entrada (el 1ro en la tarjeta dorada
+// mas la tabla del 2do al ultimo de este tope); el resto queda plegado
+// detras de la flechita "Ver los N restantes".
+const GOLEADORES_VISIBLES = 10
+
 function inicialDe(nombre) {
   return nombre?.trim()?.charAt(0)?.toUpperCase() || '—'
 }
@@ -65,6 +70,11 @@ function TarjetaGoleador({ fila }) {
  * uno con su fotito (que tambien se agranda al tocarla). Las fotos no
  * salen en la imagen/PDF descargado (data-sin-captura).
  *
+ * Solo se muestran los primeros 10 (GOLEADORES_VISIBLES): si hay mas, debajo de la tabla aparece una
+ * flechita para desplegar al resto y, al tocarla de nuevo, se pliega otra
+ * vez (esa flechita no sale en la imagen/PDF descargado, que muestra lo
+ * que se esta viendo).
+ *
  * Expone su nodo raiz via `ref` para que el padre pueda capturarla
  * como imagen/PDF (ver BotonDescargarTabla).
  */
@@ -75,6 +85,7 @@ const TablaGoleadoresCategoria = forwardRef(function TablaGoleadoresCategoria(
   const [filas, setFilas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
+  const [expandido, setExpandido] = useState(false)
   const onFilasRef = useRef(onFilas)
   useEffect(() => {
     onFilasRef.current = onFilas
@@ -130,6 +141,8 @@ const TablaGoleadoresCategoria = forwardRef(function TablaGoleadoresCategoria(
   }
 
   const [primero, ...resto] = filas
+  const hayMas = filas.length > GOLEADORES_VISIBLES
+  const visibles = expandido ? resto : resto.slice(0, GOLEADORES_VISIBLES - 1)
 
   return (
     <div ref={ref} className="space-y-3">
@@ -146,7 +159,7 @@ const TablaGoleadoresCategoria = forwardRef(function TablaGoleadoresCategoria(
               </tr>
             </thead>
             <tbody>
-              {resto.map((f, i) => {
+              {visibles.map((f, i) => {
                 const puesto = i + 2
                 const podio = ESTILO_PODIO[puesto]
                 return (
@@ -186,6 +199,30 @@ const TablaGoleadoresCategoria = forwardRef(function TablaGoleadoresCategoria(
               })}
             </tbody>
           </table>
+
+          {hayMas && (
+            <button
+              type="button"
+              data-sin-captura="true"
+              onClick={() => setExpandido((v) => !v)}
+              aria-expanded={expandido}
+              className="flex w-full items-center justify-center gap-1.5 border-t border-line bg-paper py-2 text-xs font-semibold text-brand"
+            >
+              {expandido ? 'Ver menos' : `Ver los ${filas.length - GOLEADORES_VISIBLES} restantes`}
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-4 w-4 transition-transform ${expandido ? 'rotate-180' : ''}`}
+              >
+                <path d="M5 8l5 5 5-5" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
     </div>
