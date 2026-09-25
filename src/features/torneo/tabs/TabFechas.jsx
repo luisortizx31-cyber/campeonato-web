@@ -305,7 +305,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
     const confirmacion = confirm(
       `¿Reiniciar TODOS los partidos de ${CATEGORIA_TORNEO_LABELS[categoria]}?\n\n` +
         'Todos los partidos vuelven a Pendiente: se borran sus goles, tarjetas y alineación (los jugadores ' +
-        'vuelven a "Jugadores"), los cronómetros del primer tiempo, segundo tiempo y tiempo extra, la programación ' +
+        'vuelven a "Jugadores"), se cierra la habilitación a los delegados, los cronómetros del primer tiempo, segundo tiempo y tiempo extra, la programación ' +
         '(el día y la hora de cada partido) y se levantan todas las ' +
         'suspensiones. Los cruces del fixture NO se borran, pero tendrás que volver a programar los ' +
         'horarios.\n\nEsta acción no se puede deshacer.'
@@ -1011,7 +1011,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
           >
             {reiniciandoResultadosTodas
               ? 'Reiniciando…'
-              : `Reiniciar TODOS los partidos de ${CATEGORIA_TORNEO_LABELS[categoria]} (goles, tarjetas, alineación, primer y segundo tiempo y programación de horarios - deja los cruces intactos)`}
+              : `Reiniciar TODOS los partidos de ${CATEGORIA_TORNEO_LABELS[categoria]} (goles, tarjetas, alineación, habilitación a delegados, primer y segundo tiempo y programación de horarios - deja los cruces intactos)`}
           </button>
         </div>
       )}
