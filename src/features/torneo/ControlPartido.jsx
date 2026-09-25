@@ -30,7 +30,6 @@ import { TIPO_TARJETA, JUGADORES_POR_EQUIPO_DEFAULT, DIFERENCIA_WALKOVER_DEFAULT
 import { colorEquipo } from '../../utils/colorEquipo'
 import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
-import { nombreCorto } from '../../utils/nombreJugador'
 import { useSwipeHorizontal } from '../../hooks/useSwipeHorizontal'
 
 const VISTAS = ['alineacion', 'cancha']
@@ -319,7 +318,7 @@ function SelectorAlineacion({
 function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, onTocar, onGol, onAmarilla, onRoja }) {
   const deshabilitado = procesando || bloqueado
   return (
-    <li className="flex items-center gap-2.5 px-3 py-2">
+    <li className="flex flex-wrap items-center gap-x-2.5 gap-y-2 px-3 py-2">
       <AvatarFoto
         fotoUrl={jugador.fotoUrl}
         texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
@@ -331,9 +330,11 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, 
         className="min-w-0 flex-1 text-left disabled:opacity-60"
         title={bloqueado ? 'Arrancá el partido primero' : 'Tocar para sacarlo y elegir reemplazo'}
       >
-        <span className="block truncate text-sm font-medium text-ink">
+        {/* Nombre completo: si no entra en una linea baja a la siguiente
+            en vez de cortarse con "..." o mostrarse abreviado. */}
+        <span className="block break-words text-sm font-medium leading-tight text-ink">
           {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
-          {nombreCorto(jugador.nombre)}
+          {jugador.nombre}
         </span>
         {(nGoles > 0 || amarillasPartido > 0) && (
           <span className="mt-0.5 flex items-center gap-1 text-xs">
@@ -344,15 +345,17 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, 
           </span>
         )}
       </button>
-      {/* Tres botones juntos a la derecha (48x44 px, faciles de tocar) en
-          vez de una fila a todo el ancho - la pantalla queda mucho menos
-          ancha y cada jugador ocupa una sola linea. */}
-      <div className="flex shrink-0 gap-1.5">
+      {/* En la computadora (sm en adelante): los tres botones juntos a la
+          derecha (48x44 px) en la misma linea del jugador, para que la
+          pantalla quede angosta. En el celular pasan a una segunda linea,
+          repartidos a todo el ancho (botones grandes) y el nombre
+          completo tiene toda la fila para el solo. */}
+      <div className="flex w-full shrink-0 gap-1.5 sm:w-auto">
         <button
           onClick={onGol}
           disabled={deshabilitado}
           title="Gol"
-          className="flex h-11 w-12 items-center justify-center rounded-lg border border-line bg-surface text-lg disabled:opacity-50"
+          className="flex h-11 flex-1 items-center justify-center rounded-lg border border-line bg-surface text-lg disabled:opacity-50 sm:w-12 sm:flex-none"
         >
           ⚽
         </button>
@@ -360,7 +363,7 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, 
           onClick={onAmarilla}
           disabled={deshabilitado}
           title="Tarjeta amarilla"
-          className="flex h-11 w-12 items-center justify-center rounded-lg border-2 border-warning bg-warning/25 disabled:opacity-50"
+          className="flex h-11 flex-1 items-center justify-center rounded-lg border-2 border-warning bg-warning/25 disabled:opacity-50 sm:w-12 sm:flex-none"
         >
           <TarjetaIcono tipo="amarilla" className="h-6 w-4" />
         </button>
@@ -368,7 +371,7 @@ function FilaAccion({ jugador, nGoles, amarillasPartido, procesando, bloqueado, 
           onClick={onRoja}
           disabled={deshabilitado}
           title="Tarjeta roja"
-          className="flex h-11 w-12 items-center justify-center rounded-lg border-2 border-danger bg-danger/25 disabled:opacity-50"
+          className="flex h-11 flex-1 items-center justify-center rounded-lg border-2 border-danger bg-danger/25 disabled:opacity-50 sm:w-12 sm:flex-none"
         >
           <TarjetaIcono tipo="roja" className="h-6 w-4" />
         </button>

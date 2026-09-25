@@ -10,7 +10,6 @@ import {
 } from '../../../services/torneoSolicitudesCambioService'
 import { TIPO_TARJETA } from '../../../models/torneo'
 import { colorEquipo } from '../../../utils/colorEquipo'
-import { nombreCorto } from '../../../utils/nombreJugador'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
 
 function porNombre(a, b) {
@@ -533,7 +532,7 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
                     className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs disabled:opacity-70"
                   >
                     {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
-                    <span className="min-w-0 flex-1 truncate font-medium text-ink">{nombreCorto(j.nombre)}</span>
+                    <span className="min-w-0 flex-1 break-words font-medium leading-tight text-ink">{j.nombre}</span>
                   </button>
                   {(golesDe(j.id) > 0 || tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)) && (
                     <span className="flex shrink-0 items-center gap-1 text-[11px]">
@@ -557,9 +556,9 @@ export default function AlineacionPartidoDelegado({ torneoId, categoria, equipoI
             <ul className="divide-y-2 divide-ink-soft/20">
               {enCanchaRival.map((j) => (
                 <li key={j.id} className="flex items-center justify-between gap-1.5 px-2.5 py-2 text-xs">
-                  <span className="min-w-0 flex-1 truncate font-medium text-ink">
+                  <span className="min-w-0 flex-1 break-words font-medium leading-tight text-ink">
                     {j.numeroCamiseta != null && <span className="text-ink-soft">#{j.numeroCamiseta} </span>}
-                    {nombreCorto(j.nombre)}
+                    {j.nombre}
                   </span>
                   {(golesDe(j.id) > 0 || tarjetasDe(j.id).some((t) => t.tipo === TIPO_TARJETA.AMARILLA)) && (
                     <span className="flex shrink-0 items-center gap-1 text-[11px]">

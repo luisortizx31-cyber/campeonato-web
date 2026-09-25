@@ -5,7 +5,6 @@ import { suscribirTarjetasPorPartido } from '../../services/torneoTarjetasServic
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { TIPO_TARJETA } from '../../models/torneo'
 import { colorEquipo } from '../../utils/colorEquipo'
-import { nombreCorto } from '../../utils/nombreJugador'
 import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
 
@@ -20,9 +19,9 @@ function FilaAccionPublica({ jugador, nGoles, amarillasPartido }) {
         texto={jugador.nombre?.trim()?.charAt(0)?.toUpperCase() || '—'}
         tamanoClase="h-8 w-8"
       />
-      <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+      <span className="min-w-0 flex-1 break-words text-xs font-medium leading-tight text-ink">
         {jugador.numeroCamiseta != null && <span className="text-ink-soft">#{jugador.numeroCamiseta} </span>}
-        {nombreCorto(jugador.nombre)}
+        {jugador.nombre}
       </span>
       {(nGoles > 0 || amarillasPartido > 0) && (
         <span className="flex shrink-0 items-center gap-1 text-[11px]">
