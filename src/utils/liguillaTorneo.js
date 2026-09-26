@@ -93,28 +93,75 @@ export function sortearCruces(equipoIds) {
   return cruces
 }
 
+// Puntos (3-1-0) y goles de cada equipo en un conjunto de partidos -
+// cada partido cuenta por separado (ida y vuelta valen cada uno lo
+// suyo, no el agregado del cruce). Mismos campos que
+// calcularTablaPosiciones (pts/gf/gc), para ordenar a los "mejores
+// perdedores" por lo que hicieron EN LA LIGUILLA con el mismo criterio
+// que se usa en toda la app.
+export function calcularEstadisticasEquipos(partidos) {
+  const stats = new Map()
+  function fila(id) {
+    if (!stats.has(id)) stats.set(id, { pts: 0, gf: 0, gc: 0 })
+    return stats.get(id)
+  }
+  for (const p of partidos) {
+    if (p.golesLocal == null || p.golesVisitante == null) continue
+    const local = fila(p.equipoLocalId)
+    const visitante = fila(p.equipoVisitanteId)
+    local.gf += p.golesLocal
+    local.gc += p.golesVisitante
+    visitante.gf += p.golesVisitante
+    visitante.gc += p.golesLocal
+    if (p.golesLocal > p.golesVisitante) local.pts += 3
+    else if (p.golesVisitante > p.golesLocal) visitante.pts += 3
+    else {
+      local.pts += 1
+      visitante.pts += 1
+    }
+  }
+  return stats
+}
+
+// Orden de "mejor perdedor" (pedido por el usuario, 2026-09-25): por
+// el puntaje y los goles que hizo en sus partidos de la liguilla -
+// mismo desempate que calcularTablaPosiciones (puntos -> diferencia de
+// gol -> goles a favor). Si empatan del todo en eso (raro), se
+// desempata por la posicion ORIGINAL en la tabla de la fase regular
+// (el criterio que se usaba antes de este cambio, ver
+// `posicionPorEquipo`) en vez de armar un partido extra.
+export function ordenarMejoresPerdedores(perdedores, estadisticasPorEquipo, posicionPorEquipo) {
+  return [...perdedores].sort((a, b) => {
+    const eA = estadisticasPorEquipo.get(a) || { pts: 0, gf: 0, gc: 0 }
+    const eB = estadisticasPorEquipo.get(b) || { pts: 0, gf: 0, gc: 0 }
+    if (eB.pts !== eA.pts) return eB.pts - eA.pts
+    const dgA = eA.gf - eA.gc
+    const dgB = eB.gf - eB.gc
+    if (dgB !== dgA) return dgB - dgA
+    if (eB.gf !== eA.gf) return eB.gf - eA.gf
+    return (posicionPorEquipo.get(a) ?? Infinity) - (posicionPorEquipo.get(b) ?? Infinity)
+  })
+}
+
 // El mecanismo de "mejor perdedor": quienes avanzan a la siguiente
 // ronda son los ganadores + el que tuvo bye (si hubo), completado con
-// los perdedores mejor ubicados (en la tabla ORIGINAL, no en esta
-// ronda) hasta llegar a una potencia de 2. `ganadores`/`perdedores`
-// son arrays de equipoId, `bye` es un equipoId o null,
-// `posicionPorEquipo` es un Map equipoId -> posicion (0-based, mejor
-// primero).
+// los perdedores mejor ubicados (por su puntaje/goles en la liguilla,
+// ver ordenarMejoresPerdedores) hasta llegar a una potencia de 2.
+// `ganadores`/`perdedores` son arrays de equipoId, `bye` es un
+// equipoId o null.
 //
 // Nota: esto solo puede necesitar comodines despues de la Ronda 1 - la
 // mitad de una potencia de 2 sigue siendo potencia de 2, asi que de la
 // Ronda 2 en adelante "faltan" siempre da 0. Se llama igual todas las
 // rondas por uniformidad (reconstruirBracket no necesita saber en que
 // ronda esta para decidir si hace falta comodin o no).
-export function calcularGrupoQueAvanza({ ganadores, perdedores, bye, posicionPorEquipo }) {
+export function calcularGrupoQueAvanza({ ganadores, perdedores, bye, posicionPorEquipo, estadisticasPorEquipo }) {
   const avanzanBase = bye ? [...ganadores, bye] : [...ganadores]
   const objetivo = siguientePotenciaDeDos(avanzanBase.length)
   const faltan = objetivo - avanzanBase.length
   if (faltan <= 0) return { avanzan: avanzanBase, comodines: [] }
 
-  const perdedoresOrdenados = [...perdedores].sort(
-    (a, b) => (posicionPorEquipo.get(a) ?? Infinity) - (posicionPorEquipo.get(b) ?? Infinity)
-  )
+  const perdedoresOrdenados = ordenarMejoresPerdedores(perdedores, estadisticasPorEquipo, posicionPorEquipo)
   const comodines = perdedoresOrdenados.slice(0, faltan)
   return { avanzan: [...avanzanBase, ...comodines], comodines }
 }
@@ -220,6 +267,7 @@ export function reconstruirBracket({ qualifiers, byeEquipoId, partidosLiguilla }
         perdedores,
         bye: byeDeEstaRonda,
         posicionPorEquipo,
+        estadisticasPorEquipo: calcularEstadisticasEquipos(partidosRonda),
       }))
     }
 

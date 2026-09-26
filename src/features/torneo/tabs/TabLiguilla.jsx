@@ -12,7 +12,14 @@ import {
   reiniciarLiguilla,
 } from '../../../services/torneoLiguillaService'
 import { calcularTablaPosiciones } from '../../../utils/tablaPosiciones'
-import { armarCrucesRonda1, sortearCruces, reconstruirBracket, nombreRonda } from '../../../utils/liguillaTorneo'
+import {
+  armarCrucesRonda1,
+  sortearCruces,
+  reconstruirBracket,
+  nombreRonda,
+  calcularEstadisticasEquipos,
+  ordenarMejoresPerdedores,
+} from '../../../utils/liguillaTorneo'
 import { formatearFechaProgramada } from '../../../utils/fixtureTorneo'
 import { FASE_LIGUILLA, FORMATO_LIGUILLA } from '../../../models/torneo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -205,8 +212,11 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
     const ultimaRonda = bracket.rondas[bracket.rondas.length - 1]
     setErrorAccion(null)
     if (ultimaRonda.comodines.length > 0) {
-      const perdedoresOrdenados = [...ultimaRonda.perdedores].sort(
-        (a, b) => (posicionPorEquipo.get(a) ?? Infinity) - (posicionPorEquipo.get(b) ?? Infinity)
+      const partidosRonda = partidos.filter((p) => p.rondaLiguilla === ultimaRonda.rondaLiguilla)
+      const perdedoresOrdenados = ordenarMejoresPerdedores(
+        ultimaRonda.perdedores,
+        calcularEstadisticasEquipos(partidosRonda),
+        posicionPorEquipo
       )
       setComodinesEditables(perdedoresOrdenados)
       setPasoSiguiente('comodines')
@@ -301,6 +311,15 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
     estadoLiguilla && estadoLiguilla.formato !== FORMATO_LIGUILLA.GRUPO
       ? reconstruirBracket({ qualifiers: estadoLiguilla.qualifiers, byeEquipoId: estadoLiguilla.byeEquipoId, partidosLiguilla })
       : null
+
+  // Tabla de posiciones de la liguilla (pedida por el usuario,
+  // 2026-09-25): cuenta cada partido de la liguilla por separado (ida
+  // y vuelta valen lo suyo) - sirve para ver de un vistazo quien metio
+  // mas goles/hizo mas puntos, y es el mismo criterio con el que ahora
+  // se elige al "mejor perdedor" (ver ordenarMejoresPerdedores).
+  const filasTablaLiguilla = [...calcularEstadisticasEquipos(partidosLiguilla).entries()]
+    .map(([equipoId, e]) => ({ equipoId, nombre: nombreEquipo(equipoId), ...e, dg: e.gf - e.gc }))
+    .sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf || a.nombre.localeCompare(b.nombre))
 
   const equiposGrupo =
     estadoLiguilla?.formato === FORMATO_LIGUILLA.GRUPO
@@ -626,6 +645,45 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
               </div>
               )
             })}
+
+            {filasTablaLiguilla.length > 0 && (
+              <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                <p className="border-b border-line bg-ink-soft/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
+                  Tabla de posiciones de la liguilla
+                </p>
+                <table className="w-full table-fixed text-xs">
+                  <thead>
+                    <tr className="bg-brand-dark text-[9px] uppercase tracking-wider text-white/70">
+                      <th className="px-2 py-2 text-left font-semibold text-white">Equipo</th>
+                      <th className="w-10 px-1 py-2 text-center font-semibold text-white">Pts</th>
+                      <th className="w-[26px] px-0.5 py-2 text-center font-medium">GF</th>
+                      <th className="w-[26px] px-0.5 py-2 text-center font-medium">GC</th>
+                      <th className="w-9 px-1 py-2 text-center font-medium">DG</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasTablaLiguilla.map((f, i) => (
+                      <tr key={f.equipoId} className={`border-b border-line last:border-0 ${i % 2 === 0 ? 'bg-surface' : 'bg-paper/60'}`}>
+                        <td className="min-w-0 truncate px-2 py-1.5 font-medium text-ink">{f.nombre}</td>
+                        <td className="px-1 py-1.5 text-center">
+                          <span className="money inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-brand px-1 py-0.5 text-xs font-bold text-white">
+                            {f.pts}
+                          </span>
+                        </td>
+                        <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.gf}</td>
+                        <td className="money px-0.5 py-1.5 text-center text-[11px] text-ink-soft">{f.gc}</td>
+                        <td className={`money px-1 py-1.5 text-center text-[11px] font-semibold ${f.dg > 0 ? 'text-success' : f.dg < 0 ? 'text-danger' : 'text-ink-soft'}`}>
+                          {f.dg > 0 ? `+${f.dg}` : f.dg}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="border-t border-line px-3 py-1.5 text-[10px] text-ink-soft">
+                  Cuenta cada partido de la liguilla por separado (ida y vuelta valen cada uno lo suyo) - con este orden se elige al "mejor perdedor" cuando hace falta completar una ronda.
+                </p>
+              </div>
+            )}
 
             {errorAccion && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorAccion}</p>}
 
