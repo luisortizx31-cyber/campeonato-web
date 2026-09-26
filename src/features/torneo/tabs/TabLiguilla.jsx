@@ -536,11 +536,32 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
                             Ida y vuelta · agregado {cruce.golesA}-{cruce.golesB}
                           </p>
                         )}
-                        <div className="mt-1.5 flex flex-wrap justify-center gap-x-3 gap-y-1">
-                          {cruce.partidos.map((p) => (
-                            <ControlFecha key={p.id} partido={p} onGuardado={cargar} />
-                          ))}
-                        </div>
+                        {cruce.idaYVuelta ? (
+                          <div className="mt-1.5 grid grid-cols-2 gap-2">
+                            {cruce.partidos.map((p) => {
+                              const esVuelta = p.jornada?.endsWith('Vuelta')
+                              return (
+                                <div
+                                  key={p.id}
+                                  className={`rounded-lg border px-2 py-1.5 text-center ${
+                                    esVuelta ? 'border-gold/30 bg-gold-soft' : 'border-brand/30 bg-brand-soft'
+                                  }`}
+                                >
+                                  <p className={`mb-0.5 text-[10px] font-bold uppercase tracking-wide ${esVuelta ? 'text-gold' : 'text-brand'}`}>
+                                    {esVuelta ? '↩ Vuelta' : 'Ida'}
+                                  </p>
+                                  <ControlFecha partido={p} onGuardado={cargar} />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <div className="mt-1.5 flex justify-center">
+                            {cruce.partidos.map((p) => (
+                              <ControlFecha key={p.id} partido={p} onGuardado={cargar} />
+                            ))}
+                          </div>
+                        )}
                         {cruce.empatado && (
                           <div className="mt-2 rounded-lg bg-warning-soft p-2">
                             <p className="mb-1.5 text-xs font-medium text-warning">Empate - ¿quién avanza?</p>
