@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearDiaCorto, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, formatearDiaCorto, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 import { estadoPartido } from '../../../utils/partidosPorDia'
 import { FASE_LIGUILLA } from '../../../models/torneo'
@@ -37,6 +37,9 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
   // grilla) - asi el publico no tiene que tocar nada para ver lo que
   // se juega hoy; la grilla queda a un toque con "Todas las fechas".
   const [verGrillaFechas, setVerGrillaFechas] = useState(false)
+  // Pestaña elegida a mano en la grilla (Ida/Vuelta/Liguilla/Final) -
+  // null arranca en la que tenga la fecha actual (ver grupoFechaActivo).
+  const [grupoFechaSeleccionado, setGrupoFechaSeleccionado] = useState(null)
 
   // Los partidos se siguen en vivo (onSnapshot) en vez de traerse una
   // sola vez - asi el marcador en vivo que carga ControlPartido (ver
@@ -177,8 +180,27 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
   const fechasLiguilla = fechasDisponibles.filter((f) => esFechaLiguilla(f, partidos))
   const fechasIda = fechasDisponibles.filter((f) => !fechasLiguilla.includes(f) && fechaLeg(f) === 'ida')
   const fechasVuelta = fechasDisponibles.filter((f) => !fechasLiguilla.includes(f) && fechaLeg(f) === 'vuelta')
-  const fechasLiguillaIda = fechasLiguilla.filter((f) => fechaLeg(f) === 'ida')
-  const fechasLiguillaVuelta = fechasLiguilla.filter((f) => fechaLeg(f) === 'vuelta')
+  // La Final se separa del resto de la liguilla (Cuartos, Semifinal...)
+  // para que tenga su propia pestaña en la grilla - es la fecha que mas
+  // se busca de un vistazo.
+  const fechasFinal = fechasLiguilla.filter((f) => nombreLiguillaDe(f).startsWith('Final'))
+  const fechasLiguillaSinFinal = fechasLiguilla.filter((f) => !fechasFinal.includes(f))
+
+  // Pestañas de la grilla de fechas (pedido por el usuario, 2026-09-26):
+  // una por cada grupo que exista - si el campeonato no es ida y vuelta,
+  // o todavia no hay liguilla, esas pestañas simplemente no aparecen.
+  const gruposFecha = [
+    fechasIda.length > 0 && { id: 'ida', label: 'Ida', fechas: fechasIda },
+    fechasVuelta.length > 0 && { id: 'vuelta', label: 'Vuelta', fechas: fechasVuelta },
+    fechasLiguillaSinFinal.length > 0 && { id: 'liguilla', label: 'Liguilla', fechas: fechasLiguillaSinFinal },
+    fechasFinal.length > 0 && { id: 'final', label: 'Final', fechas: fechasFinal },
+  ].filter(Boolean)
+  const grupoFechaActivo =
+    gruposFecha.find((g) => g.id === grupoFechaSeleccionado) ||
+    gruposFecha.find((g) => g.fechas.includes(fechaSeleccionada)) ||
+    gruposFecha[0] ||
+    null
+  const fechasDeGrupoActivo = grupoFechaActivo ? grupoFechaActivo.fechas : fechasDisponibles
 
   if (partidoAbiertoId) {
     return partidoAbierto ? (
@@ -208,23 +230,25 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
         <>
           {verGrillaFechas ? (
             <>
-              {fechasVuelta.length > 0 && (
-                <p className="mb-2 text-xs text-ink-soft">
-                  <span className="font-semibold text-brand">Ida:</span> Fecha {Math.min(...fechasIda)}–{Math.max(...fechasIda)}
-                  {'  ·  '}
-                  <span className="font-semibold text-gold">Vuelta:</span> Fecha {Math.min(...fechasVuelta)}–{Math.max(...fechasVuelta)}
-                </p>
-              )}
-              {fechasLiguilla.length > 0 && (
-                <p className="mb-2 text-xs text-ink-soft">
-                  <span className="font-semibold text-danger">Liguilla</span>
-                  {fechasLiguillaIda.length > 0 && <> · ida: {textoFechas(fechasLiguillaIda)}</>}
-                  {fechasLiguillaVuelta.length > 0 && <> · vuelta: {textoFechas(fechasLiguillaVuelta)}</>}
-                  {fechasLiguillaIda.length === 0 && fechasLiguillaVuelta.length === 0 && <> · {textoFechas(fechasLiguilla)}</>}
-                </p>
+              {gruposFecha.length > 1 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {gruposFecha.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => setGrupoFechaSeleccionado(g.id)}
+                      className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-all ${
+                        g.id === grupoFechaActivo?.id
+                          ? 'border-brand bg-brand text-white shadow-sm'
+                          : 'border-line bg-surface text-ink-soft'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
               )}
               <div className="mb-3 flex flex-col gap-2">
-                {fechasDisponibles.map((f) => {
+                {fechasDeGrupoActivo.map((f) => {
                   const completa = fechaCompleta(f)
                   const empezada = !completa && fechaEmpezada(f)
                   const esLiguillaF = fechasLiguilla.includes(f)
