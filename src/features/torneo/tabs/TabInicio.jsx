@@ -11,7 +11,7 @@ import { calcularTablaGoleadores } from '../../../utils/tablaGoleadores'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
 import { AvatarJugador } from '../../shared/AvatarJugador'
-import { TarjetaGoleador } from '../TablaGoleadoresCategoria'
+import { AvatarFoto } from '../../shared/AvatarFoto'
 import ModalProgramarFechas from '../ModalProgramarFechas'
 import ControlPartido from '../ControlPartido'
 
@@ -152,8 +152,35 @@ function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoP
   )
 }
 
+function inicialDe(nombre) {
+  return nombre?.trim()?.charAt(0)?.toUpperCase() || '—'
+}
+
+// Version chica de TarjetaGoleador (ver TablaGoleadoresCategoria) para
+// el resumen de Inicio: entra dos por fila (Master/Libre lado a lado)
+// en vez de una sola tarjeta ancha - mismo estilo dorado, foto mas
+// chica y todo apilado al centro en vez de en fila.
+function TarjetaGoleadorChica({ fila }) {
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#b8861f] via-gold to-[#6b4e10] p-3 text-center text-white shadow-lg">
+      <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-white/15" />
+      <p className="relative mb-1.5 flex items-center justify-center gap-1 text-[9px] font-extrabold uppercase tracking-widest text-white/90">
+        <span aria-hidden="true">🏆</span> Goleador
+      </p>
+      <div data-sin-captura="true" className="relative mx-auto mb-1.5 w-fit rounded-full shadow ring-2 ring-white/90">
+        <AvatarFoto fotoUrl={fila.fotoUrl} texto={inicialDe(fila.nombre)} tamanoClase="h-14 w-14" textoClase="text-lg" colorBg="bg-white/90" colorText="text-[#7a5a14]" />
+      </div>
+      <p className="relative truncate text-sm font-extrabold leading-tight">{fila.nombre}</p>
+      <p className="relative truncate text-[10px] font-medium text-white/85">{fila.equipoNombre}</p>
+      <p className="relative money mt-1 text-2xl font-black leading-none drop-shadow">{fila.goles}</p>
+      <p className="relative text-[8px] font-bold uppercase tracking-widest text-white/85">{fila.goles === 1 ? 'gol' : 'goles'}</p>
+    </div>
+  )
+}
+
 // Goleador y suspendidos de UNA categoria, para el resumen de Inicio
-// (pedido por el usuario, 2026-09-26) - mismo calculo que las pestañas
+// (pedido por el usuario, 2026-09-26; achicado el 2026-09-26 para que
+// entren dos categorias lado a lado) - mismo calculo que las pestañas
 // Goleadores (calcularTablaGoleadores) y Amonestados
 // (jugador.suspendido && !jugador.eliminado), pero solo el primer
 // puesto y de solo lectura: es un resumen para ver de un vistazo, no
@@ -161,25 +188,25 @@ function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoP
 function SeccionDestacadosCategoria({ categoria, goleador, suspendidos, nombreEquipo }) {
   if (!goleador && suspendidos.length === 0) return null
   return (
-    <div>
-      <p className="mb-2 flex items-center gap-1.5 border-b-2 border-brand pb-0.5 text-base font-extrabold uppercase tracking-wide text-ink">
+    <div className="min-w-0">
+      <p className="mb-2 flex items-center gap-1 border-b-2 border-brand pb-0.5 text-xs font-extrabold uppercase tracking-wide text-ink">
         <span aria-hidden="true">⚽</span>
         {CATEGORIA_TORNEO_LABELS[categoria]}
       </p>
-      <div className="space-y-2.5">
-        {goleador && <TarjetaGoleador fila={goleador} />}
+      <div className="space-y-2">
+        {goleador && <TarjetaGoleadorChica fila={goleador} />}
         {suspendidos.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-danger/30 bg-surface">
-            <p className="border-b border-danger/20 bg-danger-soft px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-danger">
+          <div className="overflow-hidden rounded-xl border border-danger/30 bg-surface">
+            <p className="border-b border-danger/20 bg-danger-soft px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide text-danger">
               🚫 Suspendidos ({suspendidos.length})
             </p>
             <ul className="divide-y divide-line">
               {suspendidos.map((j) => (
-                <li key={j.id} className="flex items-center gap-2.5 px-3 py-2.5">
-                  <AvatarJugador jugador={j} tamanoClase="h-11 w-11" />
+                <li key={j.id} className="flex items-center gap-1.5 px-2 py-2">
+                  <AvatarJugador jugador={j} tamanoClase="h-9 w-9" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{j.nombre}</p>
-                    <p className="break-words text-xs text-ink-soft">
+                    <p className="truncate text-xs font-semibold text-ink">{j.nombre}</p>
+                    <p className="break-words text-[10px] leading-tight text-ink-soft">
                       {nombreEquipo(j.equipoId)} · {j.motivoSuspension}
                       {j.fechasSuspension ? ` · ${j.fechasSuspension} fecha(s)` : ''}
                     </p>
@@ -360,10 +387,11 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
           usuario, 2026-09-26) - debajo de "Programar fechas", antes del
           resto de los accesos rapidos. */}
       {Object.values(destacadosPorCategoria).some((d) => d.goleador || d.suspendidos.length > 0) && (
-        <div className="mb-3 space-y-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+        <div className="mb-3 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-soft">
             🏆 Goleadores y suspendidos
           </p>
+          <div className="grid grid-cols-2 gap-3">
           {categoriasActivas.map((categoria) => {
             const datos = destacadosPorCategoria[categoria]
             if (!datos) return null
@@ -377,6 +405,7 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
               />
             )
           })}
+          </div>
         </div>
       )}
 
