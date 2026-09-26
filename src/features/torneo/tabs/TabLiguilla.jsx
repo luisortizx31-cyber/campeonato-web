@@ -49,6 +49,16 @@ function marcadorDesdeA(partido, idA) {
   return `${golesA}-${golesB}`
 }
 
+// "a la Semifinal" / "a los Cuartos de final" / "a la Ronda de 6" -
+// mismo nombre de ronda que ya usa el boton "Generar <ronda>"
+// (nombreRonda), con el articulo correcto para el cartel de
+// clasificados.
+function textoClasificadosA(cantidad) {
+  const nombre = nombreRonda(cantidad)
+  const conLos = nombre === 'Cuartos de final' || nombre === 'Octavos de final'
+  return `${conLos ? 'a los' : 'a la'} ${nombre}`
+}
+
 /**
  * Liguilla: toma los clasificados de la Tabla de Posiciones (el corte
  * lo define `equiposEliminados`, configurable en Configuración) y deja
@@ -688,12 +698,26 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
             {errorAccion && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{errorAccion}</p>}
 
             {!bracket.campeonEquipoId && bracket.equiposVivos && bracket.equiposVivos.length >= 2 && pasoSiguiente == null && (
-              <button
-                onClick={iniciarPasoSiguienteRonda}
-                className="w-full rounded-lg bg-brand py-2.5 font-medium text-white"
-              >
-                Generar {nombreRonda(bracket.equiposVivos.length)}
-              </button>
+              <>
+                <div className="overflow-hidden rounded-2xl border border-success/30 bg-success-soft">
+                  <p className="border-b border-success/20 px-3 py-2 text-xs font-bold uppercase tracking-wide text-success">
+                    ✓ Clasificados {textoClasificadosA(bracket.equiposVivos.length)}
+                  </p>
+                  <ul className="divide-y divide-success/20 px-3">
+                    {bracket.equiposVivos.map((id) => (
+                      <li key={id} className="py-2 text-sm font-medium text-ink">
+                        {nombreEquipo(id)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={iniciarPasoSiguienteRonda}
+                  className="w-full rounded-lg bg-brand py-2.5 font-medium text-white"
+                >
+                  Generar {nombreRonda(bracket.equiposVivos.length)}
+                </button>
+              </>
             )}
 
             {pasoSiguiente === 'comodines' && (
