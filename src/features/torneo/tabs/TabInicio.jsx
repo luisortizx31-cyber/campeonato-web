@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposDelTorneo } from '../../../services/torneoEquiposService'
 import { suscribirPartidosDelTorneo, habilitarAlineacionDeFecha } from '../../../services/torneoPartidosService'
+import { listarJugadoresPorCategoria } from '../../../services/torneoJugadoresService'
+import { listarGolesPorCategoria } from '../../../services/torneoGolesService'
 import { CATEGORIA_TORNEO_LABELS } from '../../../models/torneo'
 import { claveDia, estadoPartido } from '../../../utils/partidosPorDia'
 import { formatearHoraCorta } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
+import { calcularTablaGoleadores } from '../../../utils/tablaGoleadores'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { TarjetaIcono } from '../../shared/TarjetaIcono'
+import { AvatarJugador } from '../../shared/AvatarJugador'
+import { TarjetaGoleador } from '../TablaGoleadoresCategoria'
 import ModalProgramarFechas from '../ModalProgramarFechas'
 import ControlPartido from '../ControlPartido'
 
@@ -147,6 +152,48 @@ function GrupoCategoriaHoy({ categoria, partidos, estadoDe, equipoDe, bloqueadoP
   )
 }
 
+// Goleador y suspendidos de UNA categoria, para el resumen de Inicio
+// (pedido por el usuario, 2026-09-26) - mismo calculo que las pestañas
+// Goleadores (calcularTablaGoleadores) y Amonestados
+// (jugador.suspendido && !jugador.eliminado), pero solo el primer
+// puesto y de solo lectura: es un resumen para ver de un vistazo, no
+// un reemplazo de esas pestañas (para eso esta el boton de cada una).
+function SeccionDestacadosCategoria({ categoria, goleador, suspendidos, nombreEquipo }) {
+  if (!goleador && suspendidos.length === 0) return null
+  return (
+    <div>
+      <p className="mb-2 flex items-center gap-1.5 border-b-2 border-brand pb-0.5 text-base font-extrabold uppercase tracking-wide text-ink">
+        <span aria-hidden="true">⚽</span>
+        {CATEGORIA_TORNEO_LABELS[categoria]}
+      </p>
+      <div className="space-y-2.5">
+        {goleador && <TarjetaGoleador fila={goleador} />}
+        {suspendidos.length > 0 && (
+          <div className="overflow-hidden rounded-2xl border border-danger/30 bg-surface">
+            <p className="border-b border-danger/20 bg-danger-soft px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-danger">
+              🚫 Suspendidos ({suspendidos.length})
+            </p>
+            <ul className="divide-y divide-line">
+              {suspendidos.map((j) => (
+                <li key={j.id} className="flex items-center gap-2.5 px-3 py-2.5">
+                  <AvatarJugador jugador={j} tamanoClase="h-11 w-11" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">{j.nombre}</p>
+                    <p className="break-words text-xs text-ink-soft">
+                      {nombreEquipo(j.equipoId)} · {j.motivoSuspension}
+                      {j.fechasSuspension ? ` · ${j.fechasSuspension} fecha(s)` : ''}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Primera pantalla que ve el Maestro al entrar al panel (ver
  * PanelTorneo) - una bienvenida con el nombre del torneo, los partidos
@@ -185,6 +232,37 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
   useEffect(() => {
     return suscribirPartidosDelTorneo(torneoId, setPartidos)
   }, [torneoId])
+
+  // Goleador y suspendidos de cada categoria activa (ver
+  // SeccionDestacadosCategoria) - una sola carga al entrar, igual que
+  // Goleadores/Amonestados (no en vivo: no vale la pena suscribirse a
+  // /torneo_goles solo para este resumen).
+  const [destacadosPorCategoria, setDestacadosPorCategoria] = useState({})
+  useEffect(() => {
+    let cancelado = false
+    Promise.all(
+      categoriasActivas.map(async (categoria) => {
+        const [jugadores, goles] = await Promise.all([
+          listarJugadoresPorCategoria(torneoId, categoria),
+          listarGolesPorCategoria(torneoId, categoria).catch((err) => {
+            console.error('[TabInicio] listarGolesPorCategoria', err)
+            return []
+          }),
+        ])
+        const tabla = calcularTablaGoleadores({ jugadores, goles })
+        const suspendidos = jugadores.filter((j) => j.suspendido && !j.eliminado)
+        return [categoria, { goleador: tabla[0] || null, suspendidos }]
+      })
+    )
+      .then((entradas) => {
+        if (!cancelado) setDestacadosPorCategoria(Object.fromEntries(entradas))
+      })
+      .catch((err) => console.error('[TabInicio] destacados por categoria', err))
+    return () => {
+      cancelado = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [torneoId, categoriasActivas.join(',')])
 
   function equipoDe(id) {
     return equipos.find((e) => e.id === id)
@@ -268,7 +346,7 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
       {/* Ya no hay barra de pestañas arriba (ver PanelTorneo): esta grilla
           es el UNICO punto de navegacion a cada seccion, asi que cubre
           las mismas 11 que antes vivian ahi - nada quedo sin acceso. */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="mb-3 grid grid-cols-2 gap-3">
         <BotonAccion
           icon="📅"
           label="Programar fechas"
@@ -276,6 +354,33 @@ export default function TabInicio({ torneoId, categoriasActivas, nombreTorneo, o
           destacada
           onClick={() => setMostrarWizard(true)}
         />
+      </div>
+
+      {/* Goleador y suspendidos de cada categoria (pedido por el
+          usuario, 2026-09-26) - debajo de "Programar fechas", antes del
+          resto de los accesos rapidos. */}
+      {Object.values(destacadosPorCategoria).some((d) => d.goleador || d.suspendidos.length > 0) && (
+        <div className="mb-3 space-y-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-soft">
+            🏆 Goleadores y suspendidos
+          </p>
+          {categoriasActivas.map((categoria) => {
+            const datos = destacadosPorCategoria[categoria]
+            if (!datos) return null
+            return (
+              <SeccionDestacadosCategoria
+                key={categoria}
+                categoria={categoria}
+                goleador={datos.goleador ? { ...datos.goleador, equipoNombre: nombreEquipo(datos.goleador.equipoId) } : null}
+                suspendidos={datos.suspendidos}
+                nombreEquipo={nombreEquipo}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
         <BotonAccion icon="🗓️" label="Fechas" onClick={() => onIrATab('fechas')} />
         <BotonAccion icon="⚽" label="Goleadores" onClick={() => onIrATab('goleadores')} />
         <BotonAccion icon="📊" label="Posiciones" onClick={() => onIrATab('posiciones')} />

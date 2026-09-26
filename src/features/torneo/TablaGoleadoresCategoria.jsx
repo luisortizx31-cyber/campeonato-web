@@ -24,7 +24,7 @@ function inicialDe(nombre) {
 // El goleador del campeonato (1er puesto), en grande y con foto: tarjeta
 // dorada con su foto en un aro blanco, el nombre, la promocion y los goles
 // bien visibles. La foto se agranda al tocarla (ver AvatarFoto).
-function TarjetaGoleador({ fila }) {
+export function TarjetaGoleador({ fila }) {
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#b8861f] via-gold to-[#6b4e10] p-4 text-white shadow-lg">
       <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/15" />
