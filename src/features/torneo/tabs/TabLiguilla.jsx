@@ -29,6 +29,19 @@ function envolverCruces(pares) {
   return pares.map(([equipoLocalId, equipoVisitanteId]) => ({ equipoLocalId, equipoVisitanteId, idaYVuelta: false }))
 }
 
+// Resultado de UN partido de un cruce ida y vuelta, siempre desde el
+// punto de vista del equipo A (columna izquierda del cruce) - en la
+// vuelta el local se invierte (ver torneoLiguillaService.
+// crearCrucesEliminacion), asi que hay que reacomodar los goles para
+// que "Ida 2-0 · Vuelta 0-1" quede consistente con el agregado (mismo
+// criterio que usa reconstruirBracket para sumarlo).
+function marcadorDesdeA(partido, idA) {
+  if (!partido || partido.golesLocal == null) return null
+  const golesA = partido.equipoLocalId === idA ? partido.golesLocal : partido.golesVisitante
+  const golesB = partido.equipoLocalId === idA ? partido.golesVisitante : partido.golesLocal
+  return `${golesA}-${golesB}`
+}
+
 /**
  * Liguilla: toma los clasificados de la Tabla de Posiciones (el corte
  * lo define `equiposEliminados`, configurable en Configuración) y deja
@@ -533,7 +546,17 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
                         </div>
                         {cruce.idaYVuelta && (
                           <p className="mt-0.5 text-center text-[11px] text-ink-soft">
-                            Ida y vuelta · agregado {cruce.golesA}-{cruce.golesB}
+                            <span className="font-semibold text-brand">Ida</span>{' '}
+                            {marcadorDesdeA(cruce.partidos.find((p) => !p.jornada?.endsWith('Vuelta')), idA) || 'pendiente'}
+                            {'  ·  '}
+                            <span className="font-semibold text-gold">Vuelta</span>{' '}
+                            {marcadorDesdeA(cruce.partidos.find((p) => p.jornada?.endsWith('Vuelta')), idA) || 'pendiente'}
+                            {algunGolCargado && <>{'  ·  '}Agregado {cruce.golesA}-{cruce.golesB}</>}
+                          </p>
+                        )}
+                        {cruce.completo && (
+                          <p className="mt-1 text-center text-[11px] font-semibold text-success">
+                            ✓ Clasifica {nombreEquipo(cruce.ganadorId)}
                           </p>
                         )}
                         {cruce.idaYVuelta ? (
