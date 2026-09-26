@@ -3,6 +3,7 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearDiaCorto, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
+import { estadoPartido } from '../../../utils/partidosPorDia'
 import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
@@ -294,8 +295,12 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
 
               <ul className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm" {...swipeFecha}>
                 {partidosDeFecha.map((p) => {
-                  const jugado = p.golesLocal != null && p.golesVisitante != null
-                  const enVivo = !jugado && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
+                  // "En vivo" = ya arranco (horaInicio puesto), no solo
+                  // tener la alineacion cargada - eso es un paso previo
+                  // (mismo criterio que estadoPartido).
+                  const estadoP = estadoPartido(p, ahora)
+                  const jugado = estadoP === 'fin'
+                  const enVivo = estadoP === 'vivo'
                   const ganoLocal = jugado && p.golesLocal > p.golesVisitante
                   const ganoVisitante = jugado && p.golesVisitante > p.golesLocal
                   const equipoLocal = equipos.find((e) => e.id === p.equipoLocalId)

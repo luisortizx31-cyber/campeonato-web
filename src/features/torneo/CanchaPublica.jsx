@@ -4,6 +4,7 @@ import { suscribirGolesPorPartido } from '../../services/torneoGolesService'
 import { suscribirTarjetasPorPartido } from '../../services/torneoTarjetasService'
 import { obtenerConfigCategoria } from '../../services/torneoConfigService'
 import { TIPO_TARJETA } from '../../models/torneo'
+import { estadoPartido } from '../../utils/partidosPorDia'
 import { colorEquipo } from '../../utils/colorEquipo'
 import { AvatarFoto } from '../shared/AvatarFoto'
 import { TarjetaIcono } from '../shared/TarjetaIcono'
@@ -148,8 +149,13 @@ export default function CanchaPublica({ torneoId, categoria, partido, nombreEqui
   const colorLocal = colorEquipo(nombreEquipo(partido.equipoLocalId))
   const colorVisitante = colorEquipo(nombreEquipo(partido.equipoVisitanteId))
 
-  const jugado = partido.golesLocal != null
-  const enVivo = !jugado && (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0)
+  // "En vivo" = ya se toco "Arrancar partido" (horaInicio puesto), NO
+  // solo tener la alineacion cargada - armar los titulares es un paso
+  // previo, antes de arrancar, y no deberia mostrarse como en juego
+  // (mismo criterio que estadoPartido, ver utils/partidosPorDia).
+  const estado = estadoPartido(partido, ahora)
+  const jugado = estado === 'fin'
+  const enVivo = estado === 'vivo'
 
   return (
     <div>

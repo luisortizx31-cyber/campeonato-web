@@ -27,6 +27,7 @@ import {
   compararPartidosPorHorario,
 } from '../../../utils/fixtureTorneo'
 import { calcularRestricciones, motivoHorarioInvalido } from '../../../utils/horariosPartido'
+import { estadoPartido } from '../../../utils/partidosPorDia'
 import { CATEGORIA_TORNEO_LABELS, FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import ModalAgregarPartidoFecha from '../ModalAgregarPartidoFecha'
@@ -1123,14 +1124,16 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
   // El horario elegido tiene que ser uno permitido (ver restriccionHorario).
   const motivoHorarioDraft = motivoHorarioInvalido(horarioDraft, restriccionHorario)
 
-  const jugado = partido.golesLocal != null
-  // "En vivo": ya se armo la alineacion (se abrio Control de Partido)
-  // pero todavia no se finalizo - el marcador que se ve viene de
-  // golesLocalEnVivo/golesVisitanteEnVivo, que ControlPartido
-  // actualiza solo cada vez que cambia un gol (ver
+  // "En vivo" = ya se toco "Arrancar partido" (horaInicio puesto), no
+  // solo tener la alineacion armada - eso es un paso previo (mismo
+  // criterio que estadoPartido, ver utils/partidosPorDia). El marcador
+  // que se ve viene de golesLocalEnVivo/golesVisitanteEnVivo, que
+  // ControlPartido actualiza solo cada vez que cambia un gol (ver
   // torneoPartidosService.actualizarMarcadorEnVivo). Prefill del
   // input con ese valor para no tener que retipearlo al finalizar.
-  const enVivo = !jugado && (partido.titularesLocal?.length > 0 || partido.titularesVisitante?.length > 0)
+  const estado = estadoPartido(partido, ahora)
+  const jugado = estado === 'fin'
+  const enVivo = estado === 'vivo'
   const golesLocal = form?.golesLocal ?? partido.golesLocal ?? (enVivo ? partido.golesLocalEnVivo ?? 0 : '')
   const golesVisitante = form?.golesVisitante ?? partido.golesVisitante ?? (enVivo ? partido.golesVisitanteEnVivo ?? 0 : '')
   const ganoLocal = jugado && partido.golesLocal > partido.golesVisitante
