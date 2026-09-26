@@ -21,6 +21,7 @@ import {
   etiquetaLiguilla,
   textoFechas,
   formatearFechaProgramada,
+  formatearDiaCorto,
   formatearDiaLargo,
   formatearHora12,
   compararPartidosPorHorario,
@@ -819,20 +820,12 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
                       const enHora = horaLlegada(f)
                       const esLiguillaF = fechasLiguilla.includes(f)
                       const horarioMasBajo = horarioMasBajoDe(f)
-                      const cuando = horarioMasBajo
-                        ? `${formatearDiaLargo(horarioMasBajo)} · ${formatearHora12(horarioMasBajo)}`
-                        : null
-                      const descripcion = completa
-                        ? cuando
-                          ? `Se jugó el ${cuando}`
-                          : 'Jugada'
-                        : empezada
-                          ? 'En curso'
-                          : enHora
-                            ? 'Se juega hoy'
-                            : cuando
-                              ? `Por jugarse el ${cuando}`
-                              : 'Sin programar'
+                      const cuando = horarioMasBajo ? formatearDiaCorto(horarioMasBajo) : null
+                      const descripcion = empezada
+                        ? 'En curso'
+                        : enHora
+                          ? 'Se juega hoy'
+                          : cuando || (completa ? 'Jugada' : 'Sin programar')
                       return (
                         <button
                           key={f}

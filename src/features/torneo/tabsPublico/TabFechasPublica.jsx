@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearDiaCorto, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
 import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
@@ -230,20 +230,12 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                   const horarioMasBajo = horarioMasBajoDe(f)
                   const enHora = horaLlegada(f)
                   const activa = fechaSeleccionada === f
-                  const cuando = horarioMasBajo
-                    ? `${formatearDiaLargo(horarioMasBajo)} · ${formatearHora12(horarioMasBajo)}`
-                    : null
-                  const descripcion = completa
-                    ? cuando
-                      ? `Se jugó el ${cuando}`
-                      : 'Jugada'
-                    : empezada
-                      ? 'En curso'
-                      : enHora
-                        ? 'Se juega hoy'
-                        : cuando
-                          ? `Por jugarse el ${cuando}`
-                          : 'Sin programar'
+                  const cuando = horarioMasBajo ? formatearDiaCorto(horarioMasBajo) : null
+                  const descripcion = empezada
+                    ? 'En curso'
+                    : enHora
+                      ? 'Se juega hoy'
+                      : cuando || (completa ? 'Jugada' : 'Sin programar')
                   return (
                     <button
                       key={f}
