@@ -639,6 +639,15 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
     if (legs.size === 1) return [...legs][0] // 'ida' | 'vuelta' | null
     return 'mixta'
   }
+  // "Semifinal · Ida", "Cuartos de final · Vuelta", "Final"... - la
+  // fecha de un cruce de liguilla ya trae guardado el nombre de SU
+  // ronda en `jornada` (ver torneoLiguillaService.generarRondaLiguilla,
+  // nombreRonda) - se usa tal cual en vez del generico "Liguilla ida"
+  // para no perder en que ronda del cuadro esta esa fecha.
+  function nombreLiguillaDe(f) {
+    const partido = partidos.find((p) => p.fechaNumero === f && p.fase === FASE_LIGUILLA)
+    return partido?.jornada || etiquetaLiguilla(fechaLeg(f))
+  }
   // La ida/vuelta de la temporada regular y la de la liguilla se cuentan por
   // separado (la liguilla se muestra como "Liguilla ida" / "Liguilla vuelta").
   const fechasLiguilla = fechasDisponibles.filter((f) => esFechaLiguilla(f, partidos))
@@ -846,7 +855,7 @@ export default function TabFechas({ torneoId, categoriasActivas }) {
                           }`}
                         >
                           <span className="shrink-0 whitespace-nowrap text-base font-extrabold">
-                            {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · Fecha ${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
+                            {esLiguillaF ? `${nombreLiguillaDe(f)} · Fecha ${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
                           </span>
                           <span className={`flex-1 text-right text-xs font-semibold ${activa ? 'text-white/90' : ''}`}>{descripcion}</span>
                         </button>
@@ -1162,7 +1171,7 @@ function FilaPartido({ partido, mostrarFecha, ocultarBoton, leg, form, onChange,
           </span>
         )}
         {partido.fase === FASE_LIGUILLA ? (
-          <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-semibold text-danger">{etiquetaLiguilla(leg)}</span>
+          <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-semibold text-danger">{partido.jornada || etiquetaLiguilla(leg)}</span>
         ) : (
           <>
             {leg === 'ida' && (

@@ -3,6 +3,7 @@ import { listarEquiposPorCategoria } from '../../../services/torneoEquiposServic
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
 import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
+import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
 import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
@@ -162,6 +163,14 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
     const legs = new Set(partidosF.map((p) => calcularLegPartido(p, partidos)))
     return legs.size === 1 ? [...legs][0] : 'mixta'
   }
+  // "Semifinal · Ida", "Cuartos de final · Vuelta", "Final"... - la
+  // fecha de un cruce de liguilla ya trae guardado el nombre de SU
+  // ronda en `jornada` (ver torneoLiguillaService.generarRondaLiguilla,
+  // nombreRonda) - se usa tal cual en vez del generico "Liguilla ida".
+  function nombreLiguillaDe(f) {
+    const partido = partidos.find((p) => p.fechaNumero === f && p.fase === FASE_LIGUILLA)
+    return partido?.jornada || etiquetaLiguilla(fechaLeg(f))
+  }
   // La ida/vuelta de la temporada regular y la de la liguilla se cuentan por
   // separado (la liguilla se muestra como "Liguilla ida" / "Liguilla vuelta").
   const fechasLiguilla = fechasDisponibles.filter((f) => esFechaLiguilla(f, partidos))
@@ -257,7 +266,7 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                       }`}
                     >
                       <span className="shrink-0 whitespace-nowrap text-base font-extrabold">
-                        {esLiguillaF ? `${etiquetaLiguilla(fechaLeg(f))} · Fecha ${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
+                        {esLiguillaF ? `${nombreLiguillaDe(f)} · Fecha ${f}` : `Fecha ${f}`}{completa ? ' ✓' : ''}
                       </span>
                       <span className={`flex-1 text-right text-xs font-semibold ${activa ? 'text-white/90' : ''}`}>{descripcion}</span>
                     </button>
