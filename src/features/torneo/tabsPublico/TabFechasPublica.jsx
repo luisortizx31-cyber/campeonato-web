@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { listarEquiposPorCategoria } from '../../../services/torneoEquiposService'
 import { suscribirPartidosPorCategoria } from '../../../services/torneoPartidosService'
-import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearFechaProgramada, formatearDiaLargo, formatearHora12, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
+import { calcularLegPartido, esFechaLiguilla, etiquetaLiguilla, textoFechas, formatearDiaLargo, formatearHora12, formatearHoraCorta, compararPartidosPorHorario } from '../../../utils/fixtureTorneo'
 import { textoMinutoEnCurso } from '../../../utils/golesPorTiempo'
-import { FASE_LIGUILLA } from '../../../models/torneo'
 import { useSwipeHorizontal } from '../../../hooks/useSwipeHorizontal'
-import { colorEquipo, inicialEquipo } from '../../../utils/colorEquipo'
+import { EscudoEquipo } from '../../shared/EscudoEquipo'
 import { SelectorCategoria } from '../../shared/SelectorCategoria'
 import CanchaPublica from '../CanchaPublica'
 
@@ -292,114 +291,60 @@ export default function TabFechasPublica({ torneoId, categoriasActivas }) {
                 )}
               </div>
 
-              <ul className="space-y-2.5" {...swipeFecha}>
-            {partidosDeFecha.map((p) => {
-              const jugado = p.golesLocal != null && p.golesVisitante != null
-              const enVivo = !jugado && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
-              const leg = calcularLegPartido(p, partidos)
-              const ganoLocal = jugado && p.golesLocal > p.golesVisitante
-              const ganoVisitante = jugado && p.golesVisitante > p.golesLocal
-              const nombreLocal = nombreEquipo(p.equipoLocalId)
-              const nombreVisitante = nombreEquipo(p.equipoVisitanteId)
-              const colorLocal = colorEquipo(nombreLocal)
-              const colorVisitante = colorEquipo(nombreVisitante)
-              return (
-                <li
-                  key={p.id}
-                  onClick={() => setPartidoAbiertoId(p.id)}
-                  className={`cursor-pointer overflow-hidden rounded-2xl border border-l-4 bg-surface shadow-sm transition-colors active:bg-ink-soft/5 ${
-                    jugado ? 'border-line border-l-success' : enVivo ? 'border-danger/30 border-l-danger' : 'border-dashed border-line border-l-line'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                    {jugado ? (
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-success">
-                        <span className="h-1.5 w-1.5 rounded-full bg-success" /> Jugado
-                      </span>
-                    ) : enVivo ? (
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
-                        {textoMinutoEnCurso(p, ahora) || 'En vivo'}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-ink-soft">
-                        <span className="h-1.5 w-1.5 rounded-full bg-line" /> Pendiente
-                      </span>
-                    )}
-                    {p.fase === FASE_LIGUILLA ? (
-                      <span className="rounded-full bg-danger-soft px-2 py-0.5 text-[11px] font-semibold text-danger">{etiquetaLiguilla(leg)}</span>
-                    ) : (
-                      <>
-                        {leg === 'ida' && (
-                          <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand">Ida</span>
-                        )}
-                        {leg === 'vuelta' && (
-                          <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold">↩ Vuelta</span>
-                        )}
-                      </>
-                    )}
-                  </div>
+              <ul className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm" {...swipeFecha}>
+                {partidosDeFecha.map((p) => {
+                  const jugado = p.golesLocal != null && p.golesVisitante != null
+                  const enVivo = !jugado && (p.titularesLocal?.length > 0 || p.titularesVisitante?.length > 0)
+                  const ganoLocal = jugado && p.golesLocal > p.golesVisitante
+                  const ganoVisitante = jugado && p.golesVisitante > p.golesLocal
+                  const equipoLocal = equipos.find((e) => e.id === p.equipoLocalId)
+                  const equipoVisitante = equipos.find((e) => e.id === p.equipoVisitanteId)
+                  const nombreLocal = equipoLocal?.nombre || '—'
+                  const nombreVisitante = equipoVisitante?.nombre || '—'
+                  return (
+                    <li
+                      key={p.id}
+                      onClick={() => setPartidoAbiertoId(p.id)}
+                      className="cursor-pointer border-t border-line px-2.5 py-3 first:border-t-0 active:bg-ink-soft/5"
+                    >
+                      <div className="grid grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] items-center gap-1.5">
+                        <div className="flex min-w-0 items-center justify-end gap-1.5">
+                          <span className={`min-w-0 break-words text-right text-[13px] leading-tight text-ink ${ganoLocal ? 'font-bold' : ''}`}>
+                            {nombreLocal}
+                          </span>
+                          <EscudoEquipo nombre={nombreLocal} fotoUrl={equipoLocal?.fotoPortadaUrl} tamanoClase="h-11 w-11" textoClase="text-base" />
+                        </div>
 
-                  {!jugado && p.fecha && (
-                    <p className="px-4 pb-1">
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-paper px-2 py-1 text-[11px] font-medium text-ink-soft">
-                        🗓 {formatearFechaProgramada(p.fecha)}
-                      </span>
-                    </p>
-                  )}
+                        <div className="text-center">
+                          {!jugado && !enVivo ? (
+                            <p className="text-base font-semibold text-ink">{p.fecha ? formatearHoraCorta(p.fecha) : '–'}</p>
+                          ) : (
+                            <>
+                              <p className={`text-2xl font-semibold leading-none tabular-nums ${enVivo ? 'text-danger' : 'text-ink'}`}>
+                                {jugado ? p.golesLocal : p.golesLocalEnVivo ?? 0} - {jugado ? p.golesVisitante : p.golesVisitanteEnVivo ?? 0}
+                              </p>
+                              {jugado ? (
+                                <p className="mt-1 text-[11px] font-medium tracking-wide text-ink-soft">FIN</p>
+                              ) : (
+                                <p className="mt-1 flex items-center justify-center gap-1 text-[11px] font-bold tracking-wide text-danger">
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
+                                  {textoMinutoEnCurso(p, ahora) || 'EN VIVO'}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
 
-                  <div className="mx-4 mb-3 mt-1.5 overflow-hidden rounded-xl border border-line/70 bg-paper">
-                    <div className="flex items-center gap-2.5 px-3 py-2">
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${colorLocal.bg} ${colorLocal.text}`}
-                      >
-                        {inicialEquipo(nombreLocal)}
-                      </span>
-                      <span
-                        className={`min-w-0 flex-1 break-words text-sm leading-tight ${
-                          ganoLocal ? 'font-bold text-ink' : ganoVisitante ? 'font-medium text-ink-soft' : 'font-medium text-ink'
-                        }`}
-                      >
-                        {nombreLocal}
-                      </span>
-                      <span
-                        className={`money flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border-2 text-center text-lg font-extrabold text-ink ${
-                          jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-surface text-ink-soft/30'
-                        }`}
-                      >
-                        {jugado ? p.golesLocal : enVivo ? p.golesLocalEnVivo ?? 0 : '–'}
-                      </span>
-                    </div>
-                    <div className="border-t border-line/70" />
-                    <div className="flex items-center gap-2.5 px-3 py-2">
-                      <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${colorVisitante.bg} ${colorVisitante.text}`}
-                      >
-                        {inicialEquipo(nombreVisitante)}
-                      </span>
-                      <span
-                        className={`min-w-0 flex-1 break-words text-sm leading-tight ${
-                          ganoVisitante ? 'font-bold text-ink' : ganoLocal ? 'font-medium text-ink-soft' : 'font-medium text-ink'
-                        }`}
-                      >
-                        {nombreVisitante}
-                      </span>
-                      <span
-                        className={`money flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border-2 text-center text-lg font-extrabold text-ink ${
-                          jugado ? 'border-success/30 bg-success-soft' : enVivo ? 'border-danger/30 bg-danger-soft' : 'border-line bg-surface text-ink-soft/30'
-                        }`}
-                      >
-                        {jugado ? p.golesVisitante : enVivo ? p.golesVisitanteEnVivo ?? 0 : '–'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="border-t border-line px-4 py-1.5 text-right text-[10px] font-medium text-ink-soft">
-                    Ver detalle ›
-                  </p>
-                </li>
-              )
-            })}
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <EscudoEquipo nombre={nombreVisitante} fotoUrl={equipoVisitante?.fotoPortadaUrl} tamanoClase="h-11 w-11" textoClase="text-base" />
+                          <span className={`min-w-0 break-words text-left text-[13px] leading-tight text-ink ${ganoVisitante ? 'font-bold' : ''}`}>
+                            {nombreVisitante}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}
