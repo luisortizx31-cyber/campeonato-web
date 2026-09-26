@@ -114,6 +114,11 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
   const [pasoSiguiente, setPasoSiguiente] = useState(null)
   const [comodinesEditables, setComodinesEditables] = useState([])
   const [paresSiguiente, setParesSiguiente] = useState([])
+  // Que se ve dentro del cuadro eliminatorio: el numero de una ronda ya
+  // generada (Ronda de 6, Semifinal, Final...) o 'tabla' para la tabla
+  // de posiciones de la liguilla - una sola cosa a la vez, en pestañas,
+  // en vez de todo apilado en una sola pantalla larga.
+  const [vistaLiguilla, setVistaLiguilla] = useState(null)
 
   async function cargar() {
     setCargando(true)
@@ -331,6 +336,16 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
     .map(([equipoId, e]) => ({ equipoId, nombre: nombreEquipo(equipoId), ...e, dg: e.gf - e.gc }))
     .sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf || a.nombre.localeCompare(b.nombre))
 
+  // Que se ve dentro del cuadro: la ronda elegida en `vistaLiguilla` si
+  // todavia existe (ver setVistaLiguilla), o si no la ultima ronda
+  // generada (asi al entrar, o al generar una ronda nueva, se abre
+  // directo en lo mas reciente sin tener que tocar nada).
+  const ultimaRondaId = bracket?.rondas[bracket.rondas.length - 1]?.rondaLiguilla
+  const vistaLiguillaActiva =
+    vistaLiguilla != null && (vistaLiguilla === 'tabla' || bracket?.rondas.some((r) => r.rondaLiguilla === vistaLiguilla))
+      ? vistaLiguilla
+      : ultimaRondaId
+
   const equiposGrupo =
     estadoLiguilla?.formato === FORMATO_LIGUILLA.GRUPO
       ? equipos.filter((e) => estadoLiguilla.qualifiers.some((q) => q.equipoId === e.id))
@@ -535,8 +550,35 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
               </div>
             )}
 
+            <div className="flex flex-wrap gap-2">
+              {bracket.rondas.map((ronda) => (
+                <button
+                  key={ronda.rondaLiguilla}
+                  onClick={() => setVistaLiguilla(ronda.rondaLiguilla)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                    ronda.rondaLiguilla === vistaLiguillaActiva
+                      ? 'border-brand bg-brand text-white shadow-sm'
+                      : 'border-line bg-surface text-ink-soft'
+                  }`}
+                >
+                  {ronda.nombreRonda}
+                </button>
+              ))}
+              {filasTablaLiguilla.length > 0 && (
+                <button
+                  onClick={() => setVistaLiguilla('tabla')}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                    vistaLiguillaActiva === 'tabla' ? 'border-brand bg-brand text-white shadow-sm' : 'border-line bg-surface text-ink-soft'
+                  }`}
+                >
+                  📊 Tabla de posiciones
+                </button>
+              )}
+            </div>
+
             {bracket.rondas.map((ronda) => {
-              const esUltimaRonda = ronda.rondaLiguilla === bracket.rondas[bracket.rondas.length - 1].rondaLiguilla
+              if (ronda.rondaLiguilla !== vistaLiguillaActiva) return null
+              const esUltimaRonda = ronda.rondaLiguilla === ultimaRondaId
               const puedeCambiarComodin = esUltimaRonda && !bracket.campeonEquipoId && pasoSiguiente == null
               return (
               <div key={ronda.rondaLiguilla} className="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -656,7 +698,7 @@ export default function TabLiguilla({ torneoId, categoriasActivas }) {
               )
             })}
 
-            {filasTablaLiguilla.length > 0 && (
+            {vistaLiguillaActiva === 'tabla' && filasTablaLiguilla.length > 0 && (
               <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
                 <p className="border-b border-line bg-ink-soft/10 px-3 py-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
                   Tabla de posiciones de la liguilla
